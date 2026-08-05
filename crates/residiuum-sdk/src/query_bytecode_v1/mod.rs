@@ -15,13 +15,15 @@
 //!
 //! Host adapters supply scan/index/get only.
 //!
-//! Residual (Decision 0 still open): page/order/project/coverage/enrich loops
-//! remain Rust interpreters of **ISA-decoded** structures — not a finished
-//! bytecode machine. **RQL-C1 must not be accepted.**
+//! Residual (Decision 0 still open): enrich/within brace-project loops remain
+//! Rust interpreters of **ISA-decoded** structures — not a finished bytecode
+//! machine. Core project/order/page are named IR phases (still Rust).
+//! **RQL-C1 must not be accepted.**
 
 mod core_page;
 mod full_attach;
 mod ir_order;
+mod ir_page;
 mod ir_project;
 mod isa;
 mod kernel;
@@ -42,6 +44,10 @@ pub use full_attach::{
 pub use ir_order::{
     build_sort_tuple, cmp_sort_tuples, compare_rows, key_from_sort_tuple, retain_after_sort_tuple,
     CompiledOrderIr, ORDER_IR_PROFILE,
+};
+pub use ir_page::{
+    decode_after, finish_coverage, mint_page_cursor, resolve_coverage_mode, resolve_page_size,
+    rows_needed, CompiledPageIr, PAGE_IR_PROFILE,
 };
 pub use ir_project::{
     apply_project_paths, CompiledProjectIr, PROJECT_IR_PROFILE,

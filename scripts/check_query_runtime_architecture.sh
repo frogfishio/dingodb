@@ -19,9 +19,11 @@ IR_DOC="$ROOT/doc/todo/rql/QUERY_IR_RESIDUAL.md"
 [[ -f "$SDK_SRC/query_bytecode_v1/kernel.rs" ]] || fail "missing kernel.rs"
 [[ -f "$SDK_SRC/query_bytecode_v1/ir_project.rs" ]] || fail "missing ir_project.rs (RQL-IR1)"
 [[ -f "$SDK_SRC/query_bytecode_v1/ir_order.rs" ]] || fail "missing ir_order.rs (RQL-IR2)"
+[[ -f "$SDK_SRC/query_bytecode_v1/ir_page.rs" ]] || fail "missing ir_page.rs (RQL-IR3)"
 [[ -f "$IR_DOC" ]] || fail "missing QUERY_IR_RESIDUAL.md (X5c honesty)"
 [[ -f "$ROOT/doc/todo/rql/QUERY_IR_PROJECT_V1.md" ]] || fail "missing QUERY_IR_PROJECT_V1.md"
 [[ -f "$ROOT/doc/todo/rql/QUERY_IR_ORDER_V1.md" ]] || fail "missing QUERY_IR_ORDER_V1.md"
+[[ -f "$ROOT/doc/todo/rql/QUERY_IR_PAGE_V1.md" ]] || fail "missing QUERY_IR_PAGE_V1.md"
 
 # Shims must be gone.
 [[ ! -e "$SDK_SRC/query_exec_v1.rs" ]] || fail "query_exec_v1.rs shim must be deleted"
@@ -35,6 +37,8 @@ rg -q 'residiuum-query-ir-project-v1' "$SDK_SRC/query_bytecode_v1/ir_project.rs"
   || fail "PROJECT_IR_PROFILE missing"
 rg -q 'residiuum-query-ir-order-v1' "$SDK_SRC/query_bytecode_v1/ir_order.rs" \
   || fail "ORDER_IR_PROFILE missing"
+rg -q 'residiuum-query-ir-page-v1' "$SDK_SRC/query_bytecode_v1/ir_page.rs" \
+  || fail "PAGE_IR_PROFILE missing"
 rg -q 'residiuum-query-bytecode-v1' "$MOD" \
   || fail "BYTECODE_PROFILE missing"
 
@@ -105,12 +109,26 @@ fi
 rg -q 'fn compare_rows' "$SDK_SRC/query_bytecode_v1/ir_order.rs" \
   || fail "ir_order must define compare_rows"
 
+# RQL-IR3: Core page/coverage must use named IR module.
+rg -q 'ir_page::resolve_page_size' "$SDK_SRC/query_bytecode_v1/core_page.rs" \
+  || fail "core_page must call ir_page::resolve_page_size"
+rg -q 'ir_page::finish_coverage' "$SDK_SRC/query_bytecode_v1/core_page.rs" \
+  || fail "core_page must call ir_page::finish_coverage"
+rg -q 'ir_page::mint_page_cursor' "$SDK_SRC/query_bytecode_v1/core_page.rs" \
+  || fail "core_page must call ir_page::mint_page_cursor"
+if rg -n 'fn mint_page_cursor' "$SDK_SRC/query_bytecode_v1/core_page.rs" | rg -q .; then
+  fail "core_page must not keep private mint_page_cursor (moved to ir_page)"
+fi
+rg -q 'fn finish_coverage' "$SDK_SRC/query_bytecode_v1/ir_page.rs" \
+  || fail "ir_page must define finish_coverage"
+
 # IR residual honesty.
 rg -qi 'Rust IR residual' "$IR_DOC" || fail "IR residual doc must name Rust IR residual"
 rg -qi 'RQL-C1 must not be accepted' "$IR_DOC" || fail "IR residual doc must forbid C1"
 rg -q 'ir_project' "$IR_DOC" || fail "IR residual doc must name ir_project (IR1)"
 rg -q 'ir_order' "$IR_DOC" || fail "IR residual doc must name ir_order (IR2)"
-rg -q 'RQL-IR3' doc/todo/rql/RQL_WHAT_IS_LEFT.md || fail "SoT must name RQL-IR3 residual"
+rg -q 'ir_page' "$IR_DOC" || fail "IR residual doc must name ir_page (IR3)"
+rg -q 'RQL-IR4' doc/todo/rql/RQL_WHAT_IS_LEFT.md || fail "SoT must name RQL-IR4 residual"
 
 hits="$(
   rg -n --glob '*.rs' '\.eval\(' "$SDK_SRC/query_bytecode_v1" \
@@ -146,4 +164,4 @@ rg -qi 'RQL-C1 must not be accepted' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
 rg -q 'QUERY_IR_RESIDUAL' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must point at QUERY_IR_RESIDUAL"
 
-echo "check_query_runtime_architecture: OK (X5+X5b+X5c+IR1+IR2; Decision 0 OPEN; C1 forbidden)"
+echo "check_query_runtime_architecture: OK (X5+X5b+X5c+IR1+IR2+IR3; Decision 0 OPEN; C1 forbidden)"

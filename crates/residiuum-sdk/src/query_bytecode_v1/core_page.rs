@@ -8,6 +8,7 @@
 //! evaluates predicates via the ENR+SDA kernel ([`super::kernel`]).
 //! Core path-project goes through [`super::ir_project`] (RQL-IR1).
 //! Core order / sort-tuple goes through [`super::ir_order`] (RQL-IR2).
+//! Core page / coverage / cursor packing goes through [`super::ir_page`] (RQL-IR3).
 //! [`Predicate::eval`] is the test oracle only.
 //!
 //! **T2 budgets:** `max_documents`, `max_bytes`, `max_result_bytes`.
@@ -24,15 +25,12 @@
 //! cursor secrets, remote op 118, snapshot reads.
 
 use crate::app_v1::{
-    ConsistencyEvidence, Continuation, CoverageEvidence, CoveragePolicy, HoleEvidence, Parameters,
-    QueryBudget, QueryId, QueryPage, QueryRow, QueryRunOptions, QueryExplanation,
+    ConsistencyEvidence, HoleEvidence, Parameters, QueryBudget, QueryId, QueryPage, QueryRow,
+    QueryRunOptions, QueryExplanation,
 };
-use crate::cursor_v1::{
-    active_cursor_key_ring, mint, parameter_hash as cursor_parameter_hash, CursorLogical,
-    VerifyContext, PROFILE as CURSOR_PROFILE,
-};
+use crate::cursor_v1::parameter_hash as cursor_parameter_hash;
 use crate::error::Error;
-use crate::plan_v1::{CollectionBindings, NullsOrder, OrderDir, OrderTerm, RqlPlanV1};
+use crate::plan_v1::{CollectionBindings, RqlPlanV1};
 use crate::predicate::{CompareOp, Operand, Predicate};
 use crate::rql_app_core::{compile_app_core, merge_budgets, CompiledAppCore};
 use residiuum_heap::{CollectionId, HeapId};
@@ -137,14 +135,11 @@ pub fn execute_plan<S: DocScan>(
     let where_k = super::kernel::compile_where(&plan.where_pred, params)?;
 
     let budget = merge_budgets(source_budget, options.budget);
-    let page_size = options
-        .page_size
-        .unwrap_or(plan.page_size)
-        .clamp(1, 4_096) as usize;
+    let page_size = super::ir_page::resolve_page_size(plan.page_size, options.page_size);
 
     let param_hash = cursor_parameter_hash(params);
     let (last_sort_tuple_resume, remaining_limit) = if let Some(ref cont) = options.after {
-        decode_after(
+        super::ir_page::decode_after(
             cont,
             heap_id,
             collection_id,
@@ -160,10 +155,7 @@ pub fn execute_plan<S: DocScan>(
         .and_then(super::ir_order::key_from_sort_tuple);
 
     let total_limit = remaining_limit;
-    let need = match total_limit {
-        Some(n) => (n as usize).min(page_size),
-        None => page_size,
-    };
+    let need = super::ir_page::rows_needed(total_limit, page_size);
 
     // Key-stream order when order is only key tie-break; else collect+sort.
     let key_only_order = plan
@@ -451,7 +443,7 @@ pub fn execute_plan<S: DocScan>(
             )
         });
         let last_tuple = super::ir_order::build_sort_tuple(&last_key, &last_doc, &plan.order);
-        Some(mint_page_cursor(
+        Some(super::ir_page::mint_page_cursor(
             heap_id,
             collection_id,
             &plan.plan_hash(),
@@ -466,32 +458,10 @@ pub fn execute_plan<S: DocScan>(
     };
 
     // APB-7 T9: coverage policy from the plan (RQL/builder); complete-by-default.
-    // Run options may only *relax* to IncompleteAllowed when the plan already allows it.
-    let coverage_mode = match (plan.coverage, options.coverage) {
-        (CoveragePolicy::IncompleteAllowed, CoveragePolicy::IncompleteAllowed) => {
-            CoveragePolicy::IncompleteAllowed
-        }
-        // Plan IncompleteAllowed + run default Complete still honors plan (RQL source).
-        (CoveragePolicy::IncompleteAllowed, _) => CoveragePolicy::IncompleteAllowed,
-        _ => CoveragePolicy::Complete,
-    };
-    let hole_count = known_holes.len() as u32;
-    if hole_count > 0 && matches!(coverage_mode, CoveragePolicy::Complete) {
-        let sample: Vec<&str> = known_holes
-            .iter()
-            .take(3)
-            .map(|h| h.code.as_str())
-            .collect();
-        return Err(Error::CoverageIncomplete(format!(
-            "complete coverage required but {hole_count} known hole(s); \
-             sample codes={sample:?} (set coverage incomplete_allowed to allow)"
-        )));
-    }
-    let coverage = if hole_count == 0 {
-        CoverageEvidence::complete(coverage_mode, examined_docs)
-    } else {
-        CoverageEvidence::incomplete(coverage_mode, examined_docs, hole_count)
-    };
+    let coverage_mode =
+        super::ir_page::resolve_coverage_mode(plan.coverage, options.coverage);
+    let coverage =
+        super::ir_page::finish_coverage(coverage_mode, &known_holes, examined_docs)?;
 
     let _ = result_bytes; // accounted during fill; residual: surface on QueryPage later
     let _ = examined_bytes;
@@ -657,119 +627,6 @@ fn has_later_match<S: DocScan>(
         }
     }
     Ok(false)
-}
-
-fn mint_page_cursor(
-    heap_id: HeapId,
-    collection_id: CollectionId,
-    plan_hash: &[u8; 32],
-    parameter_hash: &str,
-    order: &[OrderTerm],
-    last_sort_tuple: &JsonValue,
-    remaining_limit: Option<u64>,
-    page_size: u32,
-    coverage: CoveragePolicy,
-    consistency: crate::app_v1::ConsistencyMode,
-) -> Result<Continuation, Error> {
-    // APB-7 T10: product ring when installed; otherwise vector-lock default.
-    let ring = active_cursor_key_ring();
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .map_err(|e| Error::Internal(format!("clock: {e}")))?;
-    let logical = CursorLogical {
-        cursor_profile: CURSOR_PROFILE.into(),
-        key_id: ring.current.key_id.clone(),
-        heap_id: format_uuid(heap_id.as_bytes()),
-        collection_id: format_uuid(collection_id.as_bytes()),
-        authority_epoch: 1,
-        plan_hash: hex32(plan_hash),
-        parameter_hash: parameter_hash.to_string(),
-        order_normalized: order_normalized_json(order),
-        last_sort_tuple: last_sort_tuple.clone(),
-        source_frontier: serde_json::json!({"generation": 0}),
-        remaining_limit: remaining_limit.unwrap_or(u64::MAX),
-        page_size,
-        coverage_mode: match coverage {
-            CoveragePolicy::Complete => "complete".into(),
-            CoveragePolicy::IncompleteAllowed => "incomplete_allowed".into(),
-        },
-        consistency_mode: match consistency {
-            crate::app_v1::ConsistencyMode::Available => "available".into(),
-            crate::app_v1::ConsistencyMode::Current => "current".into(),
-        },
-        issued_at: now,
-        expires_at: now.saturating_add(crate::cursor_v1::TTL_SECONDS),
-    };
-    mint(&logical, &ring)
-}
-
-/// Decode continuation → (`last_sort_tuple`, remaining limit).
-fn decode_after(
-    cont: &Continuation,
-    heap_id: HeapId,
-    collection_id: CollectionId,
-    plan_hash: &[u8; 32],
-    parameter_hash: &str,
-) -> Result<(Option<JsonValue>, Option<u64>), Error> {
-    let ring = active_cursor_key_ring();
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    let ctx = VerifyContext {
-        heap_id: format_uuid(heap_id.as_bytes()),
-        collection_id: format_uuid(collection_id.as_bytes()),
-        plan_hash: Some(hex32(plan_hash)),
-        // APB-7 T10: bind parameters into resume (fail-closed on mismatch).
-        parameter_hash: Some(parameter_hash.to_string()),
-    };
-    let logical = crate::cursor_v1::verify(&cont.token, &ctx, &ring, now)?;
-    let rem = if logical.remaining_limit == u64::MAX {
-        None
-    } else {
-        Some(logical.remaining_limit)
-    };
-    Ok((Some(logical.last_sort_tuple), rem))
-}
-
-fn order_normalized_json(order: &[OrderTerm]) -> JsonValue {
-    JsonValue::Array(
-        order
-            .iter()
-            .map(|t| {
-                serde_json::json!({
-                    "path": t.path.0,
-                    "dir": match t.dir {
-                        OrderDir::Asc => "asc",
-                        OrderDir::Desc => "desc",
-                    },
-                    "nulls": match t.nulls {
-                        NullsOrder::Last => "last",
-                        NullsOrder::First => "first",
-                    },
-                    "tie_break": t.tie_break,
-                })
-            })
-            .collect(),
-    )
-}
-
-fn format_uuid(bytes: &[u8; 16]) -> String {
-    // UUID text form from 16 bytes (hyphenated).
-    format!(
-        "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-        bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-        bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]
-    )
-}
-
-fn hex32(bytes: &[u8; 32]) -> String {
-    let mut s = String::with_capacity(64);
-    for b in bytes {
-        s.push_str(&format!("{b:02x}"));
-    }
-    s
 }
 
 // Silence unused import if CompiledAppCore only used in docs
