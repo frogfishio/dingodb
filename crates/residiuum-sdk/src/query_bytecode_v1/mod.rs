@@ -15,9 +15,9 @@
 //!
 //! Host adapters supply scan/index/get only.
 //!
-//! Residual (Decision 0 still open): attach helpers remain Rust; orchestration
-//! is a named IR phase (`ir_attach`). Core project/order/page are named IR
-//! phases (still Rust). **RQL-C1 must not be accepted.**
+//! Residual (Decision 0 still open): Query VM opcodes are frozen (RQL-VM0) but
+//! not yet dispatched; execute still uses Rust interpreters of ISA-decoded
+//! plans/IR. **RQL-C1 must not be accepted.**
 
 mod core_page;
 mod full_attach;
@@ -27,6 +27,7 @@ mod ir_page;
 mod ir_project;
 mod isa;
 mod kernel;
+mod vm;
 
 pub use core_page::{explain_rql_source, EXEC_PROFILE};
 // Crate-private semantic executors (RQL-P0b) — available inside the SDK crate only.
@@ -51,6 +52,7 @@ pub use isa::{
     ISA_PROFILE, ISA_VERSION,
 };
 pub use kernel::{compile_where, lower_predicate, CompiledKernelWhere, KERNEL_PROFILE};
+pub use vm::{Instruction, OpCode, VM_PROFILE, VM_VERSION};
 
 use crate::app_v1::{Parameters, QueryBudget, QueryExplanation, QueryPage, QueryRunOptions};
 use crate::error::Error;

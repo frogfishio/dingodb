@@ -21,11 +21,13 @@ IR_DOC="$ROOT/doc/todo/rql/QUERY_IR_RESIDUAL.md"
 [[ -f "$SDK_SRC/query_bytecode_v1/ir_order.rs" ]] || fail "missing ir_order.rs (RQL-IR2)"
 [[ -f "$SDK_SRC/query_bytecode_v1/ir_page.rs" ]] || fail "missing ir_page.rs (RQL-IR3)"
 [[ -f "$SDK_SRC/query_bytecode_v1/ir_attach.rs" ]] || fail "missing ir_attach.rs (RQL-IR4)"
+[[ -f "$SDK_SRC/query_bytecode_v1/vm.rs" ]] || fail "missing vm.rs (RQL-VM0)"
 [[ -f "$IR_DOC" ]] || fail "missing QUERY_IR_RESIDUAL.md (X5c honesty)"
 [[ -f "$ROOT/doc/todo/rql/QUERY_IR_PROJECT_V1.md" ]] || fail "missing QUERY_IR_PROJECT_V1.md"
 [[ -f "$ROOT/doc/todo/rql/QUERY_IR_ORDER_V1.md" ]] || fail "missing QUERY_IR_ORDER_V1.md"
 [[ -f "$ROOT/doc/todo/rql/QUERY_IR_PAGE_V1.md" ]] || fail "missing QUERY_IR_PAGE_V1.md"
 [[ -f "$ROOT/doc/todo/rql/QUERY_IR_ATTACH_V1.md" ]] || fail "missing QUERY_IR_ATTACH_V1.md"
+[[ -f "$ROOT/doc/todo/rql/QUERY_VM_V1.md" ]] || fail "missing QUERY_VM_V1.md"
 
 # Shims must be gone.
 [[ ! -e "$SDK_SRC/query_exec_v1.rs" ]] || fail "query_exec_v1.rs shim must be deleted"
@@ -43,6 +45,8 @@ rg -q 'residiuum-query-ir-page-v1' "$SDK_SRC/query_bytecode_v1/ir_page.rs" \
   || fail "PAGE_IR_PROFILE missing"
 rg -q 'residiuum-query-ir-attach-v1' "$SDK_SRC/query_bytecode_v1/ir_attach.rs" \
   || fail "ATTACH_IR_PROFILE missing"
+rg -q 'residiuum-query-vm-v1' "$SDK_SRC/query_bytecode_v1/vm.rs" \
+  || fail "VM_PROFILE missing"
 rg -q 'residiuum-query-bytecode-v1' "$MOD" \
   || fail "BYTECODE_PROFILE missing"
 
@@ -146,6 +150,14 @@ rg -q 'RQL-C1' doc/todo/rql/RQL_WHAT_IS_LEFT.md || fail "SoT must name RQL-C1 re
 rg -q 'QUERY_VM_V1' doc/todo/rql/RQL_WHAT_IS_LEFT.md || fail "SoT must point at QUERY_VM_V1 (mandatory next)"
 rg -qi 'Query VM' doc/todo/rql/RQL_WHAT_IS_LEFT.md || fail "SoT NEXT must be Query VM labor (not C1 gate)"
 [[ -f "$ROOT/doc/todo/rql/QUERY_VM_V1.md" ]] || fail "missing QUERY_VM_V1.md charter"
+rg -q 'OpCode' "$SDK_SRC/query_bytecode_v1/vm.rs" || fail "vm.rs must define OpCode (VM0)"
+rg -q 'Scan' doc/todo/rql/QUERY_VM_V1.md || fail "QUERY_VM_V1 must name Scan"
+rg -q 'Enrich' doc/todo/rql/QUERY_VM_V1.md || fail "QUERY_VM_V1 must name Enrich"
+rg -q 'Within' doc/todo/rql/QUERY_VM_V1.md || fail "QUERY_VM_V1 must name Within"
+# VM0 must not claim dispatch is done.
+if rg -qi 'dispatch machine.*done|VM1 done' doc/todo/rql/QUERY_VM_V1.md; then
+  fail "QUERY_VM_V1 must not claim dispatch machine done (that is VM1)"
+fi
 rg -q 'decode_isa_canonical' "$SDK_SRC/query_bytecode_v1/isa.rs" \
   || fail "isa must define decode_isa_canonical (D0R)"
 rg -q 'open_collection_bound' "$FULL" \
@@ -206,4 +218,4 @@ rg -qi 'RQL-C1 must not be accepted' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
 rg -q 'QUERY_IR_RESIDUAL' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must point at QUERY_IR_RESIDUAL"
 
-echo "check_query_runtime_architecture: OK (X5+IR+D0R+P0b; Decision 0 OPEN; C1 forbidden; VM residual)"
+echo "check_query_runtime_architecture: OK (X5+IR+D0R+P0b+VM0; Decision 0 OPEN; C1 forbidden; VM1 residual)"

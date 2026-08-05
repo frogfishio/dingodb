@@ -8,23 +8,22 @@ Detail: [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) ·
 
 ## Are we done?
 
-**No.** Public non-ISA execute helpers are now crate-private, but there is still
-**no** one Query VM opcode machine.
+**No.** Opcode vocabulary is frozen (**RQL-VM0**), but there is still **no**
+dispatch machine executing those opcodes.
 **RQL-C1 must not be accepted. Decision 0 must not be closed.**
 
 | Claim | Reality |
 |---|---|
 | IR1–IR4 named phases | **Accepted as intermediate labor** |
-| Public execute only via validated ISA | **P0b labor closed** (helpers `pub(crate)`) |
-| ISA = executable Query VM | **False** — still serialized plan + Rust interpreters |
-| Collection operands bound by immutable id | **Partial** — D0R harden for enrich/within |
-| Canonical ISA (reserved bits + re-encode) | **Partial** — D0R harden |
-| One collection-qualified host API | **False** — Core vs full still diverge |
+| Public execute only via validated ISA | **P0b labor closed** |
+| Query VM opcode set defined | **VM0 labor closed** — [QUERY_VM_V1.md](./QUERY_VM_V1.md) |
+| One opcode dispatch machine | **False** — residual **RQL-VM1** |
+| Collection-qualified host API | **False** — residual **RQL-P1b** |
 | Ready for RQL-C1 / Decision 0 close | **Forbidden** |
 
 ```text
 Verdict     = Decision 0 OPEN; RQL-C1 must NOT be accepted
-NEXT labor  = Query VM programme (RQL-VM0 instruction set)
+NEXT labor  = RQL-VM1 one Query VM dispatch machine
 ```
 
 ---
@@ -47,7 +46,7 @@ All syntax → compiler intermediates → canonical Query ISA
 |---|---|---|
 | **D0R** | SoT + enrich/within `using_id` bind + ISA reserved/canonical | **labor closed** |
 | **P0b** | Privatize public non-ISA execute/project/attach APIs | **labor closed** |
-| **VM0** | Charter real Query VM instruction set | [QUERY_VM_V1.md](./QUERY_VM_V1.md) |
+| **VM0** | Define Query VM instruction set | **labor closed** |
 | **VM1** | One instruction-dispatch machine (Core + Full) | single loop |
 | **VM2** | Plans/IR compile-only; delete semantic executors after equivalence | |
 | **P1b** | Unify host behind collection-qualified `HostCapabilities` | |
@@ -56,20 +55,20 @@ All syntax → compiler intermediates → canonical Query ISA
 
 ---
 
-## Just shipped (P0b)
+## Just shipped (VM0)
 
-- `execute_plan` / `execute_decoded_core` / attach+project+order+page helpers → `pub(crate)`
-- SDK `lib.rs` re-exports only ISA/compile/explain sanctioned entries
-- Integration tests routed through `execute_isa_bytes` / `execute_rql_full`
-- Evidence: `doc/todo/rql/evidence/rql_p0b_private_api.log`
+- `query_bytecode_v1/vm.rs` — `residiuum-query-vm-v1` / `OpCode` vocabulary
+- [QUERY_VM_V1.md](./QUERY_VM_V1.md) — machine model + Core/Full lowering sketches
+- No dispatch yet (honest residual → VM1)
+- Evidence: `doc/todo/rql/evidence/rql_vm0_opcodes.log`
 
 ---
 
 ## One-line status
 
 ```text
-NEXT        = RQL-VM0 (Query VM instruction set)
+NEXT        = RQL-VM1 (one opcode dispatch machine)
 FORBIDDEN   = Decision 0 close; RQL-C1 accept
-LANDED      = IR1–IR4; D0R harden; P0b public ISA-only surface
-HONESTY     = still not one Query VM — see QUERY_VM_V1.md
+LANDED      = IR1–IR4; D0R; P0b; VM0 opcode freeze
+HONESTY     = opcodes defined, not yet executed — see QUERY_VM_V1.md
 ```

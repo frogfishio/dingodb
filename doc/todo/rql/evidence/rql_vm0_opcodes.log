@@ -1,0 +1,7 @@
+=== RQL-VM0 evidence 2026-08-05T08:38:44Z ===
+check_query_runtime_architecture: OK (X5+IR+D0R+P0b+VM0; Decision 0 OPEN; C1 forbidden; VM1 residual)
+
+running 54 tests
+......................................................
+test result: ok. 54 passed; 0 failed; 0 ignored; 0 measured; 92 filtered out; finished in 0.00s
+
