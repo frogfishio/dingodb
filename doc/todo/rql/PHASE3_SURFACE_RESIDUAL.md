@@ -4,7 +4,7 @@ Status: **labor 2026-08-05** · T3.10 + **RQL-F1/F2 residual close**
 Profile: **`rql-full-v1`**  
 Corpus: [`spec/app/v1/rql_full_v1_corpus_v1.json`](../../../spec/app/v1/rql_full_v1_corpus_v1.json)  
 Kickoff: [PHASE3_FULL_RQL_KICKOFF.md](./PHASE3_FULL_RQL_KICKOFF.md)  
-Next packages: [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) §5
+**What’s left:** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md) · detail [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) §5
 
 ## Delivered surface (honest)
 

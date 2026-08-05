@@ -2,6 +2,7 @@
 
 Status: **labor 2026-08-05** · CRITICAL_PATH §4.6  
 Board: Query spine Feature `1a8a3e05` · task `190a97bd`  
+**What’s left (short):** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)  
 Authority: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md) ·
 [RQL_SPEC.md](../../wip/query/RQL_SPEC.md) ·
 [PATH_TO_FULL_RQL.md](./PATH_TO_FULL_RQL.md) ·
@@ -123,7 +124,7 @@ is forbidden.
 | **RQL-C1** | Core product accept residuals | RQL-0, APP-6/7, APB-7 labor | Scoreboard APP-6/APP-7/APB-7 → `accept` (principal) |
 | **RQL-F1** | Full explain artefact for `rql-full-v1` | RQL-0, Phase 3 surface | **labor closed** — `explain_rql_full` + tests |
 | **RQL-F2** | Op-118 enrich/within/project wire **or** explicit wire refuse | RQL-F1 | **labor closed (refuse path)** — `refuse_full_language_on_core_wire`; parity = later |
-| **RQL-I1** | Index pushdown for enrich match keys | RQL-F2 decision, Core index path | Differential oracle scan vs index for equality match keys |
+| **RQL-I1** | Index pushdown for enrich match keys | RQL-F2 decision, Core index path | **NEXT labor** (board `todo` `dc4ee028`) — scan vs index differential |
 | **RQL-S1** | SQL+ → enrich/`within` emit (JOIN class) | RQL-F2 local+honest wire story | Emit vectors + refuse residuals; no silent weaken |
 | **RQL-D1** | `at rank` / access policies | DDA specs + RQL-0 | Spec-first; only after DIRECT_ACCESS owner frozen |
 | **RQL-Q1** | Query perf / read qualification campaign | RQL-C1 minimum; enrich costs after RQL-I1 | CRITICAL_PATH §4.4 evidence law |

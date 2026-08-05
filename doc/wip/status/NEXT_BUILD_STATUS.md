@@ -7,11 +7,11 @@ Sources: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-05 (**RQL-0** gap ledger labor —
-[RQL0_GAP_LEDGER.md](../../todo/rql/RQL0_GAP_LEDGER.md); CRITICAL_PATH
-RQL→Atomics→Cluster.) Prior 2026-08-04: **P0 segment-ID** packaging 0.2.2 /
-yank 0.2.0–0.2.1; CSE-3 campaign ~21–23K SoT. Ops:
-`CSE3_COMPACTSHADOW_OPS_NOTES.md`. **ETQ-2 paused.** **AWO paused.**
+Updated: 2026-08-05 (**RQL what’s left** —
+[RQL_WHAT_IS_LEFT.md](../../todo/rql/RQL_WHAT_IS_LEFT.md): next labor
+**RQL-I1**; next human **RQL-C1** accept. CRITICAL_PATH
+RQL→Atomics→Cluster.) Prior: RQL-0/F1/F2 labor; P0 packaging 0.2.2;
+CSE-3 ~21–23K SoT. **ETQ-2 paused.** **AWO paused.**
 
 **How to read program order:** open [CRITICAL_PATH.md](../../../CRITICAL_PATH.md)
 then [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
@@ -211,7 +211,8 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 | — | **APP-6 T3** field-order multipage `c7cd3cca` | `in_review` | last_sort_tuple resume; tests 3/3 |
 | — | **APB-7 T5** ReadView-bound `6c7601a5` | `in_review` | labor done; not SI / no package accept |
 | — | **APB-7 T7** dual-pack + accept checklist `9e19bd5f` | `in_review` | suite + checklist; collection-plane dual green; **not** package accept |
-| — | **RQL-0** gap ledger `190a97bd` | `in_review` | [RQL0_GAP_LEDGER.md](../../todo/rql/RQL0_GAP_LEDGER.md); CRITICAL_PATH §4.6; sequence RQL-C1…RQL-Q1; **not** Gate-1 accept |
+| — | **RQL what’s left** `45e5a4fb` | `in_review` | [RQL_WHAT_IS_LEFT.md](../../todo/rql/RQL_WHAT_IS_LEFT.md) — next labor I1; next human C1 |
+| — | **RQL-0** gap ledger `190a97bd` | `in_review` | [RQL0_GAP_LEDGER.md](../../todo/rql/RQL0_GAP_LEDGER.md); CRITICAL_PATH §4.6; **not** Gate-1 accept |
 | — | **RQL-F1** full explain `cb09fb45` | `in_review` | `explain_rql_full` + `rql_full_explain` 3/3; no new syntax |
 | — | **RQL-F2** op-118 full-language refuse `f7fbd632` | `in_review` | `refuse_full_language_on_core_wire` on remote rql/explain; parity residual |
 | — | **RQL-I1** enrich index pushdown `dc4ee028` | `todo` | pre-staged; next labor after F1/F2 |

@@ -1,13 +1,12 @@
 # Path to full RQL — de-risk expressiveness + performance
 
 Status: **labor map 2026-08-05** (post store P0 / packaging 0.2.2 diversion);  
-**RQL-0** gap ledger + package sequence [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) (CRITICAL_PATH §4.6);  
-**Phase 1 labor** residual checklist [PHASE1_CORE_BASELINE_RESIDUAL.md](./PHASE1_CORE_BASELINE_RESIDUAL.md);  
-**Phase 2 labor** [PHASE2_EXPRESSIVENESS.md](./PHASE2_EXPRESSIVENESS.md);  
-**Phase 3** [PHASE3_FULL_RQL_KICKOFF.md](./PHASE3_FULL_RQL_KICKOFF.md) — through **T3.10** corpus+residual; attach-class surface locked; `at rank`/access still residual (DDA)  
+**What’s left (read this first):** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)  
+**RQL-0** gap ledger [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) (CRITICAL_PATH §4.6);  
+**Phase 1–3** checklists under `doc/todo/rql/`  
 Authority: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md) ·  
 [NEXT_BUILD_STATUS.md](../../wip/status/NEXT_BUILD_STATUS.md) ·  
-[RQL_SPEC.md](../../wip/query/RQL_SPEC.md) · APP-5 / APB-7 inventories
+[RQL_SPEC.md](../../wip/query/RQL_SPEC.md)
 
 **Question answered:** how do we get from *here* to *full RQL support* so we can
 run comprehensive tests that decide (1) SQL-class expressiveness and (2) whether
@@ -160,11 +159,14 @@ de-risk.
 
 ---
 
-## 6. Next concrete pull (after this card)
+## 6. Next concrete pull
 
-Follow [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) §5 — not ad-hoc PATH T* invention:
+**Canonical answer:** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)
 
-1. **RQL-C1** — principal accept APP-6 / APP-7 / APB-7 when residuals clear.  
-2. **RQL-F1** — structured `explain` for `rql-full-v1` (next labor code slice).  
-3. **RQL-F2** — op-118 enrich/within/project wire **or** explicit wire refuse.  
-4. **RQL-I1** / **RQL-S1** / **RQL-D1** / **RQL-Q1** as sequenced in the ledger.
+```text
+NEXT labor  = RQL-I1 (enrich index pushdown)   board todo dc4ee028
+NEXT human  = RQL-C1 accept APP-6/7/APB-7 + review in_review cards
+NOT next    = at-rank, SQL JOIN emit, query perf, op118 enrich parity
+```
+
+F1/F2 are **already labor-closed** (in_review). Do not re-pull them.
