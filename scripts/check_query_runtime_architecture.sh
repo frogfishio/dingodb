@@ -227,6 +227,25 @@ rg -qi 'VM3b labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
 if rg -qi 'filtered_during_scan' doc/todo/rql/RQL_WHAT_IS_LEFT.md; then
   fail "SoT must not keep filtered_during_scan residual after VM3b"
 fi
+# RQL-VM4: nested Within body expands onto flat opcode stream (shell Within imm).
+rg -q 'fn emit_attach_pipeline' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
+  || fail "missing emit_attach_pipeline (RQL-VM4)"
+rg -q 'fn within_enter' "$SDK_SRC/query_bytecode_v1/full_attach.rs" \
+  || fail "missing within_enter (RQL-VM4)"
+rg -q 'fn within_leave' "$SDK_SRC/query_bytecode_v1/full_attach.rs" \
+  || fail "missing within_leave (RQL-VM4)"
+rg -n 'fn run_vm_attach' -A 160 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'within_stack' \
+  || fail "run_vm_attach must maintain within_stack (RQL-VM4)"
+rg -n 'fn run_vm_attach' -A 160 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'within_enter|within_leave' \
+  || fail "run_vm_attach must call within_enter/leave (RQL-VM4)"
+if rg -n 'fn run_vm_attach' -A 160 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'attach_within_rows'; then
+  fail "run_vm_attach must not call attach_within_rows (RQL-VM4 flatten)"
+fi
+rg -qi 'VM4 labor closed|Within flatten|R1' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must mark VM4/R1 progress"
+if rg -qi 'nested Within on imm|nested Within remains on immediates' doc/todo/rql/RQL_WHAT_IS_LEFT.md; then
+  fail "SoT must not keep nested-Within-on-imm residual after VM4"
+fi
 rg -n 'pub fn order' -A 20 "$CORE_PHASES" | rg -q 'compare_rows' \
   || fail "CoreFrame::order must call compare_rows (RQL-VM3)"
 rg -n 'pub fn page' -A 30 "$CORE_PHASES" | rg -q 'retain_after_sort_tuple|truncate' \
@@ -237,74 +256,116 @@ rg -n 'pub fn project_paths' -A 40 "$CORE_PHASES" | rg -q 'apply_project_paths' 
 rg -n 'fn run_core_page' -A 35 "$CORE_PHASES" | rg -q 'frame\.scan|CoreFrame::begin|frame\.project_paths' \
   || fail "run_core_page must orchestrate CoreFrame (RQL-VM3)"
 
-rg -qi 'VM2 labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
-  || fail "SoT must mark VM2 labor closed"
-rg -qi 'VM3 labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
-  || fail "SoT must mark VM3 labor closed"
-rg -qi 'P1c labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
-  || fail "SoT must mark P1c labor closed"
+rg -qi 'VM2–VM4 accepted as intermediate|VM2 labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must acknowledge VM2–VM4 intermediate labor"
+rg -qi 'VM3 labor closed|VM2–VM4 accepted' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must acknowledge VM3 intermediate labor"
+# Principal rejected P1c convergence claim (RQL-R1 honesty).
+rg -qi 'P1c rejected' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must mark P1c rejected (principal)"
+if rg -qi 'P1c labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md; then
+  fail "SoT must not claim P1c labor closed after principal reject"
+fi
 
-# RQL-P1c: every product frontend enters the same Query VM dispatch.
+# Partial funnel: Application Core / builder / view / Full / op 118 → Query VM path.
+# (Honest: this is NOT every frontend — dialects sql/json/mongo remain → SDA.)
 APP="$SDK_SRC/app_v1.rs"
 DISPATCH="$ROOT/crates/residiuum-server/src/heap_dispatch.rs"
+DIALECTS="$SDK_SRC/dialects/mod.rs"
 [[ -f "$APP" ]] || fail "missing app_v1.rs"
 [[ -f "$DISPATCH" ]] || fail "missing heap_dispatch.rs"
+[[ -f "$DIALECTS" ]] || fail "missing dialects/mod.rs"
 
 # Shared funnel: source/ISA → execute_decoded_core → run_vm_core.
 rg -n 'fn execute_core_rql' -A 25 "$MOD" | rg -q 'execute_bytecode' \
-  || fail "execute_core_rql must call execute_bytecode (RQL-P1c)"
+  || fail "execute_core_rql must call execute_bytecode"
 rg -n 'fn execute_bytecode' -A 25 "$MOD" | rg -q 'execute_isa_bytes' \
-  || fail "execute_bytecode must call execute_isa_bytes (RQL-P1c)"
+  || fail "execute_bytecode must call execute_isa_bytes"
 rg -n 'fn execute_isa_bytes' -A 35 "$MOD" | rg -q 'execute_decoded_core' \
-  || fail "execute_isa_bytes must call execute_decoded_core (RQL-P1c)"
+  || fail "execute_isa_bytes must call execute_decoded_core"
 rg -n 'fn execute_decoded_core' -A 30 "$MOD" | rg -q 'run_vm_core' \
-  || fail "execute_decoded_core must call run_vm_core (RQL-P1c)"
+  || fail "execute_decoded_core must call run_vm_core"
 
 # SDK CollectionClient::rql (embedded) → execute_core_rql
 rg -q 'execute_core_rql' "$APP" \
-  || fail "app_v1 must call execute_core_rql (RQL-P1c)"
+  || fail "app_v1 must call execute_core_rql"
 # First CollectionClient::rql body must use execute_core_rql (before ViewBound).
 rg -n 'impl CollectionClient' -A 900 "$APP" | rg -n 'pub fn rql' -A 40 | head -n 45 | rg -q 'execute_core_rql' \
-  || fail "CollectionClient::rql must call execute_core_rql (RQL-P1c)"
+  || fail "CollectionClient::rql must call execute_core_rql"
 
 # Builder CollectionQuery::run → execute_bytecode
 rg -n 'impl<.*> CollectionQuery' -A 200 "$APP" | rg -n 'pub fn run' -A 40 | head -n 45 | rg -q 'execute_bytecode' \
-  || fail "CollectionQuery::run must call execute_bytecode (RQL-P1c)"
+  || fail "CollectionQuery::run must call execute_bytecode"
 
 # ViewBoundQuery::run → execute_bytecode
 rg -n 'impl<.*> ViewBoundQuery' -A 120 "$APP" | rg -n 'pub fn run' -A 40 | head -n 45 | rg -q 'execute_bytecode' \
-  || fail "ViewBoundQuery::run must call execute_bytecode (RQL-P1c)"
+  || fail "ViewBoundQuery::run must call execute_bytecode"
 
 # ViewBoundCollection::rql → CollectionClient::rql (inner)
 rg -n 'impl<.*> ViewBoundCollection' -A 80 "$APP" | rg -n 'pub fn rql' -A 20 | head -n 25 | rg -q 'self\.inner\.rql' \
-  || fail "ViewBoundCollection::rql must delegate to CollectionClient::rql (RQL-P1c)"
+  || fail "ViewBoundCollection::rql must delegate to CollectionClient::rql"
 
-# Full RQL → shared Core VM + attach VM
+# Full RQL → shared Core VM + attach VM (honest: still two loops until VM1R)
 rg -n 'fn execute_full_isa_with' -A 50 "$FULL" | rg -q 'execute_decoded_core' \
-  || fail "execute_full_isa_with must call execute_decoded_core (RQL-P1c)"
+  || fail "execute_full_isa_with must call execute_decoded_core"
 rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'run_vm_attach' \
-  || fail "execute_full_isa_with must call run_vm_attach (RQL-P1c)"
+  || fail "execute_full_isa_with must call run_vm_attach"
 
 # Op 118 server → execute_core_rql (same Core funnel)
 rg -q 'execute_core_rql' "$DISPATCH" \
-  || fail "op 118 heap_dispatch must call execute_core_rql (RQL-P1c)"
+  || fail "op 118 heap_dispatch must call execute_core_rql"
 
 # No alternate Core source executor that bypasses the VM.
 if rg -n 'fn execute_rql\b' "$SDK_SRC/query_bytecode_v1/core_page.rs" | rg -q .; then
-  fail "core_page::execute_rql must be deleted (VM bypass; RQL-P1c)"
+  fail "core_page::execute_rql must be deleted (VM bypass)"
 fi
 # Product SDK surfaces must not call execute_plan directly.
 if rg -n 'execute_plan\(' "$APP" | rg -q .; then
-  fail "app_v1 must not call execute_plan (RQL-P1c)"
+  fail "app_v1 must not call execute_plan"
 fi
 if rg -n 'execute_plan\(' "$DISPATCH" | rg -q .; then
-  fail "heap_dispatch must not call execute_plan (RQL-P1c)"
+  fail "heap_dispatch must not call execute_plan"
 fi
 
-rg -qi 'P1c labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
-  || fail "SoT must mark P1c labor closed"
-rg -qi 'PendingKeys|nested Within|QVM wire' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
-  || fail "SoT must name PendingKeys or post-VM3b residual"
+# RQL-R1: dialect id `rql` must refuse SDA compile (no parallel RQL→SDA).
+rg -n 'Self::Rql =>' -A 8 "$DIALECTS" | rg -q 'no longer compiles to SDA|RQL-R1' \
+  || fail "BuiltinDialect::Rql must refuse SDA compile (RQL-R1)"
+if rg -n 'Self::Rql =>' -A 3 "$DIALECTS" | rg -q 'rql::compile_rql'; then
+  fail "BuiltinDialect::Rql must not call rql::compile_rql (RQL-R1)"
+fi
+# Legacy compiler may exist only under cfg(test).
+rg -U -q '#\[cfg\(test\)\]\s*\nmod rql' "$DIALECTS" \
+  || fail "legacy dialects/rql must be cfg(test) only (RQL-R1)"
+# No second unconditional `mod rql` without cfg(test) on the previous line.
+uncond="$(
+  awk '
+    /^#\[cfg\(test\)\]/ { test_next=1; next }
+    /^mod rql/ {
+      if (!test_next) { print NR ": unconditional mod rql"; exit 1 }
+      test_next=0
+      next
+    }
+    { test_next=0 }
+  ' "$DIALECTS" || true
+)"
+if [[ -n "$uncond" ]]; then
+  echo "$uncond" >&2
+  fail "dialects/mod.rs must not unconditionally mod rql (RQL-R1)"
+fi
+rg -q 'find_dialect' "$SDK_SRC/collection.rs" \
+  || fail "must name find_dialect surface for gate inventory"
+rg -q 'pub fn sda\b|fn sda_with' "$SDK_SRC/collection.rs" \
+  || fail "must name Collection::sda raw-SDA surface for gate inventory"
+# Foreign cache keyed by CollectionId (not using_name).
+rg -n 'fn run_vm_attach' -A 80 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
+  | rg -q 'BTreeMap<CollectionId' \
+  || fail "run_vm_attach foreign_cache must be CollectionId-keyed (RQL-R1)"
+rg -qi 'R1' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must mark R1"
+rg -qi 'QVM1|durable QVM|mandatory' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must name mandatory QVM1 residual"
+rg -qi 'VM1 rejected|rejected.*VM1|VM1 / P1c' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must mark VM1 rejected"
 
 hits="$(
   rg -n --glob '*.rs' '\.eval\(' "$SDK_SRC/query_bytecode_v1" \
@@ -364,4 +425,4 @@ rg -q 'QUERY_IR_RESIDUAL' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
 rg -qi 'P1b labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark P1b labor closed"
 
-echo "check_query_runtime_architecture: OK (X5+IR+D0R+P0b+VM0–VM3b+P1b+P1c; Decision 0 OPEN; C1 forbidden; Within/QVM residual)"
+echo "check_query_runtime_architecture: OK (R1 dialect refuse + cache-by-id; VM0–VM4 intermediate; VM1/P1c rejected; QVM1 mandatory; Decision 0 OPEN; C1 forbidden)"

@@ -1537,64 +1537,94 @@ pub(crate) fn attach_enrich_rows(
 
 /// Apply nested enrich / within steps to each element of a carrier array.
 ///
-/// `foreign_by_using` maps collection name → complete foreign docs for that
-/// using-collection. Absent / Null / non-array carriers fail with
-/// [`DIAG_RQL_WITHIN_TYPE`] (never treated as empty bags).
-pub(crate) fn attach_within_rows(
-    roots: &[(String, JsonValue)],
-    foreign_by_using: &BTreeMap<String, Vec<(String, JsonValue)>>,
-    step: &WithinStepV1,
-    params: &BTreeMap<String, JsonValue>,
+/// Expand carrier bags into a flat element working set (**RQL-VM4**).
+///
+/// Absent / Null / non-array carriers fail with [`DIAG_RQL_WITHIN_TYPE`].
+pub(crate) fn within_enter(
+    parents: &[(String, JsonValue)],
+    carrier: &Path,
 ) -> Result<Vec<(String, JsonValue)>, Error> {
-    let mut out = Vec::with_capacity(roots.len());
-    for (key, root) in roots {
-        let carrier = match resolve_path(root, &step.carrier) {
+    let mut elements = Vec::new();
+    for (key, root) in parents {
+        let arr = match resolve_path(root, carrier) {
             Resolve::Present(JsonValue::Array(arr)) => arr,
             Resolve::Present(other) => {
                 return Err(Error::QueryInvalid(format!(
                     "{DIAG_RQL_WITHIN_TYPE}: path `{}` is {} on key `{key}` (need sequence/bag)",
-                    step.carrier.dotted(),
+                    carrier.dotted(),
                     json_type_name(&other)
                 )));
             }
             Resolve::Absent => {
                 return Err(Error::QueryInvalid(format!(
                     "{DIAG_RQL_WITHIN_TYPE}: path `{}` absent on key `{key}`",
-                    step.carrier.dotted()
+                    carrier.dotted()
                 )));
             }
         };
-        let mut elements: Vec<(String, JsonValue)> = carrier
-            .iter()
-            .enumerate()
-            .map(|(i, el)| (format!("{key}#{i}"), el.clone()))
-            .collect();
-        for nested in &step.steps {
-            match nested {
-                FullPipelineStepV1::Enrich(enrich) => {
-                    let foreign = foreign_by_using.get(&enrich.using_name).ok_or_else(|| {
-                        Error::QueryInvalid(format!(
-                            "within attach missing foreign docs for `{}`",
-                            enrich.using_name
-                        ))
-                    })?;
-                    elements = attach_enrich_rows(&elements, foreign, enrich, params)?;
-                }
-                FullPipelineStepV1::Within(inner) => {
-                    elements =
-                        attach_within_rows(&elements, foreign_by_using, inner, params)?;
-                }
-                FullPipelineStepV1::Filter(pred) => {
-                    elements = filter_rows(&elements, pred, params)?;
-                }
-            }
+        for (i, el) in arr.iter().enumerate() {
+            elements.push((format!("{key}#{i}"), el.clone()));
         }
-        let new_arr: Vec<JsonValue> = elements.into_iter().map(|(_, v)| v).collect();
-        let mut row = root.clone();
-        set_at_path(&mut row, &step.carrier, JsonValue::Array(new_arr))?;
-        out.push((key.clone(), row));
+    }
+    Ok(elements)
+}
+
+/// Write element working set back onto parent rows (**RQL-VM4**).
+///
+/// Elements are grouped by stripping the last `#index` suffix from synthetic keys.
+pub(crate) fn within_leave(
+    parents: &[(String, JsonValue)],
+    carrier: &Path,
+    elements: &[(String, JsonValue)],
+) -> Result<Vec<(String, JsonValue)>, Error> {
+    let mut out = Vec::with_capacity(parents.len());
+    for (pkey, parent) in parents {
+        let new_arr: Vec<JsonValue> = elements
+            .iter()
+            .filter(|(k, _)| k.rsplit_once('#').map(|(p, _)| p) == Some(pkey.as_str()))
+            .map(|(_, v)| v.clone())
+            .collect();
+        let mut row = parent.clone();
+        set_at_path(&mut row, carrier, JsonValue::Array(new_arr))?;
+        out.push((pkey.clone(), row));
     }
     Ok(out)
+}
+
+/// `foreign_by_using` maps collection name → complete foreign docs for that
+/// using-collection. Absent / Null / non-array carriers fail with
+/// [`DIAG_RQL_WITHIN_TYPE`] (never treated as empty bags).
+///
+/// `foreign_by_id` maps immutable collection id → complete foreign docs.
+/// Prefer the flat VM path ([`within_enter`] / body opcodes / [`within_leave`]);
+/// this recursive helper remains for IR unit tests.
+pub(crate) fn attach_within_rows(
+    roots: &[(String, JsonValue)],
+    foreign_by_id: &BTreeMap<CollectionId, Vec<(String, JsonValue)>>,
+    step: &WithinStepV1,
+    params: &BTreeMap<String, JsonValue>,
+) -> Result<Vec<(String, JsonValue)>, Error> {
+    let mut elements = within_enter(roots, &step.carrier)?;
+    for nested in &step.steps {
+        match nested {
+            FullPipelineStepV1::Enrich(enrich) => {
+                let foreign = foreign_by_id.get(&enrich.using_id).ok_or_else(|| {
+                    Error::QueryInvalid(format!(
+                        "within attach missing foreign docs for id {} (`{}`)",
+                        enrich.using_id, enrich.using_name
+                    ))
+                })?;
+                elements = attach_enrich_rows(&elements, foreign, enrich, params)?;
+            }
+            FullPipelineStepV1::Within(inner) => {
+                elements = attach_within_rows(&elements, foreign_by_id, inner, params)?;
+            }
+            FullPipelineStepV1::Filter(pred) => {
+                elements = filter_rows(&elements, pred, params)?;
+            }
+        }
+    }
+    within_leave(roots, &step.carrier, &elements)
 }
 
 fn json_type_name(v: &JsonValue) -> &'static str {
@@ -1894,28 +1924,30 @@ fn collect_present_left_values(
     out
 }
 
-fn ensure_foreign_docs<H: HostCapabilities>(
+/// Load foreign docs for `using_id` into a CollectionId-keyed cache (RQL-R1).
+///
+/// `using_name` is diagnostic-only and must never be a cache key.
+pub(crate) fn ensure_foreign_docs<H: HostCapabilities>(
     host: &mut H,
-    name: &str,
     expected_id: CollectionId,
-    cache: &mut BTreeMap<String, Vec<(String, JsonValue)>>,
+    cache: &mut BTreeMap<CollectionId, Vec<(String, JsonValue)>>,
 ) -> Result<(), Error> {
-    if !cache.contains_key(name) {
+    if !cache.contains_key(&expected_id) {
         let docs = load_collection_docs(host, expected_id)?;
-        cache.insert(name.to_string(), docs);
+        cache.insert(expected_id, docs);
     }
     Ok(())
 }
 
 pub(crate) fn collect_within_using_names<H: HostCapabilities>(
     step: &WithinStepV1,
-    cache: &mut BTreeMap<String, Vec<(String, JsonValue)>>,
+    cache: &mut BTreeMap<CollectionId, Vec<(String, JsonValue)>>,
     host: &mut H,
 ) -> Result<(), Error> {
     for nested in &step.steps {
         match nested {
             FullPipelineStepV1::Enrich(e) => {
-                ensure_foreign_docs(host, &e.using_name, e.using_id, cache)?;
+                ensure_foreign_docs(host, e.using_id, cache)?;
             }
             FullPipelineStepV1::Within(w) => {
                 collect_within_using_names(w, cache, host)?;
@@ -1996,7 +2028,19 @@ mod tests {
             "products",
             CollectionId::from_str("00000000-0000-4000-8000-0000000000a4").unwrap(),
         );
+        b.bind(
+            "warehouses",
+            CollectionId::from_str("00000000-0000-4000-8000-0000000000a5").unwrap(),
+        );
+        b.bind(
+            "components",
+            CollectionId::from_str("00000000-0000-4000-8000-0000000000a6").unwrap(),
+        );
         b
+    }
+
+    fn cid(name: &str) -> CollectionId {
+        bindings().resolve(name).expect(name)
     }
 
     #[test]
@@ -2071,7 +2115,7 @@ mod tests {
         let after_many =
             attach_enrich_rows(&roots, &lines, c.root_enrich()[0], &BTreeMap::new()).unwrap();
         let mut foreign = BTreeMap::new();
-        foreign.insert("products".into(), products);
+        foreign.insert(cid("products"), products);
         let out =
             attach_within_rows(&after_many, &foreign, w, &BTreeMap::new()).unwrap();
         let bag = out[0].1["items"].as_array().unwrap();
@@ -2149,8 +2193,8 @@ mod tests {
         let after_many =
             attach_enrich_rows(&roots, &lines, c.root_enrich()[0], &BTreeMap::new()).unwrap();
         let mut foreign = BTreeMap::new();
-        foreign.insert("products".into(), products);
-        foreign.insert("warehouses".into(), warehouses);
+        foreign.insert(cid("products"), products);
+        foreign.insert(cid("warehouses"), warehouses);
         let out =
             attach_within_rows(&after_many, &foreign, w, &BTreeMap::new()).unwrap();
         let item = &out[0].1["items"].as_array().unwrap()[0];
@@ -2233,8 +2277,8 @@ mod tests {
         let after_many =
             attach_enrich_rows(&roots, &lines, c.root_enrich()[0], &BTreeMap::new()).unwrap();
         let mut foreign = BTreeMap::new();
-        foreign.insert("components".into(), components);
-        foreign.insert("products".into(), products);
+        foreign.insert(cid("components"), components);
+        foreign.insert(cid("products"), products);
         let out =
             attach_within_rows(&after_many, &foreign, w, &BTreeMap::new()).unwrap();
         let parts = out[0].1["items"].as_array().unwrap()[0]["parts"]
@@ -2279,7 +2323,7 @@ mod tests {
         let mid =
             attach_enrich_rows(&roots, &lines, c.root_enrich()[0], &BTreeMap::new()).unwrap();
         let mut foreign = BTreeMap::new();
-        foreign.insert("products".into(), products);
+        foreign.insert(cid("products"), products);
         let after_within =
             attach_within_rows(&mid, &foreign, c.first_within().unwrap(), &BTreeMap::new())
                 .unwrap();
@@ -2347,7 +2391,7 @@ mod tests {
         let after_many =
             attach_enrich_rows(&roots, &lines, c.root_enrich()[0], &BTreeMap::new()).unwrap();
         let mut foreign = BTreeMap::new();
-        foreign.insert("products".into(), products);
+        foreign.insert(cid("products"), products);
         let out =
             attach_within_rows(&after_many, &foreign, w, &BTreeMap::new()).unwrap();
         let bag = out[0].1["items"].as_array().unwrap();
@@ -2392,7 +2436,7 @@ mod tests {
         let after_many =
             attach_enrich_rows(&roots, &lines, c.root_enrich()[0], &BTreeMap::new()).unwrap();
         let mut foreign = BTreeMap::new();
-        foreign.insert("products".into(), products);
+        foreign.insert(cid("products"), products);
         let out =
             attach_within_rows(&after_many, &foreign, w, &BTreeMap::new()).unwrap();
         let bag = out[0].1["items"].as_array().unwrap();
@@ -2486,7 +2530,7 @@ mod tests {
         let mid2 =
             attach_enrich_rows(&mid, &lines, c.root_enrich()[1], &BTreeMap::new()).unwrap();
         let mut foreign = BTreeMap::new();
-        foreign.insert("products".into(), products);
+        foreign.insert(cid("products"), products);
         let enriched =
             attach_within_rows(&mid2, &foreign, c.first_within().unwrap(), &BTreeMap::new())
                 .unwrap();

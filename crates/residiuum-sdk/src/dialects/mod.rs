@@ -7,11 +7,13 @@
 //! when that precision is required, callers use pure SDA.
 //! See [doc/SDA/DIALECTS.md](../../../../../doc/SDA/DIALECTS.md).
 //!
-//! Builtin ids: `sda`, `rql` (official human dialect → ENR1+SDA), `json`,
-//! `mongo` (alias of `json`), `sql`, `graphql` (scaffold / refuse).
-//! Hosts may register more via [`DialectRegistry`].
+//! Builtin ids: `sda` (explicit raw SDA), `rql` (**retired** from this surface —
+//! use Query VM / `CollectionClient::rql`), `json`, `mongo` (alias of `json`),
+//! `sql`, `graphql` (scaffold / refuse). Hosts may register more via
+//! [`DialectRegistry`].
 
-mod rql;
+#[cfg(test)]
+mod rql; // legacy RQL→SDA compiler kept test-only (RQL-R1); product path refuses
 mod sql;
 
 use crate::error::Error;
@@ -115,8 +117,8 @@ pub struct DialectInfo {
 pub enum BuiltinDialect {
     /// Pure SDA / ENR1 source (parse-checked pass-through).
     Sda,
-    /// Official Residiuum Query Language → pure ENR1 + SDA
-    /// ([`RQL_SPEC`](../../../../doc/wip/query/RQL_SPEC.md)).
+    /// Id reserved for official RQL — **refuses** on this surface (RQL-R1).
+    /// Product RQL runs via Query VM (`CollectionClient::rql` / `execute_rql_full`).
     Rql,
     /// DX/Mongo-style JSON filter object → document predicate.
     Json,
@@ -170,7 +172,7 @@ impl BuiltinDialect {
     pub const fn description(self) -> &'static str {
         match self {
             Self::Sda => "Mathematical SDA/ENR1 source; parse-checked identity",
-            Self::Rql => "Official human dialect; lowers to ENR1 Match/enrich/cardinality",
+            Self::Rql => "Retired from dialect→SDA; use CollectionClient::rql / execute_rql_full (Query VM)",
             Self::Json => "DX portable filter object; complete for §7.1 vocabulary",
             Self::Mongo => "Alias of json (Mongo-style $ops object filter)",
             Self::Sql => "Partial SELECT/WHERE → SDA; not full SQL",
@@ -178,21 +180,28 @@ impl BuiltinDialect {
         }
     }
 
-    /// Whether a useful subset is implemented.
+    /// Whether a useful subset is implemented on the dialect→SDA surface.
     pub const fn implemented(self) -> bool {
-        !matches!(self, Self::Graphql)
+        !matches!(self, Self::Graphql | Self::Rql)
     }
 
     /// Compile `source` with this builtin dialect.
     pub fn compile(self, source: &str) -> Result<CompiledSda, Error> {
         match self {
             Self::Sda => compile_sda(source),
-            Self::Rql => rql::compile_rql(source),
+            Self::Rql => Err(Error::QueryInvalid(
+                "dialect 'rql' no longer compiles to SDA (RQL-R1): the parallel \
+                 RQL→SDA executor is retired. Use CollectionClient::rql / \
+                 execute_rql_full (Query VM / RQB1), or pure SDA via dialect \
+                 'sda' / Collection::sda. See doc/todo/rql/RQL_WHAT_IS_LEFT.md"
+                    .into(),
+            )),
             Self::Json | Self::Mongo => compile_json_filter(self.id(), source),
             Self::Sql => sql::compile_sql(source),
             Self::Graphql => Err(Error::QueryInvalid(
                 "dialect 'graphql' is reserved but not implemented; \
-                 use pure SDA, rql, json/mongo filter, or sql mimicry (see doc/SDA/DIALECTS.md)"
+                 use pure SDA (dialect 'sda'), json/mongo filter, or sql mimicry \
+                 (see doc/SDA/DIALECTS.md). Official RQL uses CollectionClient::rql."
                     .into(),
             )),
         }
@@ -228,9 +237,9 @@ pub fn list_builtin_dialects() -> &'static [DialectInfo] {
         },
         DialectInfo {
             id: "rql",
-            name: "Residiuum Query Language",
-            description: "Official human dialect; lowers to ENR1 Match/enrich/cardinality",
-            implemented: true,
+            name: "Residiuum Query Language (retired on dialect→SDA)",
+            description: "Refuse here; use CollectionClient::rql / execute_rql_full (Query VM)",
+            implemented: false,
         },
         DialectInfo {
             id: "json",
@@ -445,7 +454,8 @@ mod tests {
             .iter()
             .find(|d| d.id == "rql")
             .unwrap()
-            .implemented);
+            .implemented
+            == false);
         assert!(!list_builtin_dialects()
             .iter()
             .find(|d| d.id == "graphql")
@@ -454,8 +464,8 @@ mod tests {
     }
 
     #[test]
-    fn rql_dialect_compiles_to_enr1() {
-        let c = compile_dialect(
+    fn rql_dialect_refuses_sda_compile() {
+        let err = compile_dialect(
             "rql",
             r#"
             from orders
@@ -464,11 +474,12 @@ mod tests {
               expect exactly_one
         "#,
         )
-        .unwrap();
-        assert_eq!(c.dialect, "rql");
-        assert_eq!(c.shape, SdaShape::Program);
-        assert!(c.sda.contains("Match("));
-        assert!(c.sda.contains("one!("));
+        .unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("no longer compiles to SDA") || msg.contains("RQL-R1"),
+            "got {msg}"
+        );
     }
 
     #[test]

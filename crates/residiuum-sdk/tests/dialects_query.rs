@@ -57,56 +57,29 @@ fn compile_dialect_profile_and_builtins() {
     assert_eq!(c.sda, same.sda);
 }
 
-/// RQL (official human dialect) lowers to the same ENR1 Match kernel as pure text.
+/// RQL dialect id is retired on the dialect→SDA surface (RQL-R1).
 #[test]
-fn rql_equals_pure_enr1_on_enrich() {
+fn rql_dialect_refuses_parallel_sda_path() {
     let rql = r#"
         from orders
         enrich customer using customers
           matching customer_id = id
           expect exactly_one
     "#;
-    let pure = r#"
-      orders
-      |> enrich {
-          customer:
-            one!(Match(
-              l,
-              customers,
-              getPath(l, Seq["customer_id"]),
-              getPath(r, Seq["id"])
-            ))
-        }
-    "#;
-    let compiled = compile_dialect("rql", rql).unwrap();
-    assert_eq!(compiled.shape, SdaShape::Program);
-    assert_eq!(compiled.dialect, "rql");
-
-    let input = json!({
-        "orders": [
-            {"id": "o1", "customer_id": "c1", "qty": 2},
-            {"id": "o2", "customer_id": "c2", "qty": 1}
-        ],
-        "customers": [
-            {"id": "c1", "name": "Ada"},
-            {"id": "c2", "name": "Bob"}
-        ]
-    });
-    let bindings = [
-        ("orders".into(), input["orders"].clone()),
-        ("customers".into(), input["customers"].clone()),
-    ];
-    let from_rql = sda_core::Program::parse(&compiled.sda)
-        .unwrap()
-        .run_json_bindings(bindings.clone())
-        .unwrap();
-    let from_pure = sda_core::Program::parse(pure)
-        .unwrap()
-        .run_json_bindings(bindings)
-        .unwrap();
-    assert_eq!(from_rql, from_pure, "RQL must prove the same kernel as pure ENR1");
-    assert_eq!(from_rql.as_array().unwrap().len(), 2);
-    assert_eq!(from_rql[0]["customer"]["name"], json!("Ada"));
+    let err = compile_dialect("rql", rql).unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("no longer compiles to SDA") || msg.contains("RQL-R1"),
+        "got {msg}"
+    );
+    assert!(list_builtin_dialects().iter().any(|d| d.id == "rql"));
+    assert!(
+        !list_builtin_dialects()
+            .iter()
+            .find(|d| d.id == "rql")
+            .unwrap()
+            .implemented
+    );
 }
 
 /// Pure SDA distinguishes stored null from missing key; SQL `IS NULL` cannot.

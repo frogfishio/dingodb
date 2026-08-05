@@ -10,6 +10,7 @@
 
 use crate::app_v1::Parameters;
 use crate::error::Error;
+use residiuum_heap::CollectionId;
 use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
 
@@ -75,7 +76,7 @@ pub(crate) fn run_attach_pipeline<H: HostCapabilities>(
     parameters: &Parameters,
     force_enrich_scan: bool,
 ) -> Result<(Vec<(String, JsonValue)>, Vec<EnrichLoadEvidence>), Error> {
-    let mut foreign_cache: BTreeMap<String, Vec<(String, JsonValue)>> = BTreeMap::new();
+    let mut foreign_cache: BTreeMap<CollectionId, Vec<(String, JsonValue)>> = BTreeMap::new();
     let mut enrich_loads = Vec::new();
     for step in pipeline {
         match step {
@@ -92,10 +93,10 @@ pub(crate) fn run_attach_pipeline<H: HostCapabilities>(
                     mode,
                 });
                 // Index hits are step-local; do not poison the within scan cache
-                // with a partial collection view under the same using-name.
+                // with a partial collection view under the same using id.
                 if mode == EnrichAttachMode::Scan {
                     foreign_cache
-                        .entry(e.using_name.clone())
+                        .entry(e.using_id)
                         .or_insert_with(|| foreign.clone());
                 }
                 rows = attach_enrich_rows(&rows, &foreign, e, &parameters.values)?;

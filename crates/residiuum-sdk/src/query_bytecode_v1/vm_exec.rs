@@ -1,4 +1,4 @@
-//! Query VM dispatch (RQL-VM1/VM2/VM3) — one instruction loop for Core + Full.
+//! Query VM dispatch (RQL-VM1/VM2/VM3/VM4) — one instruction loop for Core + Full.
 //!
 //! Profile: **`residiuum-query-vm-v1`** (see [`super::vm`]).
 //! Normative: [QUERY_VM_V1.md](../../../../../doc/todo/rql/QUERY_VM_V1.md)
@@ -6,14 +6,15 @@
 //! Product execute enters here after ISA decode + lower. Core pipeline opcodes
 //! call [`super::core_phases::CoreFrame`] phase helpers (**RQL-VM2/VM3/VM3b**).
 //! Scan establishes `PendingKeys`; Filter owns where (+ key-stream get/early-stop).
-//! Full attach opcodes dispatch one step at a time via existing attach helpers.
+//! Full attach: nested Within enrich/filter expand onto the flat opcode stream
+//! (**RQL-VM4**); `Within` imm is a shell (carrier + alias only).
 //!
 //! Decision 0 remains OPEN; **RQL-C1 must not be accepted.**
 
 use crate::app_v1::{Parameters, QueryBudget, QueryPage, QueryRunOptions};
 use crate::error::Error;
 use crate::plan_v1::RqlPlanV1;
-use crate::predicate::Predicate;
+use crate::predicate::{Path, Predicate};
 use residiuum_heap::{CollectionId, HeapId};
 use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
@@ -21,12 +22,18 @@ use std::collections::BTreeMap;
 use super::core_page::DocScan;
 use super::core_phases::CoreFrame;
 use super::full_attach::{
-    apply_project_rows, attach_enrich_rows, attach_within_rows, collect_within_using_names,
-    filter_rows, load_foreign_docs_for_root_enrich, EnrichAttachMode, EnrichLoadEvidence,
-    EnrichStepV1, FullPipelineStepV1, ProjectItemV1, WithinStepV1,
+    apply_project_rows, attach_enrich_rows, ensure_foreign_docs, filter_rows,
+    load_foreign_docs_for_root_enrich, within_enter, within_leave, EnrichAttachMode,
+    EnrichLoadEvidence, EnrichStepV1, FullPipelineStepV1, ProjectItemV1, WithinStepV1,
 };
 use super::vm::{Instruction, OpCode, VM_PROFILE};
 use super::HostCapabilities;
+
+/// Open Within scope: parents saved; working set is carrier elements.
+struct WithinScope {
+    carrier: Path,
+    parents: Vec<(String, JsonValue)>,
+}
 
 /// Typed immediate for one VM instruction (in-memory form; wire encoding later).
 #[derive(Debug, Clone, PartialEq)]
@@ -35,13 +42,13 @@ pub(crate) enum VmImm {
     Collection(CollectionId),
     /// Core pipeline op: semantics come from [`VmProgram::core`] until VM2.
     Core,
-    /// Root enrich step.
+    /// Enrich step (root or nested inside Within…WithinEnd).
     Enrich(EnrichStepV1),
-    /// Within step (nested body still carried on the step until expanded).
+    /// Within shell: carrier + alias only; body is stream ops until WithinEnd.
     Within(WithinStepV1),
     /// Delimiter after Within body (no payload).
     None,
-    /// Post-attach filter.
+    /// Post-attach filter (root or nested).
     FilterAttach(Predicate),
     /// Brace project.
     ProjectBrace(Vec<ProjectItemV1>),
@@ -140,6 +147,39 @@ pub(crate) fn lower_core(core: RqlPlanV1, budget: Option<QueryBudget>) -> VmProg
     }
 }
 
+/// Emit Full pipeline steps onto the opcode stream (**RQL-VM4**).
+///
+/// Nested Within bodies expand between `Within` (shell imm) and `WithinEnd`.
+fn emit_attach_pipeline(ops: &mut Vec<VmInstr>, pipeline: &[FullPipelineStepV1]) {
+    for step in pipeline {
+        match step {
+            FullPipelineStepV1::Enrich(e) => ops.push(VmInstr {
+                op: OpCode::Enrich,
+                imm: VmImm::Enrich(e.clone()),
+            }),
+            FullPipelineStepV1::Within(w) => {
+                ops.push(VmInstr {
+                    op: OpCode::Within,
+                    imm: VmImm::Within(WithinStepV1 {
+                        carrier: w.carrier.clone(),
+                        element_alias: w.element_alias.clone(),
+                        steps: Vec::new(),
+                    }),
+                });
+                emit_attach_pipeline(ops, &w.steps);
+                ops.push(VmInstr {
+                    op: OpCode::WithinEnd,
+                    imm: VmImm::None,
+                });
+            }
+            FullPipelineStepV1::Filter(p) => ops.push(VmInstr {
+                op: OpCode::FilterAttach,
+                imm: VmImm::FilterAttach(p.clone()),
+            }),
+        }
+    }
+}
+
 /// Lower Core + Full attach section into one program.
 pub(crate) fn lower_full(
     core: RqlPlanV1,
@@ -178,28 +218,7 @@ pub(crate) fn lower_full(
             imm: VmImm::Core,
         },
     ];
-    for step in &pipeline {
-        match step {
-            FullPipelineStepV1::Enrich(e) => ops.push(VmInstr {
-                op: OpCode::Enrich,
-                imm: VmImm::Enrich(e.clone()),
-            }),
-            FullPipelineStepV1::Within(w) => {
-                ops.push(VmInstr {
-                    op: OpCode::Within,
-                    imm: VmImm::Within(w.clone()),
-                });
-                ops.push(VmInstr {
-                    op: OpCode::WithinEnd,
-                    imm: VmImm::None,
-                });
-            }
-            FullPipelineStepV1::Filter(p) => ops.push(VmInstr {
-                op: OpCode::FilterAttach,
-                imm: VmImm::FilterAttach(p.clone()),
-            }),
-        }
-    }
+    emit_attach_pipeline(&mut ops, &pipeline);
     if let Some(ref fields) = project {
         ops.push(VmInstr {
             op: OpCode::ProjectBrace,
@@ -333,7 +352,8 @@ pub(crate) fn run_vm_core<S: DocScan>(
 /// Run Full attach / brace-project opcodes after a Core page is already produced.
 ///
 /// Expects `prog` from [`lower_full`]. Skips Bind + Core pipeline; dispatches
-/// Enrich / Within / FilterAttach / ProjectBrace until Halt.
+/// Enrich / Within / WithinEnd / FilterAttach / ProjectBrace until Halt.
+/// Nested Within bodies are stream ops between Within and WithinEnd (**RQL-VM4**).
 /// Foreign loads use collection-qualified [`HostCapabilities`] (RQL-P1b).
 pub(crate) fn run_vm_attach<H: HostCapabilities>(
     host: &mut H,
@@ -350,7 +370,8 @@ pub(crate) fn run_vm_attach<H: HostCapabilities>(
     }
     let mut pc = 0usize;
     let mut enrich_loads: Vec<EnrichLoadEvidence> = Vec::new();
-    let mut foreign_cache: BTreeMap<String, Vec<(String, JsonValue)>> = BTreeMap::new();
+    let mut foreign_cache: BTreeMap<CollectionId, Vec<(String, JsonValue)>> = BTreeMap::new();
+    let mut within_stack: Vec<WithinScope> = Vec::new();
     // Skip Core prefix (Bind + pipeline).
     while pc < prog.ops.len() {
         let op = prog.ops[pc].op;
@@ -379,19 +400,31 @@ pub(crate) fn run_vm_attach<H: HostCapabilities>(
                         "run_vm: Enrich immediate mismatch".into(),
                     ));
                 };
-                let (foreign, mode) =
-                    load_foreign_docs_for_root_enrich(host, e, &rows, force_enrich_scan)?;
-                enrich_loads.push(EnrichLoadEvidence {
-                    using: e.using_name.clone(),
-                    output: e.output.clone(),
-                    mode,
-                });
-                if mode == EnrichAttachMode::Scan {
-                    foreign_cache
-                        .entry(e.using_name.clone())
-                        .or_insert_with(|| foreign.clone());
+                if within_stack.is_empty() {
+                    let (foreign, mode) =
+                        load_foreign_docs_for_root_enrich(host, e, &rows, force_enrich_scan)?;
+                    enrich_loads.push(EnrichLoadEvidence {
+                        using: e.using_name.clone(),
+                        output: e.output.clone(),
+                        mode,
+                    });
+                    if mode == EnrichAttachMode::Scan {
+                        foreign_cache
+                            .entry(e.using_id)
+                            .or_insert_with(|| foreign.clone());
+                    }
+                    rows = attach_enrich_rows(&rows, &foreign, e, &parameters.values)?;
+                } else {
+                    // Nested enrich: scan-load (RQL-I1 residual); no root load evidence.
+                    ensure_foreign_docs(host, e.using_id, &mut foreign_cache)?;
+                    let foreign = foreign_cache.get(&e.using_id).ok_or_else(|| {
+                        Error::QueryInvalid(format!(
+                            "within attach missing foreign docs for id {} (`{}`)",
+                            e.using_id, e.using_name
+                        ))
+                    })?;
+                    rows = attach_enrich_rows(&rows, foreign, e, &parameters.values)?;
                 }
-                rows = attach_enrich_rows(&rows, &foreign, e, &parameters.values)?;
                 pc += 1;
             }
             OpCode::Within => {
@@ -400,11 +433,25 @@ pub(crate) fn run_vm_attach<H: HostCapabilities>(
                         "run_vm: Within immediate mismatch".into(),
                     ));
                 };
-                collect_within_using_names(w, &mut foreign_cache, host)?;
-                rows = attach_within_rows(&rows, &foreign_cache, w, &parameters.values)?;
+                if !w.steps.is_empty() {
+                    return Err(Error::QueryInvalid(
+                        "run_vm: Within immediate must be a shell (empty steps); body is stream ops"
+                            .into(),
+                    ));
+                }
+                let parents = std::mem::take(&mut rows);
+                rows = within_enter(&parents, &w.carrier)?;
+                within_stack.push(WithinScope {
+                    carrier: w.carrier.clone(),
+                    parents,
+                });
                 pc += 1;
             }
             OpCode::WithinEnd => {
+                let scope = within_stack.pop().ok_or_else(|| {
+                    Error::QueryInvalid("run_vm: WithinEnd without matching Within".into())
+                })?;
+                rows = within_leave(&scope.parents, &scope.carrier, &rows)?;
                 pc += 1;
             }
             OpCode::FilterAttach => {
@@ -422,10 +469,20 @@ pub(crate) fn run_vm_attach<H: HostCapabilities>(
                         "run_vm: ProjectBrace immediate mismatch".into(),
                     ));
                 };
+                if !within_stack.is_empty() {
+                    return Err(Error::QueryInvalid(
+                        "run_vm: ProjectBrace inside Within is not supported".into(),
+                    ));
+                }
                 rows = apply_project_rows(&rows, fields)?;
                 pc += 1;
             }
             OpCode::Halt => {
+                if !within_stack.is_empty() {
+                    return Err(Error::QueryInvalid(
+                        "run_vm: Halt with open Within scope".into(),
+                    ));
+                }
                 break;
             }
             OpCode::BindCollection
@@ -517,5 +574,49 @@ mod tests {
         assert!(names.contains(&"Within"));
         assert!(names.contains(&"WithinEnd"));
         assert_eq!(*names.last().unwrap(), "Halt");
+    }
+
+    #[test]
+    fn lower_full_flattens_nested_within_body() {
+        let id = CollectionId::from_bytes(uuidish(4)).expect("id");
+        let fid = CollectionId::from_bytes(uuidish(5)).expect("id");
+        let nested_enrich = EnrichStepV1 {
+            output: "sku".into(),
+            using_name: "products".into(),
+            using_id: fid,
+            left: Path::parse_dotted("product_id").unwrap(),
+            right: Path::parse_dotted("id").unwrap(),
+            candidate_where: None,
+            expect: super::super::full_attach::EnrichCardinality::Optional,
+        };
+        let pipeline = vec![FullPipelineStepV1::Within(WithinStepV1 {
+            carrier: Path::parse_dotted("items").unwrap(),
+            element_alias: Some("item".into()),
+            steps: vec![FullPipelineStepV1::Enrich(nested_enrich)],
+        })];
+        let prog = lower_full(empty_core(id), None, pipeline, None);
+        let names: Vec<_> = prog.ops.iter().map(|o| o.op.name()).collect();
+        let attach: Vec<_> = names
+            .iter()
+            .skip_while(|n| **n != "Within")
+            .copied()
+            .collect();
+        assert_eq!(
+            attach,
+            ["Within", "Enrich", "WithinEnd", "Halt"],
+            "nested enrich must be stream ops, not Within imm body"
+        );
+        let within_imm = prog
+            .ops
+            .iter()
+            .find(|i| i.op == OpCode::Within)
+            .expect("Within");
+        match &within_imm.imm {
+            VmImm::Within(w) => assert!(
+                w.steps.is_empty(),
+                "Within imm must be shell after VM4 flatten"
+            ),
+            other => panic!("expected Within imm, got {other:?}"),
+        }
     }
 }

@@ -463,13 +463,16 @@ impl<'a> Collection<'a> {
     /// Find via a **query dialect** that compiles to pure SDA (`doc/SDA/DIALECTS.md`).
     ///
     /// Builtin dialect ids: `json` / `mongo` (object filter text), `sql`
-    /// (`SELECT` / `WHERE` mimicry), `sda` (pure predicate text). Document
-    /// predicates scan live rows; program-shaped dialects materialise the
-    /// collection as a JSON array under `input` and return the SDA result as a
-    /// single synthetic row key `"$result"`.
+    /// (`SELECT` / `WHERE` mimicry), `sda` (pure predicate/program text).
+    /// Dialect id `rql` is **retired** on this surface (RQL-R1) — use
+    /// [`crate::app_v1::CollectionClient::rql`] / Query VM instead.
+    ///
+    /// Document predicates scan live rows; program-shaped dialects materialise
+    /// the collection as a JSON array under `input` and return the SDA result as
+    /// a single synthetic row key `"$result"`.
     ///
     /// Pure SDA remains the mathematical language; dialects are comfortable
-    /// imperfect frontends.
+    /// imperfect frontends. Official RQL is **not** a dialect→SDA peer.
     pub fn find_dialect(
         &mut self,
         dialect: &str,
