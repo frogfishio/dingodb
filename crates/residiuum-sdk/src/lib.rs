@@ -62,7 +62,9 @@ pub mod rql_full_v1;
 pub mod sql_plus;
 /// Authenticated query continuation (`residiuum-cursor-v1`) — APP-6 mint/verify.
 pub mod cursor_v1;
-/// Bounded Application Core page executor — APP-6 T2.
+/// Query bytecode v1 — single product runtime entry (RQL-X2; Decision 0).
+pub mod query_bytecode_v1;
+/// Bounded Application Core page executor — APP-6 T2 (**Decision 0: FROZEN**).
 pub mod query_exec_v1;
 /// Stable bounded read views — APB-6 T1 scaffold.
 pub mod read_view_v1;
@@ -124,6 +126,10 @@ pub use cursor_v1::{
     MAC_DOMAIN as CURSOR_MAC_DOMAIN, MAX_ACCEPT_AGE_SECONDS, PARAMETER_HASH_DOMAIN,
     PROFILE as CURSOR_V1_PROFILE, SKEW_SECONDS as CURSOR_SKEW_SECONDS,
     TTL_SECONDS as CURSOR_TTL_SECONDS, VECTOR_LOCK_SEED,
+};
+pub use query_bytecode_v1::{
+    execute_bytecode, execute_core_rql, explain_core_source, lower_core_source, HostCapabilities,
+    QueryBytecodeV1, BYTECODE_PROFILE,
 };
 pub use query_exec_v1::{execute_plan, execute_rql, explain_rql_source, DocScan, EXEC_PROFILE};
 pub use read_view_v1::{

@@ -1,0 +1,6 @@
+RQL-X2 foundation 2026-08-05
+cargo test -p residiuum-sdk --lib query_bytecode_v1 -- --test-threads=1 → 3/3
+cargo test -p residiuum-sdk --test app6_page_executor -- --test-threads=1 → 4/4
+./scripts/check_query_runtime_architecture.sh → OK
+CollectionClient.rql + CollectionQuery::run → query_bytecode_v1
+Residual: port semantics out of query_exec_v1/rql_full_v1; delete; full enrich on shared runtime; op118 same machine

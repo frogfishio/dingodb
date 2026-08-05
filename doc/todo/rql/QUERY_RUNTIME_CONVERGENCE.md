@@ -69,8 +69,11 @@ proceeds.
 | Step | State |
 |---|---|
 | 1 Freeze `query_exec_v1` / `execute_rql_full` features | **done** (Decision 0 + module banners) |
-| 2 Define bytecode + host boundary | **done** — [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md) (`residiuum-query-bytecode-v1`) |
-| 3–8 Lower / route / port / equivalence / delete / CI | **RQL-X2** (next) |
+| 2 Define bytecode + host boundary | **done** — [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md) |
+| 3 Lower + single product entry (Core) | **foundation done** — `query_bytecode_v1` + `CollectionClient.rql` / builder `run` |
+| 4 Route op 118 through same runtime | **residual** (wire still server-local Core compile; emb entry unified) |
+| 5–7 Port / equivalence / delete frozen executors | **RQL-X2b** |
+| 8 CI anti-executor | **foundation done** — `scripts/check_query_runtime_architecture.sh` |
 
 ---
 

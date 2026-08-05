@@ -6,9 +6,10 @@ Charter: [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md)
 Decision 0: [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) §0  
 Dialect doctrine: [DIALECTS.md](../../SDA/DIALECTS.md)
 
-This document **freezes the architecture boundary**. It does not ship a binary
-ISA encoder yet (that is RQL-X2). Until this profile is amended, all query
-work must obey it.
+This document **freezes the architecture boundary**. RQL-X2 foundation
+(`query_bytecode_v1`) landed the product entry + `HostCapabilities` + CI gate;
+binary ISA + full semantic port remain **RQL-X2b**. Until this profile is
+amended, all query work must obey it.
 
 ---
 

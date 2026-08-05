@@ -53,6 +53,9 @@ jobs:
       - name: Heap architecture / HP-000 contract
         run: ./scripts/check_heap_architecture.sh
 
+      - name: Query runtime architecture (Decision 0)
+        run: ./scripts/check_query_runtime_architecture.sh
+
       - name: Clippy (strict)
         run: cargo clippy --workspace --all-targets -- -D warnings
 

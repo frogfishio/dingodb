@@ -1565,7 +1565,7 @@ impl CollectionClient {
         let heap_id = self.heap_id;
         let collection_id = self.collection_id;
         let name = self.name.clone();
-        crate::query_exec_v1::execute_rql(
+        crate::query_bytecode_v1::execute_core_rql(
             self,
             source,
             parameters,
@@ -1965,19 +1965,19 @@ impl<'a> CollectionQuery<'a> {
         if plan.from.collection_id != collection_id {
             plan.from.collection_id = collection_id;
         }
-        crate::query_exec_v1::execute_plan(
+        let bytecode = crate::query_bytecode_v1::QueryBytecodeV1::from_core_plan(plan, None);
+        crate::query_bytecode_v1::execute_bytecode(
             self.client,
-            &plan,
+            &bytecode,
             &parameters.values,
             &options,
             heap_id,
             collection_id,
-            None,
         )
     }
 }
 
-impl crate::query_exec_v1::DocScan for CollectionClient {
+impl crate::query_bytecode_v1::HostCapabilities for CollectionClient {
     fn list_keys(
         &mut self,
         limit: Option<usize>,
@@ -1990,7 +1990,7 @@ impl crate::query_exec_v1::DocScan for CollectionClient {
         CollectionClient::get(self, key)
     }
 
-    fn try_equality_index_keys(
+    fn lookup_index_keys(
         &mut self,
         equalities: &[(String, serde_json::Value)],
     ) -> Result<Option<Vec<String>>, Error> {
@@ -1999,6 +1999,27 @@ impl crate::query_exec_v1::DocScan for CollectionClient {
             // Remote residual: no index-probe wire for Application Core yet.
             CollectionBackend::Remote { .. } | CollectionBackend::Unbound => Ok(None),
         }
+    }
+}
+
+impl crate::query_exec_v1::DocScan for CollectionClient {
+    fn list_keys(
+        &mut self,
+        limit: Option<usize>,
+        after_key: Option<&str>,
+    ) -> Result<Vec<String>, Error> {
+        <Self as crate::query_bytecode_v1::HostCapabilities>::list_keys(self, limit, after_key)
+    }
+
+    fn get_json(&mut self, key: &str) -> Result<Option<serde_json::Value>, Error> {
+        <Self as crate::query_bytecode_v1::HostCapabilities>::get_json(self, key)
+    }
+
+    fn try_equality_index_keys(
+        &mut self,
+        equalities: &[(String, serde_json::Value)],
+    ) -> Result<Option<Vec<String>>, Error> {
+        <Self as crate::query_bytecode_v1::HostCapabilities>::lookup_index_keys(self, equalities)
     }
 }
 
