@@ -143,7 +143,7 @@ fn execute_full_isa_enrich_within_project_nonempty() {
     )
     .unwrap_err();
     assert!(
-        err.to_string().contains("full ISA entry") || err.to_string().contains("RQL-X5b"),
+        err.to_string().contains("execute_full_isa_with"),
         "{err}"
     );
     drop(base);

@@ -116,8 +116,8 @@ pub use cursor_v1::{
 pub use query_bytecode_v1::{
     apply_project_rows, attach_enrich_rows, attach_within_rows, compile_rql_full, decode_isa,
     encode_core_program, encode_full_program, execute_bytecode, execute_core_rql,
-    execute_full_isa_with, execute_isa_bytes, execute_plan, execute_rql, execute_rql_full,
-    execute_rql_full_with, explain_core_source,
+    execute_decoded_core, execute_full_isa_with, execute_isa_bytes, execute_plan, execute_rql,
+    execute_rql_full, execute_rql_full_with, explain_core_source,
     explain_rql_full, explain_rql_full_on_heap, explain_rql_source, filter_rows, isa_hash,
     lower_core_source, refuse_full_language_on_core_wire, source_uses_rql_full_constructs,
     CompiledRqlFull, DocScan, EnrichAttachMode, EnrichCardinality, EnrichLoadEvidence, EnrichStepV1,

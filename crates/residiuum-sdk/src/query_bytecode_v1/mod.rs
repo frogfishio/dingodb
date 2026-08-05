@@ -7,10 +7,17 @@
 //! `decode_isa` → interpret. An independent Rust `plan` field is forbidden so
 //! ISA identity cannot diverge from executed meaning.
 //!
+//! **RQL-X5c one-dispatch:** after decode, Core page always goes through
+//! [`execute_decoded_core`] → [`execute_plan`]. Full path decodes once and
+//! reuses that Core entry (no Core re-encode). See
+//! [QUERY_IR_RESIDUAL.md](../../../../doc/todo/rql/QUERY_IR_RESIDUAL.md) for
+//! what is still a Rust interpreter of decoded structures.
+//!
 //! Host adapters supply scan/index/get only.
 //!
 //! Residual (Decision 0 still open): page/order/project/coverage/enrich loops
-//! remain Rust interpreters of **ISA-decoded** structures (X5c).
+//! remain Rust interpreters of **ISA-decoded** structures — not a finished
+//! bytecode machine. **RQL-C1 must not be accepted.**
 
 mod core_page;
 mod full_attach;
@@ -212,9 +219,8 @@ pub fn execute_core_rql<H: HostCapabilities>(
     )
 }
 
-/// Sole Core runtime entry: decode ISA bytes, then page-execute.
-///
-/// Full-language ISA is refused here (X5b owns full dispatch).
+/// Sole Core ISA entry: decode bytes, refuse full section, then
+/// [`execute_decoded_core`].
 pub fn execute_isa_bytes<H: HostCapabilities>(
     host: &mut H,
     isa_bytes: &[u8],
@@ -226,7 +232,7 @@ pub fn execute_isa_bytes<H: HostCapabilities>(
     let prog = decode_isa(isa_bytes)?;
     if prog.full.is_some() {
         return Err(Error::QueryInvalid(
-            "execute_isa_bytes: full-language ISA requires full ISA entry (RQL-X5b)".into(),
+            "execute_isa_bytes: full-language ISA requires execute_full_isa_with".into(),
         ));
     }
     if prog.profile != ISA_PROFILE {
@@ -235,20 +241,45 @@ pub fn execute_isa_bytes<H: HostCapabilities>(
             prog.profile
         )));
     }
-    if prog.core.from.collection_id != collection_id {
+    execute_decoded_core(
+        host,
+        &prog.core,
+        prog.budget,
+        params,
+        options,
+        heap_id,
+        collection_id,
+    )
+}
+
+/// Shared Core page after ISA decode (RQL-X5c one-dispatch).
+///
+/// Both Core and full-language paths use this after `decode_isa`. Meaning of
+/// page/order/project/coverage still lives in [`execute_plan`] (Rust interpreter
+/// of the decoded plan) — see QUERY_IR_RESIDUAL.md. Not Decision 0 closed.
+pub fn execute_decoded_core<H: HostCapabilities>(
+    host: &mut H,
+    core: &RqlPlanV1,
+    budget: Option<QueryBudget>,
+    params: &BTreeMap<String, JsonValue>,
+    options: &QueryRunOptions,
+    heap_id: HeapId,
+    collection_id: CollectionId,
+) -> Result<QueryPage, Error> {
+    if core.from.collection_id != collection_id {
         return Err(Error::QueryInvalid(
-            "execute_isa_bytes: collection_id mismatch".into(),
+            "execute_decoded_core: collection_id mismatch".into(),
         ));
     }
     let mut scan = HostDocScan(host);
     execute_plan(
         &mut scan,
-        &prog.core,
+        core,
         params,
         options,
         heap_id,
         collection_id,
-        prog.budget,
+        budget,
     )
 }
 
@@ -404,6 +435,38 @@ mod tests {
         .expect("exec0");
         assert_eq!(page0.rows.len(), 1);
         assert_eq!(page0.rows[0].key, "a");
+    }
+
+    #[test]
+    fn execute_decoded_core_is_shared_core_entry() {
+        let id = CollectionId::from_bytes(uuidish(12)).expect("id");
+        let heap = HeapId::from_bytes(uuidish(1)).expect("heap");
+        let mut host = MapHost {
+            docs: BTreeMap::from([("k1".into(), json!({"n": 1}))]),
+        };
+        let bc = lower_core_source("from items page size 8", id, "items").expect("lower");
+        let prog = bc.decode().expect("decode");
+        let via_decoded = execute_decoded_core(
+            &mut host,
+            &prog.core,
+            prog.budget,
+            &BTreeMap::new(),
+            &QueryRunOptions::default(),
+            heap,
+            id,
+        )
+        .expect("decoded");
+        let via_isa = execute_isa_bytes(
+            &mut host,
+            bc.isa_bytes(),
+            &BTreeMap::new(),
+            &QueryRunOptions::default(),
+            heap,
+            id,
+        )
+        .expect("isa");
+        assert_eq!(via_decoded.rows, via_isa.rows);
+        assert_eq!(via_decoded.rows.len(), 1);
     }
 
     #[test]

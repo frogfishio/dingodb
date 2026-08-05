@@ -1,0 +1,119 @@
+=== RQL-X5c evidence 2026-08-05T05:49:14Z ===
+check_query_runtime_architecture: OK (X5+X5b+X5c; Decision 0 OPEN; C1 forbidden)
+test query_bytecode_v1::core_page::sort_tuple_tests::after_c20_keeps_b30_and_d40 ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_many ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_multi_root_enrich ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_nested_within ... ok
+test query_bytecode_v1::full_attach::tests::attach_exactly_one_and_optional ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_enrich_after_within ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_multi_within_enrich ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_apply_nested_project ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_candidate_where ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_nested_where ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_root_where_after_enrich ... ok
+test query_bytecode_v1::full_attach::tests::core_still_rejects_enrich ... ok
+test query_bytecode_v1::full_attach::tests::compile_single_enrich ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_within ... ok
+test query_bytecode_v1::full_attach::tests::project_conflict_and_type_error ... ok
+test query_bytecode_v1::full_attach::tests::within_type_error_on_absent ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_where_after_enrich_in_within ... ok
+test query_bytecode_v1::full_attach::tests::refuse_within_depth_overflow ... ok
+test query_bytecode_v1::isa::tests::isa_profile_constant ... ok
+test query_bytecode_v1::kernel::tests::kernel_profile_constant ... ok
+test query_bytecode_v1::isa::tests::full_pipeline_encode_decode_roundtrip ... ok
+test query_bytecode_v1::kernel::tests::eq_absent_null_and_value ... ok
+test query_bytecode_v1::isa::tests::core_encode_decode_roundtrip ... ok
+test query_bytecode_v1::kernel::tests::param_eq ... ok
+test query_bytecode_v1::kernel::tests::ne_absent_is_false ... ok
+test query_bytecode_v1::kernel::tests::present_missing_isnull ... ok
+test query_bytecode_v1::isa::tests::execute_from_isa_empty_host ... ok
+test query_bytecode_v1::tests::bytecode_profile_constant ... ok
+test query_bytecode_v1::tests::core_page_owned_by_bytecode_module ... ok
+test query_bytecode_v1::tests::corrupted_isa_refuses_execute ... ok
+test query_bytecode_v1::tests::lower_core_stamps_profile ... ok
+test query_bytecode_v1::kernel::tests::starts_with_and_contains ... ok
+test query_bytecode_v1::tests::execute_empty_host_one_page ... ok
+test query_bytecode_v1::tests::execute_decoded_core_is_shared_core_entry ... ok
+test query_bytecode_v1::tests::execute_bytecode_uses_isa_not_sidecar_plan ... ok
+
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 92 filtered out; finished in 0.01s
+
+     Running tests/rql_full_isa_execute.rs (target/debug/deps/rql_full_isa_execute-46b5532a9a76a005)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/rql_full_project.rs (target/debug/deps/rql_full_project-817f9cbfd3c93829)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+warning: function `resolve_path_value` is never used
+   --> crates/residiuum-sdk/src/filter.rs:960:15
+    |
+960 | pub(crate) fn resolve_path_value<'a>(doc: &'a JsonValue, path: &str) -> Option<&'a JsonValue> {
+    |               ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `compare_field` is never used
+    --> crates/residiuum-sdk/src/filter.rs:1132:15
+     |
+1132 | pub(crate) fn compare_field(
+     |               ^^^^^^^^^^^^^
+
+warning: constant `BUILD_CHECKPOINT_EVERY` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:33:7
+   |
+33 | const BUILD_CHECKPOINT_EVERY: usize = 32;
+   |       ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `BUILD_PAGE_SIZE` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:35:7
+   |
+35 | const BUILD_PAGE_SIZE: usize = 64;
+   |       ^^^^^^^^^^^^^^^
+
+warning: constant `FP_INDEX_BUILD_AFTER_PLAN` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:37:11
+   |
+37 | pub const FP_INDEX_BUILD_AFTER_PLAN: &str = "index.build.after_plan";
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `FP_INDEX_BUILD_MID` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:39:11
+   |
+39 | pub const FP_INDEX_BUILD_MID: &str = "index.build.mid";
+   |           ^^^^^^^^^^^^^^^^^^
+
+warning: constant `FP_INDEX_BUILD_BEFORE_READY` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:41:11
+   |
+41 | pub const FP_INDEX_BUILD_BEFORE_READY: &str = "index.build.before_ready";
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check_result_bytes` is never used
+   --> crates/residiuum-sdk/src/resource.rs:200:8
+    |
+200 | pub fn check_result_bytes(
+    |        ^^^^^^^^^^^^^^^^^^
+
+warning: `residiuum-sdk` (lib) generated 8 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running tests/rql_full_isa_execute.rs (target/debug/deps/rql_full_isa_execute-46b5532a9a76a005)
+
+running 2 tests
+test corrupted_full_isa_refuses_execute ... ok
+test execute_full_isa_enrich_within_project_nonempty ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.21s
+
+     Running tests/rql_full_project.rs (target/debug/deps/rql_full_project-817f9cbfd3c93829)
+
+running 1 test
+test execute_rql_full_nested_project ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.66s
+

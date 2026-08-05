@@ -37,8 +37,8 @@ use residiuum_heap::CollectionId;
 use serde_json::{Map, Value as JsonValue};
 use std::collections::BTreeMap;
 
-use super::isa::{decode_isa, encode_core_program, encode_full_program, ISA_PROFILE};
-use super::execute_isa_bytes;
+use super::isa::{decode_isa, encode_full_program, ISA_PROFILE};
+use super::execute_decoded_core;
 
 /// Full-language compile profile (Phase 3 kickoff).
 pub const RQL_FULL_PROFILE: &str = "rql-full-v1";
@@ -1736,8 +1736,9 @@ pub fn execute_rql_full_with(
 
 /// Full-language entry: decode ISA (must carry full section), then execute.
 ///
-/// Base page uses Core [`execute_isa_bytes`] on a Core-only re-encode of the
-/// decoded plan. Attach pipeline/project come only from the decoded full section.
+/// Base page uses shared [`super::execute_decoded_core`] on the **already
+/// decoded** Core plan (one decode; no Core re-encode). Attach pipeline/project
+/// come only from the decoded full section.
 pub fn execute_full_isa_with(
     client: &mut HeapClient,
     isa_bytes: &[u8],
@@ -1762,11 +1763,11 @@ pub fn execute_full_isa_with(
     let heap_id = base_col.heap_id();
     let collection_id = base_col.id();
 
-    // Shared Core entry: ISA bytes → decode → page (not base_source / compile).
-    let core_isa = encode_core_program(&prog.core, prog.budget)?;
-    let page = execute_isa_bytes(
+    // X5c one-dispatch: same Core entry as execute_isa_bytes after decode.
+    let page = execute_decoded_core(
         &mut base_col,
-        &core_isa,
+        &prog.core,
+        prog.budget,
         &parameters.values,
         &options.query,
         heap_id,
