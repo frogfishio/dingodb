@@ -45,7 +45,7 @@ fn explain_rql_full_pipeline_tree() {
     assert_eq!(ex.plan_profile, RQL_FULL_PROFILE);
     assert_ne!(ex.plan_hash, [0u8; 32]);
     assert_eq!(ex.tree["profile"], RQL_FULL_PROFILE);
-    assert_eq!(ex.tree["attach_oracle"], "scan_list_keys_get");
+    assert_eq!(ex.tree["attach_oracle"], "scan_or_equality_index");
     assert_eq!(ex.tree["wire"], "local_facade_only");
     let pipe = ex.tree["pipeline"].as_array().expect("pipeline");
     assert_eq!(pipe.len(), 3);

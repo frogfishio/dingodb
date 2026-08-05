@@ -20,14 +20,15 @@ Kickoff: [PHASE3_FULL_RQL_KICKOFF.md](./PHASE3_FULL_RQL_KICKOFF.md)
 | Application Core still rejects enrich/within | **yes** (refuse lock) |
 | Structured `explain_rql_full` (pipeline + base plan) | **yes** (RQL-F1) |
 | Op-118 Core wire refuse for full-language | **yes** (RQL-F2 — explicit refuse, not wire parity) |
+| Root enrich equality-index pushdown | **yes** (RQL-I1; scan fallback; differential oracle) |
 | Pre-enrich root `where` stays in Core | **yes** (correct; not a defect) |
 
-## Still open (not labor-closed this turn)
+## Still open
 
 | Residual | Why open | Owner |
 |---|---|---|
 | `at rank` / `access` policies | DDA-dependent | **RQL-D1** |
-| Index pushdown for enrich match keys | Scan oracle only; no index claim | **RQL-I1** |
+| Within-nested enrich index pushdown | I1 is root enrich only | later |
 | Remote op-118 enrich/within/project **parity** | F2 chose refuse; wire execute still absent | future after F2 decision |
 | Post-attach `where` global re-page / re-limit | Page-then-attach filters within Core page | design / later package |
 | Package accept / APB-7 accept | Principal gate | **RQL-C1** |
@@ -38,10 +39,12 @@ Kickoff: [PHASE3_FULL_RQL_KICKOFF.md](./PHASE3_FULL_RQL_KICKOFF.md)
 export TMPDIR=$REPO/.tmp-test
 cargo test -p residiuum-sdk --test rql_full_corpus -- --test-threads=1
 cargo test -p residiuum-sdk --test rql_full_explain -- --test-threads=1
+cargo test -p residiuum-sdk --test rql_full_enrich_index -- --test-threads=1
 ```
 
 Logs: `doc/todo/rql/evidence/phase3_corpus.log`,
-`doc/todo/rql/evidence/phase3_explain_f1f2.log`
+`doc/todo/rql/evidence/phase3_explain_f1f2.log`,
+`doc/todo/rql/evidence/rql_i1_enrich_index.log`
 
 ## Non-claim
 

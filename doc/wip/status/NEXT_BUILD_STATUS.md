@@ -7,10 +7,10 @@ Sources: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-05 (**RQL what’s left** —
-[RQL_WHAT_IS_LEFT.md](../../todo/rql/RQL_WHAT_IS_LEFT.md): next labor
-**RQL-I1**; next human **RQL-C1** accept. CRITICAL_PATH
-RQL→Atomics→Cluster.) Prior: RQL-0/F1/F2 labor; P0 packaging 0.2.2;
+Updated: 2026-08-05 (**RQL-I1** labor in_review —
+[RQL_WHAT_IS_LEFT.md](../../todo/rql/RQL_WHAT_IS_LEFT.md): next human
+**RQL-C1** accept; no labor todo staged. CRITICAL_PATH
+RQL→Atomics→Cluster.) Prior: RQL-0/F1/F2; P0 packaging 0.2.2;
 CSE-3 ~21–23K SoT. **ETQ-2 paused.** **AWO paused.**
 
 **How to read program order:** open [CRITICAL_PATH.md](../../../CRITICAL_PATH.md)
@@ -215,7 +215,7 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 | — | **RQL-0** gap ledger `190a97bd` | `in_review` | [RQL0_GAP_LEDGER.md](../../todo/rql/RQL0_GAP_LEDGER.md); CRITICAL_PATH §4.6; **not** Gate-1 accept |
 | — | **RQL-F1** full explain `cb09fb45` | `in_review` | `explain_rql_full` + `rql_full_explain` 3/3; no new syntax |
 | — | **RQL-F2** op-118 full-language refuse `f7fbd632` | `in_review` | `refuse_full_language_on_core_wire` on remote rql/explain; parity residual |
-| — | **RQL-I1** enrich index pushdown `dc4ee028` | `todo` | pre-staged; next labor after F1/F2 |
+| — | **RQL-I1** enrich index pushdown `dc4ee028` | `in_review` | root enrich eq-index + scan differential; `rql_full_enrich_index` 2/2; within-nested residual |
 | — | **RQL PATH T0** map `32d30efe` | `in_review` | [PATH_TO_FULL_RQL.md](../../todo/rql/PATH_TO_FULL_RQL.md); post-0.2.2 query de-risk |
 | — | **RQL PATH T1** Core baseline `0a5c700a` | `in_review` | Phase 1 labor: expanded corpus + execute oracle + residual checklist; **not** package accept |
 | — | **RQL PATH T2** expressiveness corpus `b4ebdaf9` | `in_review` | sql+ emit/refuse scaffold + Core gotchas; joins pending Phase 3 |

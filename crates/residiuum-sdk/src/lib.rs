@@ -103,9 +103,10 @@ pub use rql_app_core::{
 };
 pub use rql_full_v1::{
     apply_project_rows, attach_enrich_rows, attach_within_rows, compile_rql_full,
-    execute_rql_full, explain_rql_full, explain_rql_full_on_heap, filter_rows,
-    refuse_full_language_on_core_wire, source_uses_rql_full_constructs, CompiledRqlFull,
-    EnrichCardinality, EnrichStepV1, FullPipelineStepV1, ProjectItemV1, RqlFullPage, WithinStepV1,
+    execute_rql_full, execute_rql_full_with, explain_rql_full, explain_rql_full_on_heap,
+    filter_rows, refuse_full_language_on_core_wire, source_uses_rql_full_constructs,
+    CompiledRqlFull, EnrichAttachMode, EnrichCardinality, EnrichLoadEvidence, EnrichStepV1,
+    FullPipelineStepV1, ProjectItemV1, RqlFullExecuteOptions, RqlFullPage, WithinStepV1,
     DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL, DIAG_RQL_PROJECTION_CONFLICT,
     DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE, FULL_EXPLAIN_HASH_DOMAIN, MAX_PROJECT_DEPTH,
     MAX_WITHIN_DEPTH, RQL_FULL_PROFILE,

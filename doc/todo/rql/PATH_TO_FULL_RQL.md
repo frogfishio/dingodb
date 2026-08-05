@@ -164,9 +164,10 @@ de-risk.
 **Canonical answer:** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)
 
 ```text
-NEXT labor  = RQL-I1 (enrich index pushdown)   board todo dc4ee028
+NEXT labor  = (none staged) — see RQL_WHAT_IS_LEFT.md
 NEXT human  = RQL-C1 accept APP-6/7/APB-7 + review in_review cards
-NOT next    = at-rank, SQL JOIN emit, query perf, op118 enrich parity
+JUST SHIPPED = RQL-I1 root enrich index (in_review)
+NOT next    = at-rank, within-nested index, query perf, op118 enrich parity
 ```
 
-F1/F2 are **already labor-closed** (in_review). Do not re-pull them.
+F1/F2/I1 are **already labor-closed** (in_review). Do not re-pull them.

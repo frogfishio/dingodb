@@ -57,7 +57,7 @@ sql+             → emit/refuse → Core compile           (Phase 2 scaffold)
 | `budget` docs/bytes/result | Core | Core | Core | — | Core + op 118 | app5; apb7 deadline | **implemented** | |
 | `explain` (Core) | Core | Core | n/a | — | Core + op 118 explain | explain_rql_source | **implemented** | Plan tree + hash |
 | `explain` (full) | full | full tree | n/a | — | local explain API | rql_full_explain | **implemented** | RQL-F1; not on op 118 |
-| `enrich` + cardinality | full; Core **refuse** | full EnrichStep | scan attach | **absent** | local; **wire refuse** | rql_full_*; corpus; F2 | **partial** | list_keys+get; no index; op 118 refuse |
+| `enrich` + cardinality | full; Core **refuse** | full EnrichStep | scan attach | **root eq-index** | local; **wire refuse** | rql_full_*; I1 | **partial** | root index+scan fallback; within still scan; op 118 refuse |
 | Enrich candidate `where` | full | full | scan filter | absent | local; wire refuse | rql_full_candidate_where | **partial** | Same attach residual |
 | `within` nested carrier | full; Core refuse | full Within | bag map | absent | local; wire refuse | rql_full_within/nested | **partial** | MAX_WITHIN_DEPTH host bound |
 | Nested `where` in `within` | full | full Filter | bag filter | — | local; wire refuse | rql_full_nested_where | **partial** | |
@@ -124,7 +124,7 @@ is forbidden.
 | **RQL-C1** | Core product accept residuals | RQL-0, APP-6/7, APB-7 labor | Scoreboard APP-6/APP-7/APB-7 → `accept` (principal) |
 | **RQL-F1** | Full explain artefact for `rql-full-v1` | RQL-0, Phase 3 surface | **labor closed** — `explain_rql_full` + tests |
 | **RQL-F2** | Op-118 enrich/within/project wire **or** explicit wire refuse | RQL-F1 | **labor closed (refuse path)** — `refuse_full_language_on_core_wire`; parity = later |
-| **RQL-I1** | Index pushdown for enrich match keys | RQL-F2 decision, Core index path | **NEXT labor** (board `todo` `dc4ee028`) — scan vs index differential |
+| **RQL-I1** | Index pushdown for enrich match keys | RQL-F2 decision, Core index path | **labor closed** — root enrich eq-index; `rql_full_enrich_index` 2/2; within-nested residual |
 | **RQL-S1** | SQL+ → enrich/`within` emit (JOIN class) | RQL-F2 local+honest wire story | Emit vectors + refuse residuals; no silent weaken |
 | **RQL-D1** | `at rank` / access policies | DDA specs + RQL-0 | Spec-first; only after DIRECT_ACCESS owner frozen |
 | **RQL-Q1** | Query perf / read qualification campaign | RQL-C1 minimum; enrich costs after RQL-I1 | CRITICAL_PATH §4.4 evidence law |

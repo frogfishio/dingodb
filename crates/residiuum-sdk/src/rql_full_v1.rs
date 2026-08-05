@@ -11,6 +11,9 @@
 //! - root `where` after enrich/within filters the Core page rows (page-then-attach honesty)
 //! - nested post-pipeline `project { … }` (leaf / rename / nested product + bag map)
 //! - execute `exactly_one` / `optional` / `many` attach via foreign scan oracle
+//! - **RQL-I1:** root `enrich` may use equality-index pushdown on the foreign
+//!   match field (`lookup_index_keys`); fall back to full scan when no usable
+//!   index. Nested `within` enrich still scan-loads (residual).
 //! - candidate `where` filters foreign docs before cardinality
 //! - [`execute_rql_full`] façade on [`HeapClient`] (base page + attach + project)
 //! - [`explain_rql_full`] structured explain (pipeline + base plan; no row scan)
@@ -56,6 +59,45 @@ pub const MAX_WITHIN_DEPTH: usize = 8;
 
 /// Host bound on nested `project { }` depth.
 pub const MAX_PROJECT_DEPTH: usize = 8;
+
+/// How foreign docs were loaded for one enrich step (RQL-I1 honesty).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EnrichAttachMode {
+    /// Complete `list_keys`+`get` of the foreign collection.
+    Scan,
+    /// Equality index on the foreign match field + `get` of hit keys.
+    EqualityIndex,
+}
+
+impl EnrichAttachMode {
+    /// Stable label for evidence / explain.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Scan => "scan_list_keys_get",
+            Self::EqualityIndex => "equality_index",
+        }
+    }
+}
+
+/// Evidence for one enrich foreign-load decision.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnrichLoadEvidence {
+    /// Foreign collection name (`using`).
+    pub using: String,
+    /// Attach output field.
+    pub output: String,
+    /// Load mode actually used.
+    pub mode: EnrichAttachMode,
+}
+
+/// Options for [`execute_rql_full_with`].
+#[derive(Debug, Clone, Default)]
+pub struct RqlFullExecuteOptions {
+    /// Application Core page options (continuation, budgets, …).
+    pub query: QueryRunOptions,
+    /// When true, never use enrich equality-index pushdown (differential oracle).
+    pub force_enrich_scan: bool,
+}
 
 /// Enrichment cardinality (RQL_SPEC).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -212,7 +254,7 @@ impl CompiledRqlFull {
         };
         root.insert(
             "attach_oracle".into(),
-            JsonValue::String("scan_list_keys_get".into()),
+            JsonValue::String("scan_or_equality_index".into()),
         );
         root.insert(
             "wire".into(),
@@ -1380,8 +1422,9 @@ fn project_value(doc: &JsonValue, fields: &[ProjectItemV1]) -> Result<JsonValue,
 
 /// Attach enrich fields onto already-materialised root JSON documents.
 ///
-/// `foreign_docs` is a complete list of `(key, json)` for the using-collection
-/// (independent oracle / scan). Does **not** claim index pushdown.
+/// `foreign_docs` is the foreign candidate set (complete scan **or**
+/// equality-index hits for observed left values). Callers must not label a
+/// partial candidate set as a complete collection inventory.
 ///
 /// `expect many` attaches a JSON array of matches, ordered by foreign key.
 /// Optional [`EnrichStepV1::candidate_where`] filters foreign docs first.
@@ -1604,6 +1647,9 @@ pub struct RqlFullPage {
     pub pipeline: Vec<FullPipelineStepV1>,
     /// Nested project applied after the pipeline, if any.
     pub project: Option<Vec<ProjectItemV1>>,
+    /// Per root-enrich load mode (RQL-I1). Within nested enrich omitted here
+    /// (still scan-loaded; see residual inventory).
+    pub enrich_loads: Vec<EnrichLoadEvidence>,
 }
 
 impl RqlFullPage {
@@ -1627,16 +1673,36 @@ impl RqlFullPage {
     }
 }
 
-/// Façade: compile full RQL, run Core base page, attach enrich/within via scan.
+/// Façade: compile full RQL, run Core base page, attach enrich/within.
 ///
-/// Discovers collection bindings from [`HeapClient::list_collections`]. Foreign
-/// collections are loaded with `list_keys`+`get` (complete scan oracle — no index
-/// claim). Multipage: call again with `options.after` from `base.next`.
+/// Discovers collection bindings from [`HeapClient::list_collections`].
+/// Root `enrich` tries equality-index pushdown on the foreign match field
+/// (RQL-I1); falls back to complete `list_keys`+`get` when no usable index.
+/// Nested `within` enrich still scan-loads. Multipage: call again with
+/// `options.after` from `base.next`.
 pub fn execute_rql_full(
     client: &mut HeapClient,
     source: &str,
     parameters: &Parameters,
     options: QueryRunOptions,
+) -> Result<RqlFullPage, Error> {
+    execute_rql_full_with(
+        client,
+        source,
+        parameters,
+        RqlFullExecuteOptions {
+            query: options,
+            force_enrich_scan: false,
+        },
+    )
+}
+
+/// [`execute_rql_full`] with differential-oracle controls.
+pub fn execute_rql_full_with(
+    client: &mut HeapClient,
+    source: &str,
+    parameters: &Parameters,
+    options: RqlFullExecuteOptions,
 ) -> Result<RqlFullPage, Error> {
     let infos = client.list_collections()?;
     let mut bindings = CollectionBindings::default();
@@ -1646,7 +1712,7 @@ pub fn execute_rql_full(
     let compiled = compile_rql_full(source, &bindings)?;
     let from_name = compiled.base.plan.from.source_name.clone();
     let mut base_col = client.open_collection(&from_name)?;
-    let page = base_col.rql(&compiled.base_source, parameters, options)?;
+    let page = base_col.rql(&compiled.base_source, parameters, options.query)?;
 
     let mut rows: Vec<(String, JsonValue)> = page
         .rows
@@ -1655,12 +1721,29 @@ pub fn execute_rql_full(
         .collect();
 
     let mut foreign_cache: BTreeMap<String, Vec<(String, JsonValue)>> = BTreeMap::new();
+    let mut enrich_loads = Vec::new();
     for step in &compiled.pipeline {
         match step {
             FullPipelineStepV1::Enrich(e) => {
-                ensure_foreign_docs(client, &e.using_name, &mut foreign_cache)?;
-                let foreign = foreign_cache.get(&e.using_name).expect("ensured");
-                rows = attach_enrich_rows(&rows, foreign, e, &parameters.values)?;
+                let (foreign, mode) = load_foreign_docs_for_root_enrich(
+                    client,
+                    e,
+                    &rows,
+                    options.force_enrich_scan,
+                )?;
+                enrich_loads.push(EnrichLoadEvidence {
+                    using: e.using_name.clone(),
+                    output: e.output.clone(),
+                    mode,
+                });
+                // Index hits are step-local; do not poison the within scan cache
+                // with a partial collection view under the same using-name.
+                if mode == EnrichAttachMode::Scan {
+                    foreign_cache
+                        .entry(e.using_name.clone())
+                        .or_insert_with(|| foreign.clone());
+                }
+                rows = attach_enrich_rows(&rows, &foreign, e, &parameters.values)?;
             }
             FullPipelineStepV1::Within(w) => {
                 collect_within_using_names(w, &mut foreign_cache, client)?;
@@ -1682,7 +1765,88 @@ pub fn execute_rql_full(
         base: page,
         pipeline: compiled.pipeline,
         project: compiled.project,
+        enrich_loads,
     })
+}
+
+/// Load foreign docs for a **root** enrich: equality index when usable, else scan.
+fn load_foreign_docs_for_root_enrich(
+    client: &mut HeapClient,
+    step: &EnrichStepV1,
+    roots: &[(String, JsonValue)],
+    force_scan: bool,
+) -> Result<(Vec<(String, JsonValue)>, EnrichAttachMode), Error> {
+    if force_scan {
+        return Ok((
+            load_collection_docs(client, &step.using_name)?,
+            EnrichAttachMode::Scan,
+        ));
+    }
+    let right_field = step.right.dotted();
+    // Equality indexes today are single-field path labels (APB-7 T4).
+    if right_field.is_empty() || right_field.contains('.') {
+        return Ok((
+            load_collection_docs(client, &step.using_name)?,
+            EnrichAttachMode::Scan,
+        ));
+    }
+
+    let left_values = collect_present_left_values(roots, &step.left);
+    let mut col = client.open_collection(&step.using_name)?;
+
+    if left_values.is_empty() {
+        // Probe whether a usable equality index exists without loading all docs.
+        match col.lookup_index_keys(&[(right_field.clone(), JsonValue::Null)])? {
+            None => {
+                drop(col);
+                return Ok((
+                    load_collection_docs(client, &step.using_name)?,
+                    EnrichAttachMode::Scan,
+                ));
+            }
+            Some(_) => return Ok((Vec::new(), EnrichAttachMode::EqualityIndex)),
+        }
+    }
+
+    let mut by_key: BTreeMap<String, JsonValue> = BTreeMap::new();
+    for val in left_values.values() {
+        match col.lookup_index_keys(&[(right_field.clone(), val.clone())])? {
+            None => {
+                drop(col);
+                return Ok((
+                    load_collection_docs(client, &step.using_name)?,
+                    EnrichAttachMode::Scan,
+                ));
+            }
+            Some(keys) => {
+                for k in keys {
+                    if by_key.contains_key(&k) {
+                        continue;
+                    }
+                    if let Some(doc) = col.get(&k)? {
+                        by_key.insert(k, doc);
+                    }
+                }
+            }
+        }
+    }
+    Ok((
+        by_key.into_iter().collect(),
+        EnrichAttachMode::EqualityIndex,
+    ))
+}
+
+fn collect_present_left_values(
+    roots: &[(String, JsonValue)],
+    left: &Path,
+) -> BTreeMap<String, JsonValue> {
+    let mut out = BTreeMap::new();
+    for (_, root) in roots {
+        if let Resolve::Present(v) = resolve_path(root, left) {
+            out.insert(canonical_match_key(&v), v);
+        }
+    }
+    out
 }
 
 fn ensure_foreign_docs(
