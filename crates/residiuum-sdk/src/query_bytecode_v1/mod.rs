@@ -35,7 +35,7 @@ pub use core_page::{explain_rql_source, EXEC_PROFILE};
 // Crate-private semantic executors (RQL-P0b) — available inside the SDK crate only.
 // `execute_plan` remains for VM Core opcode bodies until RQL-VM2.
 #[allow(unused_imports)] // re-export for crate-internal callers / VM residual
-pub(crate) use core_page::{execute_plan, execute_rql, DocScan};
+pub(crate) use core_page::{execute_plan, DocScan};
 pub use full_attach::{
     compile_rql_full, execute_full_isa_with, execute_rql_full, execute_rql_full_with,
     explain_rql_full, explain_rql_full_on_heap, refuse_full_language_on_core_wire,
@@ -281,8 +281,8 @@ pub fn execute_isa_bytes<H: HostCapabilities>(
 ///
 /// Crate-private (RQL-P0b): not a public bypass of validated ISA.
 /// Both Core and full-language paths use this after `decode_isa`. Lowers to a
-/// VM program and runs [`vm_exec::run_vm_core`]. Core opcode bodies still call
-/// [`execute_plan`] until RQL-VM2. Not Decision 0 closed.
+/// VM program and runs [`vm_exec::run_vm_core`] (`CoreFrame` phases; RQL-VM2).
+/// Not Decision 0 closed.
 pub(crate) fn execute_decoded_core<H: HostCapabilities>(
     host: &mut H,
     core: &RqlPlanV1,

@@ -1,13 +1,13 @@
 # Query IR residual — what is still not a finished bytecode machine
 
-Status: **2026-08-05 · RQL-VM2**  
+Status: **2026-08-05 · RQL-P1c**  
 Authority: [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) · Decision 0 **OPEN**  
 **RQL-C1 must not be accepted.** Principal rejected D0 closure — see [QUERY_VM_V1.md](./QUERY_VM_V1.md).
 
 Named IR phases remain **Rust IR residual**. Query VM **dispatch** (VM1) +
-**CoreFrame phases** (VM2) + collection-qualified host (P1b) exist, but
-`run_core_page` still fuses Scan→Project materialize for APP-6 equivalence.
-Not Decision 0 closed.
+**CoreFrame phases** (VM2) + collection-qualified host (P1b) + **frontend funnel
+arch-tested onto one loop (P1c)** exist, but `run_core_page` still fuses
+Scan→Project materialize for APP-6 equivalence. Not Decision 0 closed.
 
 ---
 
@@ -26,6 +26,7 @@ Not Decision 0 closed.
 | Core opcode phases | `core_phases.rs` `CoreFrame` | **VM2** — IndexEq real; Scan→Project via `run_core_page` |
 | Scan/index materialize | `core_phases.rs` `run_core_page` | **Fused Scan→Project** residual |
 | Host scan / index / get | `HostCapabilities` by `CollectionId` | **P1b labor closed** |
+| Product frontends → one loop | SDK rql/builder/view + op 118 + Full | **P1c labor closed** |
 
 Detail: [QUERY_IR_PROJECT_V1.md](./QUERY_IR_PROJECT_V1.md) ·
 [QUERY_IR_ORDER_V1.md](./QUERY_IR_ORDER_V1.md) ·
@@ -38,10 +39,10 @@ Detail: [QUERY_IR_PROJECT_V1.md](./QUERY_IR_PROJECT_V1.md) ·
 
 - IR1–IR4 ≠ Decision 0 closed
 - Named IR ≠ finished opcode-granular machine
-- VM1 / P1b / VM2 ≠ Decision 0 closed / C1
+- VM1 / P1b / VM2 / P1c ≠ Decision 0 closed / C1
 - `run_core_page` fused materialize ≠ fully split opcode bodies
 - **RQL-C1 must not be accepted**
-- NEXT labor = **RQL-P1c** (and optional further materialize split) — **not** principal C1
+- NEXT labor = optional further materialize split — **not** principal C1
 
 ---
 
@@ -54,3 +55,4 @@ Detail: [QUERY_IR_PROJECT_V1.md](./QUERY_IR_PROJECT_V1.md) ·
 - `doc/todo/rql/evidence/rql_vm1_dispatch.log`
 - `doc/todo/rql/evidence/rql_p1b_host_by_id.log`
 - `doc/todo/rql/evidence/rql_vm2_core_phases.log`
+- `doc/todo/rql/evidence/rql_p1c_frontend_dispatch.log`

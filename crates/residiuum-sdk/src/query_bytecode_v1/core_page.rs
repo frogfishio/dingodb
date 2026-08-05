@@ -25,7 +25,7 @@
 //! cursor secrets, remote op 118, snapshot reads.
 
 use crate::app_v1::{
-    Parameters, QueryBudget, QueryPage, QueryRunOptions, QueryExplanation,
+    QueryBudget, QueryPage, QueryRunOptions, QueryExplanation,
 };
 use crate::error::Error;
 use crate::plan_v1::{CollectionBindings, RqlPlanV1};
@@ -61,42 +61,6 @@ pub(crate) trait DocScan {
     ) -> Result<Option<Vec<String>>, Error> {
         Ok(None)
     }
-}
-
-/// Execute Application Core RQL source against a document scan (crate-private).
-pub(crate) fn execute_rql<S: DocScan>(
-    scan: &mut S,
-    source: &str,
-    parameters: &Parameters,
-    options: &QueryRunOptions,
-    heap_id: HeapId,
-    collection_id: CollectionId,
-    collection_name: &str,
-) -> Result<QueryPage, Error> {
-    let mut bindings = CollectionBindings {
-        by_name: BTreeMap::new(),
-    };
-    bindings.bind(collection_name, collection_id);
-    let compiled = compile_app_core(source, &bindings)?;
-    if options.explain || compiled.explain {
-        return Err(Error::QueryInvalid(
-            "use explain_rql for explain; rql executes rows".into(),
-        ));
-    }
-    // Prefer live collection id over name-bound plan source if they differ.
-    let mut plan = compiled.plan;
-    if plan.from.collection_id != collection_id {
-        plan.from.collection_id = collection_id;
-    }
-    execute_plan(
-        scan,
-        &plan,
-        &parameters.values,
-        options,
-        heap_id,
-        collection_id,
-        compiled.budget,
-    )
 }
 
 /// Explain Application Core source (plan tree + hash; no row materialization).

@@ -210,6 +210,68 @@ rg -qi 'VM2 labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
 rg -qi 'P1c' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT NEXT residual must name P1c after VM2"
 
+# RQL-P1c: every product frontend enters the same Query VM dispatch.
+APP="$SDK_SRC/app_v1.rs"
+DISPATCH="$ROOT/crates/residiuum-server/src/heap_dispatch.rs"
+[[ -f "$APP" ]] || fail "missing app_v1.rs"
+[[ -f "$DISPATCH" ]] || fail "missing heap_dispatch.rs"
+
+# Shared funnel: source/ISA → execute_decoded_core → run_vm_core.
+rg -n 'fn execute_core_rql' -A 25 "$MOD" | rg -q 'execute_bytecode' \
+  || fail "execute_core_rql must call execute_bytecode (RQL-P1c)"
+rg -n 'fn execute_bytecode' -A 25 "$MOD" | rg -q 'execute_isa_bytes' \
+  || fail "execute_bytecode must call execute_isa_bytes (RQL-P1c)"
+rg -n 'fn execute_isa_bytes' -A 35 "$MOD" | rg -q 'execute_decoded_core' \
+  || fail "execute_isa_bytes must call execute_decoded_core (RQL-P1c)"
+rg -n 'fn execute_decoded_core' -A 30 "$MOD" | rg -q 'run_vm_core' \
+  || fail "execute_decoded_core must call run_vm_core (RQL-P1c)"
+
+# SDK CollectionClient::rql (embedded) → execute_core_rql
+rg -q 'execute_core_rql' "$APP" \
+  || fail "app_v1 must call execute_core_rql (RQL-P1c)"
+# First CollectionClient::rql body must use execute_core_rql (before ViewBound).
+rg -n 'impl CollectionClient' -A 900 "$APP" | rg -n 'pub fn rql' -A 40 | head -n 45 | rg -q 'execute_core_rql' \
+  || fail "CollectionClient::rql must call execute_core_rql (RQL-P1c)"
+
+# Builder CollectionQuery::run → execute_bytecode
+rg -n 'impl<.*> CollectionQuery' -A 200 "$APP" | rg -n 'pub fn run' -A 40 | head -n 45 | rg -q 'execute_bytecode' \
+  || fail "CollectionQuery::run must call execute_bytecode (RQL-P1c)"
+
+# ViewBoundQuery::run → execute_bytecode
+rg -n 'impl<.*> ViewBoundQuery' -A 120 "$APP" | rg -n 'pub fn run' -A 40 | head -n 45 | rg -q 'execute_bytecode' \
+  || fail "ViewBoundQuery::run must call execute_bytecode (RQL-P1c)"
+
+# ViewBoundCollection::rql → CollectionClient::rql (inner)
+rg -n 'impl<.*> ViewBoundCollection' -A 80 "$APP" | rg -n 'pub fn rql' -A 20 | head -n 25 | rg -q 'self\.inner\.rql' \
+  || fail "ViewBoundCollection::rql must delegate to CollectionClient::rql (RQL-P1c)"
+
+# Full RQL → shared Core VM + attach VM
+rg -n 'fn execute_full_isa_with' -A 50 "$FULL" | rg -q 'execute_decoded_core' \
+  || fail "execute_full_isa_with must call execute_decoded_core (RQL-P1c)"
+rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'run_vm_attach' \
+  || fail "execute_full_isa_with must call run_vm_attach (RQL-P1c)"
+
+# Op 118 server → execute_core_rql (same Core funnel)
+rg -q 'execute_core_rql' "$DISPATCH" \
+  || fail "op 118 heap_dispatch must call execute_core_rql (RQL-P1c)"
+
+# No alternate Core source executor that bypasses the VM.
+if rg -n 'fn execute_rql\b' "$SDK_SRC/query_bytecode_v1/core_page.rs" | rg -q .; then
+  fail "core_page::execute_rql must be deleted (VM bypass; RQL-P1c)"
+fi
+# Product SDK surfaces must not call execute_plan directly.
+if rg -n 'execute_plan\(' "$APP" | rg -q .; then
+  fail "app_v1 must not call execute_plan (RQL-P1c)"
+fi
+if rg -n 'execute_plan\(' "$DISPATCH" | rg -q .; then
+  fail "heap_dispatch must not call execute_plan (RQL-P1c)"
+fi
+
+rg -qi 'P1c labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must mark P1c labor closed"
+rg -qi 'run_core_page' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must keep run_core_page residual after P1c"
+
 hits="$(
   rg -n --glob '*.rs' '\.eval\(' "$SDK_SRC/query_bytecode_v1" \
     | rg -v 'kernel\.rs:' \
@@ -268,4 +330,4 @@ rg -q 'QUERY_IR_RESIDUAL' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
 rg -qi 'P1b labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark P1b labor closed"
 
-echo "check_query_runtime_architecture: OK (X5+IR+D0R+P0b+VM0+VM1+P1b+VM2; Decision 0 OPEN; C1 forbidden; P1c residual)"
+echo "check_query_runtime_architecture: OK (X5+IR+D0R+P0b+VM0+VM1+P1b+VM2+P1c; Decision 0 OPEN; C1 forbidden; run_core_page residual)"

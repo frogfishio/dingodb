@@ -116,10 +116,10 @@ may ship later (magic/version distinct from `RQB1`).
 
 ## Non-claims
 
-- VM2 ≠ Decision 0 complete / C1
+- VM2 / P1c ≠ Decision 0 complete / C1
 - VM2 ≠ fully split Scan→Project bodies (`run_core_page` residual)
 - **RQL-C1 must not be accepted**
-- NEXT labor = **RQL-P1c** (frontend → same dispatch loop)
+- NEXT labor = optional further materialize split (`run_core_page`)
 - Named IR phases ≠ finished Query VM alone
 
 ---
@@ -129,3 +129,4 @@ may ship later (magic/version distinct from `RQB1`).
 - `doc/todo/rql/evidence/rql_vm0_opcodes.log`
 - `doc/todo/rql/evidence/rql_vm1_dispatch.log`
 - `doc/todo/rql/evidence/rql_vm2_core_phases.log`
+- `doc/todo/rql/evidence/rql_p1c_frontend_dispatch.log`
