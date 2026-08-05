@@ -62,9 +62,9 @@ pub mod rql_full_v1;
 pub mod sql_plus;
 /// Authenticated query continuation (`residiuum-cursor-v1`) — APP-6 mint/verify.
 pub mod cursor_v1;
-/// Query bytecode v1 — single product runtime entry (RQL-X2; Decision 0).
+/// Query bytecode v1 — single product runtime (RQL-X2 / X2b; Decision 0).
 pub mod query_bytecode_v1;
-/// Bounded Application Core page executor — APP-6 T2 (**Decision 0: FROZEN**).
+/// Compatibility re-exports of Core page APIs (shim → [`query_bytecode_v1`]).
 pub mod query_exec_v1;
 /// Stable bounded read views — APB-6 T1 scaffold.
 pub mod read_view_v1;
@@ -128,10 +128,10 @@ pub use cursor_v1::{
     TTL_SECONDS as CURSOR_TTL_SECONDS, VECTOR_LOCK_SEED,
 };
 pub use query_bytecode_v1::{
-    execute_bytecode, execute_core_rql, explain_core_source, lower_core_source, HostCapabilities,
-    QueryBytecodeV1, BYTECODE_PROFILE,
+    execute_bytecode, execute_core_rql, execute_plan, execute_rql, explain_core_source,
+    explain_rql_source, lower_core_source, DocScan, HostCapabilities, QueryBytecodeV1,
+    BYTECODE_PROFILE, EXEC_PROFILE,
 };
-pub use query_exec_v1::{execute_plan, execute_rql, explain_rql_source, DocScan, EXEC_PROFILE};
 pub use read_view_v1::{
     AuthoritativeFrontier, FrontierDrift, FrontierKind, PinCapability, ReadView, ReadViewInfo,
     ReadViewOptions, ReadViewRetentionBudget, SemanticVersions, READ_VIEW_PROFILE,

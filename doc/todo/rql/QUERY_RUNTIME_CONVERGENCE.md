@@ -72,8 +72,8 @@ proceeds.
 | 2 Define bytecode + host boundary | **done** — [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md) |
 | 3 Lower + single product entry (Core) | **foundation done** — `query_bytecode_v1` + `CollectionClient.rql` / builder `run` |
 | 4 Route op 118 through same runtime | **residual** (wire still server-local Core compile; emb entry unified) |
-| 5–7 Port / equivalence / delete frozen executors | **RQL-X2b** |
-| 8 CI anti-executor | **foundation done** — `scripts/check_query_runtime_architecture.sh` |
+| 5–7 Port Core / equivalence / shrink frozen Core executor | **X2b done** — Core in `query_bytecode_v1/core_page`; `query_exec_v1` shim |
+| 5–8 Port full attach; delete façades; unify op 118; CI bytecode-only | **RQL-X2c** |
 
 ---
 

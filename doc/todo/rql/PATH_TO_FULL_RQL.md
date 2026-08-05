@@ -167,10 +167,10 @@ de-risk.
 **Canonical answer:** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)
 
 ```text
-NEXT labor  = RQL-X2b port semantics + delete frozen executors
-LANDED      = query_bytecode_v1 product entry + CI anti-executor (X2 foundation)
-FROZEN      = query_exec_v1 + execute_rql_full feature growth
-NOT next    = S1, D1, façade features
+NEXT labor  = RQL-X2c port full attach + delete façades
+LANDED      = Core semantics in query_bytecode_v1/core_page (X2b)
+FROZEN      = rql_full_v1 façade (until X2c)
+NOT next    = S1, D1, premature “query qualified”
 ```
 
 Prior Phase 3 / F1/F2/I1 labor is **port inventory** under Decision 0 — do not grow those executors.

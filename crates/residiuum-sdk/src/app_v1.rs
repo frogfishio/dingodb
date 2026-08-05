@@ -1608,7 +1608,7 @@ impl CollectionClient {
             )?;
             // Wire explain packs tree under known_holes-free page; recover from
             // local compile if server only returned plan_hash (first cut).
-            return crate::query_exec_v1::explain_rql_source(
+            return crate::query_bytecode_v1::explain_core_source(
                 source,
                 self.collection_id,
                 &self.name,
@@ -1621,7 +1621,7 @@ impl CollectionClient {
                 ex
             });
         }
-        crate::query_exec_v1::explain_rql_source(source, self.collection_id, &self.name)
+        crate::query_bytecode_v1::explain_core_source(source, self.collection_id, &self.name)
     }
 
     /// Remote op 118 wire path (APP-7 T6).
@@ -1841,7 +1841,7 @@ fn hex_to_16(s: &str) -> Option<[u8; 16]> {
 ///
 /// Wraps [`PlanBuilder`] so builder and RQL compile to the same plan hash when
 /// they express the same logical plan. Execution uses
-/// [`crate::query_exec_v1::execute_plan`] (not product wire op 118).
+/// [`crate::query_bytecode_v1::execute_bytecode`] (not product wire op 118).
 pub struct CollectionQuery<'a> {
     client: &'a mut CollectionClient,
     builder: PlanBuilder,
@@ -2170,14 +2170,13 @@ impl<'a> ViewBoundQuery<'a> {
         if plan.from.collection_id != collection_id {
             plan.from.collection_id = collection_id;
         }
-        let page = crate::query_exec_v1::execute_plan(
+        let page = crate::query_bytecode_v1::execute_bytecode(
             self.client,
-            &plan,
+            &crate::query_bytecode_v1::QueryBytecodeV1::from_core_plan(plan, None),
             &parameters.values,
             &options,
             heap_id,
             collection_id,
-            None,
         )?;
         self.view.ensure_observation_stable()?;
         self.view

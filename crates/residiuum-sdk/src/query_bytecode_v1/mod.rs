@@ -1,26 +1,29 @@
-//! Query bytecode v1 — single product runtime entry (RQL-X2 foundation).
+//! Query bytecode v1 — single product runtime (RQL-X2 / X2b).
 //!
 //! Profile: **`residiuum-query-bytecode-v1`**
-//! Normative: [QUERY_BYTECODE_V1.md](../../../doc/todo/rql/QUERY_BYTECODE_V1.md)
+//! Normative: [QUERY_BYTECODE_V1.md](../../../../doc/todo/rql/QUERY_BYTECODE_V1.md)
 //!
-//! **Decision 0:** this module is the only legal **product** semantic entry for
+//! **Decision 0:** this module is the only legal **product** semantic runtime for
 //! Application Core execution. Host adapters supply scan/index/get only.
 //!
-//! **Migration honesty:** Core page semantics still live in
-//! [`crate::query_exec_v1`] (frozen). This module owns the public entry + host
-//! boundary + bytecode envelope. RQL-X2b ports semantics in and deletes the
-//! frozen executors.
+//! Core page semantics live in [`core_page`] (ported from the former
+//! `query_exec_v1` executor). [`crate::query_exec_v1`] is a compatibility shim.
+
+mod core_page;
+
+pub use core_page::{
+    execute_plan, execute_rql, explain_rql_source, DocScan, EXEC_PROFILE,
+};
 
 use crate::app_v1::{Parameters, QueryBudget, QueryExplanation, QueryPage, QueryRunOptions};
 use crate::error::Error;
 use crate::plan_v1::{CollectionBindings, RqlPlanV1};
-use crate::query_exec_v1::{self, DocScan};
 use crate::rql_app_core::{compile_app_core, CompiledAppCore};
 use residiuum_heap::{CollectionId, HeapId};
 use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
 
-/// Architecture freeze profile id ([QUERY_BYTECODE_V1.md](../../../doc/todo/rql/QUERY_BYTECODE_V1.md)).
+/// Architecture freeze profile id ([QUERY_BYTECODE_V1.md](../../../../doc/todo/rql/QUERY_BYTECODE_V1.md)).
 pub const BYTECODE_PROFILE: &str = "residiuum-query-bytecode-v1";
 
 /// Host data-access capabilities only (Decision 0 / RQL-X1).
@@ -49,8 +52,8 @@ pub trait HostCapabilities {
 
 /// Compiled query bytecode envelope (logical plan carrier for this cut).
 ///
-/// Binary ISA encoding is residual; the envelope + single runtime entry are
-/// the architecture lock for RQL-X2 foundation.
+/// Binary ISA encoding remains residual; the envelope + single runtime own
+/// Core page semantics via [`core_page`].
 #[derive(Debug, Clone)]
 pub struct QueryBytecodeV1 {
     /// Profile label stamped on the envelope.
@@ -100,7 +103,7 @@ pub fn explain_core_source(
     collection_id: CollectionId,
     collection_name: &str,
 ) -> Result<QueryExplanation, Error> {
-    query_exec_v1::explain_rql_source(source, collection_id, collection_name)
+    explain_rql_source(source, collection_id, collection_name)
 }
 
 /// Execute bytecode against a host (product Core path).
@@ -119,7 +122,7 @@ pub fn execute_bytecode<H: HostCapabilities>(
         )));
     }
     let mut scan = HostDocScan(host);
-    query_exec_v1::execute_plan(
+    execute_plan(
         &mut scan,
         &bytecode.plan,
         params,
@@ -156,7 +159,7 @@ pub fn execute_core_rql<H: HostCapabilities>(
     )
 }
 
-/// Bridge: [`HostCapabilities`] → frozen [`DocScan`] during migration.
+/// Bridge: [`HostCapabilities`] → [`DocScan`] for [`core_page`].
 struct HostDocScan<'a, H: HostCapabilities>(&'a mut H);
 
 impl<H: HostCapabilities> DocScan for HostDocScan<'_, H> {
@@ -237,5 +240,10 @@ mod tests {
         )
         .expect("exec");
         assert!(page.rows.is_empty());
+    }
+
+    #[test]
+    fn core_page_owned_by_bytecode_module() {
+        assert_eq!(EXEC_PROFILE, "residiuum-app-core-exec-v1");
     }
 }

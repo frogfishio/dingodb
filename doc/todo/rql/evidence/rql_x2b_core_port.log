@@ -1,0 +1,6 @@
+RQL-X2b Core port 2026-08-05
+query_exec_v1 → shim re-export
+semantics → query_bytecode_v1/core_page.rs
+check_query_runtime_architecture OK (shim may not define pub fn execute_*)
+lib query_bytecode_v1 5/5; app6_page_executor 4/4; apb7_coverage_grade 4/4
+Residual: port rql_full_v1; delete shim; unify op 118

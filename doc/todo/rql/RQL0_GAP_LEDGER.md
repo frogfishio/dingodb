@@ -170,7 +170,8 @@ is forbidden.
 | **RQL-0D** | Decision 0 charter + feature freeze | RQL-0 | **labor closed** — [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) |
 | **RQL-X1** | Freeze query **bytecode** + host-capability boundary | RQL-0D | **labor closed** — [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md) (`residiuum-query-bytecode-v1`) |
 | **RQL-X2** | Foundation: product entry + host trait + Core route + CI gate | RQL-X1 | **labor closed** — `query_bytecode_v1`; evidence `rql_x2_foundation.log` |
-| **RQL-X2b** | Port semantics; emb+op118 singularity; equivalence; delete frozen executors; tighten CI | RQL-X2 | Production semantic code only in bytecode crate |
+| **RQL-X2b** | Port Core page semantics into bytecode; shrink `query_exec_v1` to shim | RQL-X2 | **labor closed** — `core_page.rs`; evidence `rql_x2b_core_port.log` |
+| **RQL-X2c** | Port full attach; delete shim + `execute_rql_full`; unify op 118; CI bytecode-only | RQL-X2b | One runtime; no production façade modules |
 | **RQL-C1** | Core product accept residuals | RQL-X2 (or principal waiver) | Scoreboard APP-6/APP-7/APB-7 → `accept` (principal) |
 | **RQL-F1** | Full explain artefact for `rql-full-v1` | RQL-0, Phase 3 surface | **labor closed** — port inventory only under Decision 0 |
 | **RQL-F2** | Op-118 enrich/within/project wire **or** explicit wire refuse | RQL-F1 | **labor closed (refuse path)** — parity deferred to shared runtime |
