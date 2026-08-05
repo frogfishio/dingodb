@@ -212,7 +212,9 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 | — | **APB-7 T5** ReadView-bound `6c7601a5` | `in_review` | labor done; not SI / no package accept |
 | — | **APB-7 T7** dual-pack + accept checklist `9e19bd5f` | `in_review` | suite + checklist; collection-plane dual green; **not** package accept |
 | — | **RQL-0** gap ledger `190a97bd` | `in_review` | [RQL0_GAP_LEDGER.md](../../todo/rql/RQL0_GAP_LEDGER.md); CRITICAL_PATH §4.6; sequence RQL-C1…RQL-Q1; **not** Gate-1 accept |
-| — | **RQL-F1** full explain (pre-stage) | `todo` | structured explain for `rql-full-v1`; next labor after RQL-0 |
+| — | **RQL-F1** full explain `cb09fb45` | `in_review` | `explain_rql_full` + `rql_full_explain` 3/3; no new syntax |
+| — | **RQL-F2** op-118 full-language refuse `f7fbd632` | `in_review` | `refuse_full_language_on_core_wire` on remote rql/explain; parity residual |
+| — | **RQL-I1** enrich index pushdown `dc4ee028` | `todo` | pre-staged; next labor after F1/F2 |
 | — | **RQL PATH T0** map `32d30efe` | `in_review` | [PATH_TO_FULL_RQL.md](../../todo/rql/PATH_TO_FULL_RQL.md); post-0.2.2 query de-risk |
 | — | **RQL PATH T1** Core baseline `0a5c700a` | `in_review` | Phase 1 labor: expanded corpus + execute oracle + residual checklist; **not** package accept |
 | — | **RQL PATH T2** expressiveness corpus `b4ebdaf9` | `in_review` | sql+ emit/refuse scaffold + Core gotchas; joins pending Phase 3 |

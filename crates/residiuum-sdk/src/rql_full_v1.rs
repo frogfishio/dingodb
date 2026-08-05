@@ -4,7 +4,7 @@
 //! Application Core (`rql-app-core-v1`) remains unchanged and still **rejects**
 //! `enrich` / `within` / `at rank`.
 //!
-//! Current slice (T3.9):
+//! Current slice (T3.9 + RQL-F1/F2 residual close):
 //! - ordered root pipeline: `enrich` / `within` / post-attach `where` interleaved
 //! - nested `within` depth (bounded by [`MAX_WITHIN_DEPTH`])
 //! - nested `where` inside `within` (ordered filter on carrier elements)
@@ -13,21 +13,28 @@
 //! - execute `exactly_one` / `optional` / `many` attach via foreign scan oracle
 //! - candidate `where` filters foreign docs before cardinality
 //! - [`execute_rql_full`] façade on [`HeapClient`] (base page + attach + project)
+//! - [`explain_rql_full`] structured explain (pipeline + base plan; no row scan)
+//! - op **118** Core wire **refuses** full-language constructs (`rql_feature_unavailable`)
 //! - refuse `at rank` / access policies (DDA residual)
 //!
 //! Not package accept. Not a claim that full RQL-v1 is product-ready.
 
-use crate::app_v1::{HeapClient, Parameters, QueryPage, QueryRunOptions};
+use crate::app_v1::{HeapClient, Parameters, QueryExplanation, QueryPage, QueryRunOptions};
 use crate::error::Error;
-use crate::plan_v1::CollectionBindings;
+use crate::plan_v1::{CollectionBindings, PLAN_HASH_DOMAIN};
 use crate::predicate::{resolve_path, Path, Predicate, Resolve};
-use crate::rql_app_core::{compile_app_core, CompiledAppCore};
+use crate::rql_app_core::{
+    compile_app_core, CompiledAppCore, DIAG_RQL_FEATURE_UNAVAILABLE,
+};
 use residiuum_heap::CollectionId;
-use serde_json::Value as JsonValue;
+use serde_json::{Map, Value as JsonValue};
 use std::collections::BTreeMap;
 
 /// Full-language compile profile (Phase 3 kickoff).
 pub const RQL_FULL_PROFILE: &str = "rql-full-v1";
+
+/// Domain separator for [`CompiledRqlFull::explain_hash`].
+pub const FULL_EXPLAIN_HASH_DOMAIN: &str = "residiuum:rql-full-v1:explain-v1";
 
 /// Diagnostic when an enrich cardinality cannot be satisfied.
 pub const DIAG_RQL_ENRICH_CARDINALITY: &str = "rql_enrich_cardinality";
@@ -167,6 +174,65 @@ impl CompiledRqlFull {
             FullPipelineStepV1::Enrich(_) | FullPipelineStepV1::Filter(_) => None,
         })
     }
+
+    /// Structured explain tree (base Core plan + pipeline + project). No rows.
+    pub fn to_explain_tree(&self) -> JsonValue {
+        let mut root = BTreeMap::new();
+        root.insert(
+            "profile".into(),
+            JsonValue::String(RQL_FULL_PROFILE.into()),
+        );
+        root.insert(
+            "base".into(),
+            self.base.plan.to_canonical_json(),
+        );
+        root.insert(
+            "base_plan_hash".into(),
+            JsonValue::String(bytes_to_hex(&self.base.plan.plan_hash())),
+        );
+        root.insert(
+            "base_source".into(),
+            JsonValue::String(self.base_source.clone()),
+        );
+        root.insert(
+            "pipeline".into(),
+            JsonValue::Array(
+                self.pipeline
+                    .iter()
+                    .map(pipeline_step_to_json)
+                    .collect(),
+            ),
+        );
+        match &self.project {
+            Some(items) => root.insert(
+                "project".into(),
+                JsonValue::Array(items.iter().map(project_item_to_json).collect()),
+            ),
+            None => root.insert("project".into(), JsonValue::Null),
+        };
+        root.insert(
+            "attach_oracle".into(),
+            JsonValue::String("scan_list_keys_get".into()),
+        );
+        root.insert(
+            "wire".into(),
+            JsonValue::String("local_facade_only".into()),
+        );
+        btree_to_json_obj(root)
+    }
+
+    /// Domain-separated BLAKE3 hash over [`Self::to_explain_tree`].
+    pub fn explain_hash(&self) -> [u8; 32] {
+        let body = serde_json::to_vec(&self.to_explain_tree()).expect("explain tree json");
+        let mut h = blake3::Hasher::new();
+        h.update(FULL_EXPLAIN_HASH_DOMAIN.as_bytes());
+        h.update(&[0u8]);
+        // Tie explain hash to the Core plan hash domain so Core drift invalidates.
+        h.update(PLAN_HASH_DOMAIN.as_bytes());
+        h.update(&[0u8]);
+        h.update(&body);
+        *h.finalize().as_bytes()
+    }
 }
 
 impl WithinStepV1 {
@@ -255,6 +321,174 @@ fn refuse_residual_constructs(source: &str) -> Result<(), Error> {
         }
     }
     Ok(())
+}
+
+/// True when source uses constructs that require [`compile_rql_full`] /
+/// [`execute_rql_full`] (not Application Core / op 118).
+pub fn source_uses_rql_full_constructs(source: &str) -> bool {
+    let lower = source.to_ascii_lowercase();
+    let padded = format!(" {} ", lower.replace('\t', " "));
+    if padded.contains(" enrich ")
+        || padded.contains("\nenrich ")
+        || lower.split_whitespace().any(|t| t == "enrich" || t == "within")
+        || padded.contains(" within ")
+    {
+        return true;
+    }
+    // Brace `project { … }` (flat Core `project a, b` is fine on Core wire).
+    let bytes = lower.as_bytes();
+    let mut i = 0usize;
+    let mut depth = 0usize;
+    while i < lower.len() {
+        match bytes[i] {
+            b'{' => {
+                depth += 1;
+                i += 1;
+                continue;
+            }
+            b'}' => {
+                depth = depth.saturating_sub(1);
+                i += 1;
+                continue;
+            }
+            _ => {}
+        }
+        if depth == 0 && matches_kw(&lower, i, "project") {
+            let after = i + "project".len();
+            let rest = source.get(after..).unwrap_or("").trim_start();
+            if rest.starts_with('{') {
+                return true;
+            }
+        }
+        i += 1;
+    }
+    false
+}
+
+/// Refuse full-language source on the Application Core / op **118** wire.
+///
+/// RQL-F2 honesty: enrich/within/brace-project are local façade only until a
+/// dedicated wire package lands. Callers must use [`execute_rql_full`].
+pub fn refuse_full_language_on_core_wire(source: &str) -> Result<(), Error> {
+    if source_uses_rql_full_constructs(source) {
+        return Err(Error::QueryInvalid(format!(
+            "{DIAG_RQL_FEATURE_UNAVAILABLE}: enrich/within/brace-project require \
+             execute_rql_full; not on Application Core op-118 wire"
+        )));
+    }
+    Ok(())
+}
+
+/// Structured explain for full RQL (compile only; no row materialization).
+pub fn explain_rql_full(
+    source: &str,
+    bindings: &CollectionBindings,
+) -> Result<QueryExplanation, Error> {
+    let compiled = compile_rql_full(source, bindings)?;
+    Ok(QueryExplanation {
+        plan_profile: RQL_FULL_PROFILE.into(),
+        plan_hash: compiled.explain_hash(),
+        tree: compiled.to_explain_tree(),
+    })
+}
+
+/// Explain using collection names discovered on [`HeapClient`].
+pub fn explain_rql_full_on_heap(
+    client: &mut HeapClient,
+    source: &str,
+) -> Result<QueryExplanation, Error> {
+    let infos = client.list_collections()?;
+    let mut bindings = CollectionBindings::default();
+    for info in &infos {
+        bindings.bind(&info.name, info.collection_id);
+    }
+    explain_rql_full(source, &bindings)
+}
+
+fn pipeline_step_to_json(step: &FullPipelineStepV1) -> JsonValue {
+    match step {
+        FullPipelineStepV1::Enrich(e) => {
+            let mut m = BTreeMap::new();
+            m.insert("kind".into(), JsonValue::String("enrich".into()));
+            m.insert("output".into(), JsonValue::String(e.output.clone()));
+            m.insert("using".into(), JsonValue::String(e.using_name.clone()));
+            m.insert(
+                "using_id".into(),
+                JsonValue::String(e.using_id.to_string()),
+            );
+            m.insert("left".into(), JsonValue::String(e.left.dotted()));
+            m.insert("right".into(), JsonValue::String(e.right.dotted()));
+            m.insert(
+                "expect".into(),
+                JsonValue::String(e.expect.as_str().into()),
+            );
+            match &e.candidate_where {
+                Some(p) => m.insert("candidate_where".into(), p.to_canonical_json()),
+                None => m.insert("candidate_where".into(), JsonValue::Null),
+            };
+            btree_to_json_obj(m)
+        }
+        FullPipelineStepV1::Within(w) => {
+            let mut m = BTreeMap::new();
+            m.insert("kind".into(), JsonValue::String("within".into()));
+            m.insert("carrier".into(), JsonValue::String(w.carrier.dotted()));
+            match &w.element_alias {
+                Some(a) => m.insert("alias".into(), JsonValue::String(a.clone())),
+                None => m.insert("alias".into(), JsonValue::Null),
+            };
+            m.insert(
+                "steps".into(),
+                JsonValue::Array(w.steps.iter().map(pipeline_step_to_json).collect()),
+            );
+            btree_to_json_obj(m)
+        }
+        FullPipelineStepV1::Filter(pred) => {
+            let mut m = BTreeMap::new();
+            m.insert("kind".into(), JsonValue::String("filter".into()));
+            m.insert("predicate".into(), pred.to_canonical_json());
+            btree_to_json_obj(m)
+        }
+    }
+}
+
+fn project_item_to_json(item: &ProjectItemV1) -> JsonValue {
+    match item {
+        ProjectItemV1::Leaf { output, source } => {
+            let mut m = BTreeMap::new();
+            m.insert("kind".into(), JsonValue::String("leaf".into()));
+            m.insert("output".into(), JsonValue::String(output.clone()));
+            m.insert("source".into(), JsonValue::String(source.dotted()));
+            btree_to_json_obj(m)
+        }
+        ProjectItemV1::Nested { output, fields } => {
+            let mut m = BTreeMap::new();
+            m.insert("kind".into(), JsonValue::String("nested".into()));
+            m.insert("output".into(), JsonValue::String(output.clone()));
+            m.insert(
+                "fields".into(),
+                JsonValue::Array(fields.iter().map(project_item_to_json).collect()),
+            );
+            btree_to_json_obj(m)
+        }
+    }
+}
+
+fn btree_to_json_obj(m: BTreeMap<String, JsonValue>) -> JsonValue {
+    let mut map = Map::new();
+    for (k, v) in m {
+        map.insert(k, v);
+    }
+    JsonValue::Object(map)
+}
+
+fn bytes_to_hex(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for &b in bytes {
+        out.push(HEX[(b >> 4) as usize] as char);
+        out.push(HEX[(b & 0xf) as usize] as char);
+    }
+    out
 }
 
 /// Extract top-level nested `project { … }` (brace form). Flat Core `project a, b` stays.

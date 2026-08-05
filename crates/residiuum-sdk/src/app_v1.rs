@@ -1534,7 +1534,9 @@ impl CollectionClient {
     /// evaluates predicates, pages with key / field-order continuation.
     ///
     /// **Remote:** product wire op **118** `rql_query` (APP-7 T6). Server
-    /// recompiles source; not a package-accept claim.
+    /// recompiles source; not a package-accept claim. Full-language
+    /// (`enrich` / `within` / brace `project`) is refused here — use
+    /// [`crate::execute_rql_full`] locally (RQL-F2).
     pub fn rql(
         &mut self,
         source: &str,
@@ -1551,6 +1553,7 @@ impl CollectionClient {
             wire_collection_id,
         } = &self.backend
         {
+            crate::rql_full_v1::refuse_full_language_on_core_wire(source)?;
             return self.rql_via_wire(
                 Arc::clone(remote),
                 wire_collection_id.clone(),
@@ -1576,6 +1579,7 @@ impl CollectionClient {
     /// RQL explain — plan tree + hash (no row scan).
     ///
     /// Remote uses op **118** with `explain: true` when available.
+    /// Full-language explain uses [`crate::explain_rql_full`] (not op 118).
     pub fn explain_rql(
         &mut self,
         source: &str,
@@ -1592,6 +1596,7 @@ impl CollectionClient {
             wire_collection_id,
         } = &self.backend
         {
+            crate::rql_full_v1::refuse_full_language_on_core_wire(source)?;
             let mut opts = options;
             opts.explain = true;
             let page = self.rql_via_wire(

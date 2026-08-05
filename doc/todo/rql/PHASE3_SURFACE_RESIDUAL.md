@@ -1,6 +1,6 @@
 # Phase 3 — `rql-full-v1` surface residual inventory
 
-Status: **labor 2026-08-05** · board `4994c4bd` (T3.10)  
+Status: **labor 2026-08-05** · T3.10 + **RQL-F1/F2 residual close**  
 Profile: **`rql-full-v1`**  
 Corpus: [`spec/app/v1/rql_full_v1_corpus_v1.json`](../../../spec/app/v1/rql_full_v1_corpus_v1.json)  
 Kickoff: [PHASE3_FULL_RQL_KICKOFF.md](./PHASE3_FULL_RQL_KICKOFF.md)  
@@ -18,29 +18,33 @@ Next packages: [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) §5
 | Nested brace `project { … }` after pipeline | **yes** |
 | Façade `execute_rql_full` (scan attach oracle) | **yes** |
 | Application Core still rejects enrich/within | **yes** (refuse lock) |
+| Structured `explain_rql_full` (pipeline + base plan) | **yes** (RQL-F1) |
+| Op-118 Core wire refuse for full-language | **yes** (RQL-F2 — explicit refuse, not wire parity) |
+| Pre-enrich root `where` stays in Core | **yes** (correct; not a defect) |
 
-## Residuals (not this Phase 3 labor)
+## Still open (not labor-closed this turn)
 
-| Residual | Why open |
-|---|---|
-| `at rank` / `access` policies | DDA-dependent (PATH / RQL_SPEC order) |
-| Index pushdown for enrich match keys | Scan oracle only today; no index claim |
-| Remote op-118 enrich/within/project wire | Façade is HeapClient-local attach |
-| Post-attach `where` global re-page / re-limit | Page-then-attach filters within Core page |
-| Nested `where` at root before enrich as pipeline Filter | Pre-enrich `where` stays in Core (correct) |
-| Full explain artifact for `rql-full-v1` | Spec § explain later |
-| Package accept / APB-7 accept | Principal gate; corpus ≠ accept |
+| Residual | Why open | Owner |
+|---|---|---|
+| `at rank` / `access` policies | DDA-dependent | **RQL-D1** |
+| Index pushdown for enrich match keys | Scan oracle only; no index claim | **RQL-I1** |
+| Remote op-118 enrich/within/project **parity** | F2 chose refuse; wire execute still absent | future after F2 decision |
+| Post-attach `where` global re-page / re-limit | Page-then-attach filters within Core page | design / later package |
+| Package accept / APB-7 accept | Principal gate | **RQL-C1** |
 
 ## Evidence commands
 
 ```bash
 export TMPDIR=$REPO/.tmp-test
 cargo test -p residiuum-sdk --test rql_full_corpus -- --test-threads=1
+cargo test -p residiuum-sdk --test rql_full_explain -- --test-threads=1
 ```
 
-Log: `doc/todo/rql/evidence/phase3_corpus.log`
+Logs: `doc/todo/rql/evidence/phase3_corpus.log`,
+`doc/todo/rql/evidence/phase3_explain_f1f2.log`
 
 ## Non-claim
 
-This inventory + corpus locks the **delivered attach-class surface**. It does **not**
-claim full RQL-v1 product readiness, query qualification, or index-backed enrich.
+This inventory locks the **delivered attach-class surface + explain + wire
+refuse**. It does **not** claim full RQL-v1 product readiness, query
+qualification, index-backed enrich, or op-118 enrich parity.

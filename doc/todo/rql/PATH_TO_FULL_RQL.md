@@ -23,7 +23,7 @@ queries perform?
 | **APP-5** Application Core compiler | **accept** | `from` / multi-`where` / `project` / `order` / coverage / consistency / budgets → plan; **rejects** `enrich` / `within` / `at rank` / access / Core-`after` |
 | **APP-6** page executor + cursors | **active** (labor largely in_review historically) | Bounded multipage execution for Core plans |
 | **APP-7 / APB-7** `rql_query` op **118** | **active**, **not package accept** | Embedded + remote façade path; dual-pack evidence; **no** product “query qualified” claim |
-| **RQL-v1 full language** (`rql-full-v1`) | labor through **T3.10** `in_review`; **not package accept** | Enrich/within/project + locked corpus; scan-attach façade; **not** on op-118 product wire; `at rank`/index residual |
+| **RQL-v1 full language** (`rql-full-v1`) | labor through **T3.10** + **F1/F2** `in_review`; **not package accept** | Enrich/within/project + explain + corpus; scan-attach façade; op 118 **refuses** full-language; `at rank`/index/parity residual |
 | **SQL-ish+ → RQL** | design [SQL_TO_RQL_SPEC.md](./SQL_TO_RQL_SPEC.md) | Spec only; not a shipped compiler package |
 | **v0.1 dialect** (`dialects/rql`) | guide [USER_GUIDE.md](../../RQL/USER_GUIDE.md) | ENR/SDA `from`/`enrich`/`project` subset — **parallel** to Application Core, not the APB-7 plan runtime |
 

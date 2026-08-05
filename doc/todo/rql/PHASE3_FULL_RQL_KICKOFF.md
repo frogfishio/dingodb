@@ -30,8 +30,11 @@ is **unchanged** and still rejects `enrich` / `within`.
 | Root-level pipeline `where` after enrich/within | **yes** (T3.8; page-then-attach) |
 | Nested post-pipeline `project { … }` | **yes** (T3.9) |
 | Surface corpus + residual inventory | **yes** (T3.10) |
-| `at rank` / access | **residual** (DDA) |
-| Index pushdown for match keys | **residual** |
+| Structured `explain_rql_full` | **yes** (RQL-F1) |
+| Op-118 Core wire refuse for full-language | **yes** (RQL-F2 refuse path) |
+| `at rank` / access | **residual** (DDA / RQL-D1) |
+| Index pushdown for match keys | **residual** (RQL-I1) |
+| Op-118 enrich/within **parity** | **residual** (after F2 refuse) |
 
 ## Two surfaces (honesty)
 
@@ -69,9 +72,11 @@ cargo test -p residiuum-sdk --test rql_full_nested_where -- --test-threads=1
 cargo test -p residiuum-sdk --test rql_full_root_where -- --test-threads=1
 cargo test -p residiuum-sdk --test rql_full_project -- --test-threads=1
 cargo test -p residiuum-sdk --test rql_full_corpus -- --test-threads=1
+cargo test -p residiuum-sdk --test rql_full_explain -- --test-threads=1
 ```
 
-Evidence: `doc/todo/rql/evidence/phase3_corpus.log`
+Evidence: `doc/todo/rql/evidence/phase3_corpus.log`,
+`doc/todo/rql/evidence/phase3_explain_f1f2.log`
 
 ## Non-claims
 
@@ -79,13 +84,13 @@ Evidence: `doc/todo/rql/evidence/phase3_corpus.log`
 - Not APB-7 package accept.
 - `at rank` / access still residual (DDA-dependent).
 - Post-attach `where` filters within the already-paged Core result (not global re-limit).
-- Façade is HeapClient-local scan attach — not remote op-118 enrich wire.
+- Façade is HeapClient-local scan attach — op 118 **refuses** full-language (not parity).
 
 ## Next slices
 
 Superseded by [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) §5:
 
-1. **RQL-F1** — structured `explain` for `rql-full-v1`.
-2. **RQL-F2** — op-118 enrich/within/project wire or explicit refuse.
-3. **RQL-I1** — index pushdown for enrich match keys.
-4. **RQL-D1** — `at rank` / access (DDA-dependent; do not invent early).
+1. **RQL-I1** — index pushdown for enrich match keys.
+2. Op-118 enrich/within **parity** (only if principal rejects refuse-path exit).
+3. **RQL-D1** — `at rank` / access (DDA-dependent; do not invent early).
+4. **RQL-C1** — principal Core/APB-7 accept.
