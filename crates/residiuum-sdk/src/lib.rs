@@ -56,16 +56,12 @@ pub mod predicate;
 pub mod plan_v1;
 /// RQL Application Core source → [`plan_v1::RqlPlanV1`] (`rql-app-core-v1`) — APP-5.
 pub mod rql_app_core;
-/// Full RQL attach compile/execute — compatibility shim → [`query_bytecode_v1`].
-pub mod rql_full_v1;
 /// SQL-ish+ → Application Core RQL emit/refuse (`residiuum-sql-plus-to-rql-v1`) — Phase 2 scaffold.
 pub mod sql_plus;
 /// Authenticated query continuation (`residiuum-cursor-v1`) — APP-6 mint/verify.
 pub mod cursor_v1;
-/// Query bytecode v1 — single product runtime (RQL-X2 / X2b; Decision 0).
+/// Query bytecode v1 — single product runtime (Decision 0 / RQL-X*).
 pub mod query_bytecode_v1;
-/// Compatibility re-exports of Core page APIs (shim → [`query_bytecode_v1`]).
-pub mod query_exec_v1;
 /// Stable bounded read views — APB-6 T1 scaffold.
 pub mod read_view_v1;
 mod history;

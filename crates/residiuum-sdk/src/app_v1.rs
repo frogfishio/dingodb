@@ -1553,7 +1553,7 @@ impl CollectionClient {
             wire_collection_id,
         } = &self.backend
         {
-            crate::rql_full_v1::refuse_full_language_on_core_wire(source)?;
+            crate::query_bytecode_v1::refuse_full_language_on_core_wire(source)?;
             return self.rql_via_wire(
                 Arc::clone(remote),
                 wire_collection_id.clone(),
@@ -1596,7 +1596,7 @@ impl CollectionClient {
             wire_collection_id,
         } = &self.backend
         {
-            crate::rql_full_v1::refuse_full_language_on_core_wire(source)?;
+            crate::query_bytecode_v1::refuse_full_language_on_core_wire(source)?;
             let mut opts = options;
             opts.explain = true;
             let page = self.rql_via_wire(
@@ -2002,7 +2002,7 @@ impl crate::query_bytecode_v1::HostCapabilities for CollectionClient {
     }
 }
 
-impl crate::query_exec_v1::DocScan for CollectionClient {
+impl crate::query_bytecode_v1::DocScan for CollectionClient {
     fn list_keys(
         &mut self,
         limit: Option<usize>,

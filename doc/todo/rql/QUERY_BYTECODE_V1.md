@@ -58,11 +58,11 @@ encoding of the same AST). It is **not** a second algebra.
 | Today | Under this freeze |
 |---|---|
 | Dialect `rql` → ENR+SDA **text** → `residiuum-sda` | Legal lineage; text is an interim encoding, not a second product runtime |
-| `query_exec_v1` | Illegal parallel semantic executor — **frozen**; port then delete |
-| `execute_rql_full` | Illegal parallel semantic executor — **frozen**; port then delete |
+| Former `query_exec_v1` / `execute_rql_full` | **Removed (X2d)** — semantics under `query_bytecode_v1/` |
+| Rust plan/AST as runtime input | Interim; **RQL-X3** freezes durable binary (or ENR+SDA-equivalent) ISA |
 
-RQL-X2 produces the durable bytecode encoding + shared runtime. Until then,
-no new features on the frozen Rust executors.
+RQL-X2d unified the product entry (emb + op 118). **RQL-X3** freezes the
+durable encoding so the ISA is not “whatever Rust structs we have today.”
 
 ---
 

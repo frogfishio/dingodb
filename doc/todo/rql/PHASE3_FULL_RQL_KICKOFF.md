@@ -61,7 +61,7 @@ Foreign load is complete `list_keys`+`get` — **not** an index claim.
 
 ```bash
 export TMPDIR=$REPO/.tmp-test
-cargo test -p residiuum-sdk --lib rql_full_v1 -- --test-threads=1
+cargo test -p residiuum-sdk --lib query_bytecode_v1 -- --test-threads=1
 cargo test -p residiuum-sdk --test rql_full_enrich_kickoff -- --test-threads=1
 cargo test -p residiuum-sdk --test rql_full_many_facade -- --test-threads=1
 cargo test -p residiuum-sdk --test rql_full_candidate_where -- --test-threads=1

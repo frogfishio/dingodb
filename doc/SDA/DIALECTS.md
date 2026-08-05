@@ -16,12 +16,13 @@ Dialects are frontends that *compile into* the same ENR+SDA IR / bytecode.
 They never redefine SDA meaning. Compile is the expensive semantic step;
 execution is shared.
 
-**Decision 0 / RQL-X1 (2026-08-05):** parallel product semantic executors are
+**Decision 0 / RQL-X* (2026-08-05):** parallel product semantic executors are
 forbidden. Architecture freeze:
 [QUERY_BYTECODE_V1.md](../todo/rql/QUERY_BYTECODE_V1.md)
-(`residiuum-query-bytecode-v1`). Host = scan/index/get only. Interim Rust
-executors (`query_exec_v1`, `execute_rql_full`) are frozen violations pending
-convergence — not a second doctrine.
+(`residiuum-query-bytecode-v1`). Host = scan/index/get only. Former Rust
+executors (`query_exec_v1` / `execute_rql_full`) were removed in X2d; product
+path is `query_bytecode_v1/`. Durable binary ISA remains **RQL-X3** — not a
+second doctrine.
 
 ```text
   Pure ENR+SDA ──┐

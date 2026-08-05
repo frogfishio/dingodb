@@ -40,21 +40,19 @@ Rust builder ┘                                      │
 | Multiple compiler stages | Host implementing filter / join / project / order / cardinality / pagination / missing-null / coverage |
 | Multiple physical access strategies | A second product runtime |
 
-**In-tree violation (feature-frozen):**
-
-- `crates/residiuum-sdk/src/query_exec_v1.rs` — Core / op-118 page semantics
-- `crates/residiuum-sdk/src/rql_full_v1.rs` (`execute_rql_full`) — attach/project façade semantics
+**Former violation (removed in X2d):** standalone `query_exec_v1` /
+`rql_full_v1` semantic modules — deleted; product path is
+`query_bytecode_v1/` only.
 
 **Allowed:** test-only reference interpreter as oracle (not a product path).
 
-**Honesty:** ENR+SDA currently compiles to text and runs through `residiuum-sda`;
-that is **not yet** a fully frozen query bytecode. Defining that bytecode and
-the host-capability boundary is the next architecture deliverable
-([QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) steps 1–8).
+**Honesty:** product entry is unified, but the durable **binary** bytecode
+encoding / ENR+SDA kernel lower is still residual (**RQL-X3**). See
+[QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md).
 
-**Gate:** until Decision 0 convergence architecture is frozen (bytecode + host
-boundary named), **no additional RQL feature work** proceeds (no S1 / D1 /
-wire-parity / within-index / new attach surface growth on the frozen executors).
+**Gate:** until X3 freezes the durable ISA (not only the Rust module layout),
+treat feature growth (S1 / D1 / wire-parity attach) as blocked unless principal
+waives.
 
 ---
 
@@ -75,9 +73,9 @@ Profiles in play (**Decision 0:** the first two are frozen violation surfaces to
 converge away from; they are not the intended product architecture):
 
 ```text
-rql-app-core-v1  → RqlPlanV1 → query_exec_v1 / op 118   (FROZEN — port then delete)
-rql-full-v1      → CompiledRqlFull → execute_rql_full    (FROZEN — port then delete)
-rql-source-v0.1  → ENR+SDA text → residiuum-sda          (kernel lineage; not frozen bytecode yet)
+rql-app-core-v1  → RqlPlanV1 → query_bytecode_v1 (core_page) / op 118
+rql-full-v1      → CompiledRqlFull → query_bytecode_v1 (full_attach)
+rql-source-v0.1  → ENR+SDA text → residiuum-sda          (kernel lineage; X3 encodes)
 sql+             → emit/refuse → logical plan            (frontend only; must share one runtime)
 
 TARGET:
@@ -171,8 +169,9 @@ is forbidden.
 | **RQL-X1** | Freeze query **bytecode** + host-capability boundary | RQL-0D | **labor closed** — [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md) (`residiuum-query-bytecode-v1`) |
 | **RQL-X2** | Foundation: product entry + host trait + Core route + CI gate | RQL-X1 | **labor closed** — `query_bytecode_v1`; evidence `rql_x2_foundation.log` |
 | **RQL-X2c** | Port full attach into bytecode; shim `rql_full_v1`; CI bytecode-only `execute_*` | RQL-X2b | **labor closed** — `full_attach.rs`; evidence `rql_x2c_full_port.log` |
-| **RQL-X2d** | Delete shim modules; unify op 118 onto bytecode runtime | RQL-X2c | No compat façade modules; wire + emb same entry |
-| **RQL-C1** | Core product accept residuals | RQL-X2 (or principal waiver) | Scoreboard APP-6/APP-7/APB-7 → `accept` (principal) |
+| **RQL-X2d** | Delete shim modules; unify op 118 onto bytecode runtime | RQL-X2c | **labor closed** — evidence `rql_x2d_shim_delete.log` |
+| **RQL-X3** | Durable binary bytecode ISA / ENR+SDA kernel lower | RQL-X2d | Encoding SoT ≠ Rust AST intermediate |
+| **RQL-C1** | Core product accept residuals | RQL-X3 (or principal waiver) | Scoreboard APP-6/APP-7/APB-7 → `accept` (principal) |
 | **RQL-F1** | Full explain artefact for `rql-full-v1` | RQL-0, Phase 3 surface | **labor closed** — port inventory only under Decision 0 |
 | **RQL-F2** | Op-118 enrich/within/project wire **or** explicit wire refuse | RQL-F1 | **labor closed (refuse path)** — parity deferred to shared runtime |
 | **RQL-I1** | Index pushdown for enrich match keys | RQL-F2 decision, Core index path | **labor closed** — port inventory; do not grow on frozen façade |
@@ -180,9 +179,9 @@ is forbidden.
 | **RQL-D1** | `at rank` / access policies | DDA specs + **RQL-X1** | Spec-first; only after DIRECT_ACCESS + bytecode owner frozen |
 | **RQL-Q1** | Query perf / read qualification campaign | RQL-C1 + shared runtime | CRITICAL_PATH §4.4 evidence law |
 
-**Explicitly not next:** further features on `query_exec_v1` / `execute_rql_full`,
-Studio/UI, search dialects, APB-8 aggregates syntax, store perf as RQL
-substitutes, Embedded product build-out.
+**Explicitly not next:** parallel semantic executors, Studio/UI, search
+dialects, APB-8 aggregates syntax, store perf as RQL substitutes, Embedded
+product build-out, premature “query qualified” without X3 honesty.
 
 ---
 
@@ -190,10 +189,10 @@ substitutes, Embedded product build-out.
 
 | Construct / change | Semantic owner | Execution owner | May add syntax? |
 |---|---|---|---|
-| All query meaning | RQL_SPEC + ENR/SDA | **one bytecode runtime** (RQL-X*) | No until RQL-X1 freezes bytecode |
-| Core surface (interim) | RQL_SPEC §3.1 + APP-5 | `query_exec_v1` (**frozen**) | No |
-| enrich / within / brace project (interim) | RQL_SPEC §6–9 | `execute_rql_full` (**frozen**) | No — port via RQL-X2 |
-| `at rank` / access | DIRECT_ACCESS_SPEC | DDA + shared bytecode (RQL-D1) | **No** until RQL-D1 + RQL-X1 |
+| All query meaning | RQL_SPEC + ENR/SDA | **one bytecode runtime** (`query_bytecode_v1`) | No until RQL-X3 freezes durable ISA |
+| Core surface | RQL_SPEC §3.1 + APP-5 | `query_bytecode_v1::core_page` | No feature growth pending X3 |
+| enrich / within / brace project | RQL_SPEC §6–9 | `query_bytecode_v1::full_attach` | No feature growth pending X3 |
+| `at rank` / access | DIRECT_ACCESS_SPEC | DDA + shared bytecode (RQL-D1) | **No** until RQL-D1 + RQL-X3 |
 | Aggregates | APB-8 / future spec | APB-8 | Out of RQL v1 |
 | SQL+ emit extensions | SQL_TO_RQL_SPEC | sql+ → logical plan → bytecode | Only via RQL-S1 after RQL-X1 |
 

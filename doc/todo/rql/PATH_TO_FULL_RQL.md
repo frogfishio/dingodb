@@ -167,10 +167,9 @@ de-risk.
 **Canonical answer:** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)
 
 ```text
-NEXT labor  = RQL-X2d delete shims + unify op 118
-LANDED      = Core + full attach in query_bytecode_v1/ (X2b/X2c)
-SHIMS       = query_exec_v1 + rql_full_v1 (re-export only)
+NEXT labor  = RQL-X3 durable bytecode ISA / kernel lower
+LANDED      = one runtime under query_bytecode_v1/ (X2b–X2d; emb + op 118)
 NOT next    = S1, D1, premature “query qualified”
 ```
 
-Prior Phase 3 / F1/F2/I1 labor is **port inventory** under Decision 0 — do not grow those executors.
+Prior Phase 3 / F1/F2/I1 labor is **port inventory** under Decision 0.

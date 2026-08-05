@@ -5,7 +5,9 @@
 //! 105–106 / 110–112 / 114–118 / 120–122 and secondary indexes 130–133.
 //!
 //! Op **118** `rql_query` is active (APP-7 T6) — Application Core page execution
-//! via store `list_keys`+`get`. Package accept remains principal-gated.
+//! through [`residiuum_sdk::execute_core_rql`] / [`residiuum_sdk::explain_core_source`]
+//! (same `query_bytecode_v1` runtime as embedded). Package accept remains
+//! principal-gated.
 
 use residiuum_client::b64u_decode;
 use residiuum_heap::{
@@ -13,8 +15,9 @@ use residiuum_heap::{
     OperationStatus, Rights,
 };
 use residiuum_sdk::{
-    execute_rql, explain_rql_source, AppQueryBudget, ConsistencyMode, Continuation, CoveragePolicy,
-    DocScan, Error as SdkError, Filter, Parameters, Pred, QueryRunOptions,
+    execute_core_rql, explain_core_source, refuse_full_language_on_core_wire, AppQueryBudget,
+    ConsistencyMode, Continuation, CoveragePolicy, HostCapabilities, Error as SdkError, Filter,
+    Parameters, Pred, QueryRunOptions,
 };
 use residiuum_store::{
     create_collection_idempotent, hex16, rebuild_object_entry_from_chain,
@@ -1306,13 +1309,13 @@ pub fn request_registry_allows(op_id: u16) -> bool {
 
 // --- APP-7 T6: op 118 rql_query -------------------------------------------------
 
-/// Store-backed [`DocScan`] for Application Core execution on the server.
+/// Store-backed [`HostCapabilities`] for Application Core on the server (op 118).
 struct HeapStoreDocScan<'a> {
     store: &'a HeapStore,
     collection_id: [u8; 16],
 }
 
-impl DocScan for HeapStoreDocScan<'_> {
+impl HostCapabilities for HeapStoreDocScan<'_> {
     fn list_keys(
         &mut self,
         limit: Option<usize>,
@@ -1349,7 +1352,7 @@ impl DocScan for HeapStoreDocScan<'_> {
         Ok(Some(json))
     }
 
-    fn try_equality_index_keys(
+    fn lookup_index_keys(
         &mut self,
         equalities: &[(String, Value)],
     ) -> Result<Option<Vec<String>>, SdkError> {
@@ -1440,7 +1443,10 @@ fn dispatch_rql_query(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> He
         let Some(src) = source else {
             return err_code(id, "validation_failed");
         };
-        match explain_rql_source(src, coll, &collection_name) {
+        if refuse_full_language_on_core_wire(src).is_err() {
+            return err_code(id, "rql_feature_unavailable");
+        }
+        match explain_core_source(src, coll, &collection_name) {
             Ok(ex) => {
                 return ok_id(
                     id,
@@ -1469,6 +1475,9 @@ fn dispatch_rql_query(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> He
         // plan-only / continuation-only residual: require source for T6 first cut.
         return err_code(id, "validation_failed");
     };
+    if refuse_full_language_on_core_wire(src).is_err() {
+        return err_code(id, "rql_feature_unavailable");
+    }
 
     let mut params = Parameters::default();
     if let Some(Value::Object(m)) = req.args.get("parameters") {
@@ -1523,7 +1532,7 @@ fn dispatch_rql_query(id: u64, req: &HeapRpcRequest, ctx: HeapDataCtx<'_>) -> He
         store: ctx.store,
         collection_id: *coll.as_bytes(),
     };
-    let page = match execute_rql(
+    let page = match execute_core_rql(
         &mut scan,
         src,
         &params,

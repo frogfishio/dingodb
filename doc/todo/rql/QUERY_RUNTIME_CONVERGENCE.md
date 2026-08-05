@@ -39,8 +39,7 @@ is the first convergence deliverable.
 
 | Surface | Role today | Status under Decision 0 |
 |---|---|---|
-| `query_exec_v1` (APP-6 / op 118 Core) | Production-shaped **semantic** page executor | **Feature freeze** |
-| `execute_rql_full` (`rql-full-v1`) | Local attach / project **semantic** façade | **Feature freeze** |
+| Former `query_exec_v1` / `execute_rql_full` | Parallel semantic executors | **Deleted** (X2d) — semantics live under `query_bytecode_v1/` |
 | Dialect `rql` → ENR+SDA text → `residiuum-sda` | Doctrine-aligned subset path | Keep as lineage; not a second product story |
 | Test-only reference interpreter | Oracle | Allowed **only** in tests; never a product path |
 
@@ -71,10 +70,11 @@ proceeds.
 | 1 Freeze `query_exec_v1` / `execute_rql_full` features | **done** (Decision 0 + module banners) |
 | 2 Define bytecode + host boundary | **done** — [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md) |
 | 3 Lower + single product entry (Core) | **foundation done** — `query_bytecode_v1` + `CollectionClient.rql` / builder `run` |
-| 4 Route op 118 through same runtime | **residual** (wire still server-local Core compile; emb entry unified) |
-| 5–7 Port Core / equivalence / shrink frozen Core executor | **X2b done** — Core in `query_bytecode_v1/core_page`; `query_exec_v1` shim |
-| 5–8 Port full attach; CI bytecode-only `execute_*` | **X2c done** — `full_attach.rs`; `rql_full_v1` shim |
-| Delete shims; unify op 118 | **RQL-X2d** |
+| 4 Route op 118 through same runtime | **X2d done** — server `HostCapabilities` + `execute_core_rql` |
+| 5–7 Port Core / equivalence / shrink frozen Core executor | **X2b done** — Core in `query_bytecode_v1/core_page` |
+| 5–8 Port full attach; CI bytecode-only `execute_*` | **X2c done** — `full_attach.rs` |
+| Delete shims; unify op 118 | **X2d done** — shims deleted; evidence `rql_x2d_shim_delete.log` |
+| Durable binary ISA / ENR+SDA kernel lower | **RQL-X3** (next) |
 
 ---
 

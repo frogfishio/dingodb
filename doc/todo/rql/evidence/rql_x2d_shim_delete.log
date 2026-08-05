@@ -1,0 +1,6 @@
+RQL-X2d delete shims + unify op 118 — 2026-08-05
+Deleted: query_exec_v1.rs, rql_full_v1.rs (no pub mod)
+Op 118: HostCapabilities + execute_core_rql / explain_core_source
+CI: check_query_runtime_architecture.sh forbids shims; requires execute_core_rql in heap_dispatch
+lib query_bytecode_v1 22/22; app6 4/4; rql_full_corpus 2/2; apb7_coverage 4/4; har4 7/7
+Residual: durable binary bytecode encoding / ENR+SDA kernel lower (not text interim)

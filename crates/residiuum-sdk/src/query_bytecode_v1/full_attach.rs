@@ -1,8 +1,7 @@
 //! Full RQL attach / enrich / within / project — owned by [`crate::query_bytecode_v1`].
 //!
 //! Ported from the former standalone `rql_full_v1` façade (Decision 0 / RQL-X2c).
-//! Product entry remains via [`crate::query_bytecode_v1`] re-exports;
-//! [`crate::rql_full_v1`] is a compatibility shim.
+//! Product entry remains via [`crate::query_bytecode_v1`] re-exports.
 //!
 //! Normative: [RQL_SPEC.md](../../../../doc/wip/query/RQL_SPEC.md) enrich / within.
 //! Application Core (`rql-app-core-v1`) still **rejects** `enrich` / `within` /

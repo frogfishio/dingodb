@@ -1,6 +1,6 @@
 # RQL — what is left to do
 
-Status: **2026-08-05** · **X2c full-attach port landed** · Decision 0 in force  
+Status: **2026-08-05** · **X2d landed** · Decision 0 in force  
 Detail: [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md) · [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md)
 
 ---
@@ -8,7 +8,7 @@ Detail: [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md) · [QUERY_RUNTIME_CONVERG
 ## Ordered programme
 
 ```text
-Decision 0 → X1 → X2 → X2b Core → X2c full attach (done) → X2d delete shims + op118 → …
+Decision 0 → X1 → X2 → X2b → X2c → X2d (done) → X3 binary ISA / kernel lower → …
 ```
 
 ---
@@ -17,23 +17,23 @@ Decision 0 → X1 → X2 → X2b Core → X2c full attach (done) → X2d delete 
 
 | # | Who | Package | What “done” means |
 |---|---|---|---|
-| **1** | **Labor** | **RQL-X2d** | Delete `query_exec_v1` + `rql_full_v1` shim modules (callers → bytecode); unify op **118** through same runtime; CI/docs honesty |
+| **1** | **Labor** | **RQL-X3** | Durable binary (or ENR+SDA-equivalent) bytecode encoding; stop treating Rust AST + text SDA as the product ISA |
 
 ---
 
-## Just shipped (X2c)
+## Just shipped (X2d)
 
-- Full attach lives in `query_bytecode_v1/full_attach.rs`
-- `rql_full_v1` is re-export shim only (same pattern as `query_exec_v1`)
-- CI allowlist: **only** `query_bytecode_v1/` may define `pub fn execute_*`
-- Evidence: `doc/todo/rql/evidence/rql_x2c_full_port.log`
+- Deleted `query_exec_v1.rs` + `rql_full_v1.rs` shim modules
+- Op **118** uses `HostCapabilities` + `execute_core_rql` / `explain_core_source`
+- CI forbids shim files; requires `execute_core_rql` on server dispatch
+- Evidence: `doc/todo/rql/evidence/rql_x2d_shim_delete.log`
 
 ---
 
 ## One-line status
 
 ```text
-NEXT labor  = RQL-X2d delete shims + unify op 118
-LANDED      = Core + full attach owned by query_bytecode_v1/
-STILL THERE = thin compat shims (no local execute_* bodies)
+NEXT labor  = RQL-X3 durable bytecode ISA / kernel lower
+LANDED      = one product runtime under query_bytecode_v1/ (emb + op 118)
+HONESTY     = encoding still Rust plan/AST intermediate — not frozen binary ISA yet
 ```

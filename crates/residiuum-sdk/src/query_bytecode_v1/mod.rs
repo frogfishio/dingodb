@@ -6,10 +6,10 @@
 //! **Decision 0:** this module tree is the only legal **product** semantic runtime.
 //! Host adapters supply scan/index/get only.
 //!
-//! - [`core_page`] — Application Core page semantics (former `query_exec_v1`)
-//! - [`full_attach`] — enrich / within / project (former `rql_full_v1`)
+//! - [`core_page`] — Application Core page semantics
+//! - [`full_attach`] — enrich / within / project
 //!
-//! Compatibility shims: [`crate::query_exec_v1`], [`crate::rql_full_v1`].
+//! Embedded SDK and op **118** both enter through this module tree.
 
 mod core_page;
 mod full_attach;
