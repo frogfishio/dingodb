@@ -1,14 +1,14 @@
 # RQL — what is left to do
 
-Status: **2026-08-05** · **X3 landed** · Decision 0 in force  
-Detail: [QUERY_ISA_V1.md](./QUERY_ISA_V1.md) · [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md)
+Status: **2026-08-05** · **X4 Core kernel landed** · Decision 0 in force  
+Detail: [QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md) · [QUERY_ISA_V1.md](./QUERY_ISA_V1.md)
 
 ---
 
 ## Ordered programme
 
 ```text
-Decision 0 → X1 → X2 → X2b → X2c → X2d → X3 ISA (done) → X4 ENR+SDA kernel eval → …
+… → X3 ISA → X4 Core SDA kernel (done) → X4b full_attach kernel → …
 ```
 
 ---
@@ -17,23 +17,22 @@ Decision 0 → X1 → X2 → X2b → X2c → X2d → X3 ISA (done) → X4 ENR+SD
 
 | # | Who | Package | What “done” means |
 |---|---|---|---|
-| **1** | **Labor** | **RQL-X4** | Execute Core (then attach) by lowering ISA / plan into ENR+SDA kernel eval — not a parallel Rust algebra |
+| **1** | **Labor** | **RQL-X4b** | Port `full_attach` filters / candidate `where` onto the same SDA kernel (no parallel `Predicate::eval` product path) |
 
 ---
 
-## Just shipped (X3)
+## Just shipped (X4)
 
-- Durable ISA profile `residiuum-query-isa-v1` (`RQB1`)
-- Core+full encode/decode; `QueryBytecodeV1.isa` stamped on lower
-- `execute_isa_bytes` for Core through the same runtime
-- Evidence: `doc/todo/rql/evidence/rql_x3_isa.log`
+- Core `where` → SDA via `residiuum-query-kernel-sda-v1`
+- `execute_plan` filters through kernel; oracle tests vs `Predicate::eval`
+- Evidence: `doc/todo/rql/evidence/rql_x4_kernel.log`
 
 ---
 
 ## One-line status
 
 ```text
-NEXT labor  = RQL-X4 ENR+SDA kernel eval substrate
-LANDED      = durable ISA carrier + unified runtime (emb + op 118)
-HONESTY     = ISA is AST carrier; not yet residiuum-sda eval
+NEXT labor  = RQL-X4b full_attach on SDA kernel
+LANDED      = Core where meaning via residiuum-sda (+ ISA + unified runtime)
+HONESTY     = attach still uses Predicate::eval internally
 ```

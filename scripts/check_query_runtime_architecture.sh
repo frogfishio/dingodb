@@ -13,6 +13,7 @@ SDK_SRC="$ROOT/crates/residiuum-sdk/src"
 [[ -f "$SDK_SRC/query_bytecode_v1/core_page.rs" ]] || fail "missing core_page.rs"
 [[ -f "$SDK_SRC/query_bytecode_v1/full_attach.rs" ]] || fail "missing full_attach.rs"
 [[ -f "$SDK_SRC/query_bytecode_v1/isa.rs" ]] || fail "missing isa.rs (RQL-X3)"
+[[ -f "$SDK_SRC/query_bytecode_v1/kernel.rs" ]] || fail "missing kernel.rs (RQL-X4)"
 
 # Shims must be gone.
 [[ ! -e "$SDK_SRC/query_exec_v1.rs" ]] || fail "query_exec_v1.rs shim must be deleted"
@@ -28,6 +29,10 @@ rg -q 'pub fn decode_isa' "$SDK_SRC/query_bytecode_v1/isa.rs" \
   || fail "decode_isa missing"
 rg -q 'pub isa:' "$SDK_SRC/query_bytecode_v1/mod.rs" \
   || fail "QueryBytecodeV1.isa field missing"
+rg -q 'residiuum-query-kernel-sda-v1' "$SDK_SRC/query_bytecode_v1/kernel.rs" \
+  || fail "KERNEL_PROFILE missing"
+rg -q 'compile_where' "$SDK_SRC/query_bytecode_v1/core_page.rs" \
+  || fail "core_page must compile_where (SDA kernel)"
 
 rg -q 'residiuum-query-bytecode-v1' "$SDK_SRC/query_bytecode_v1/mod.rs" \
   || fail "BYTECODE_PROFILE missing residiuum-query-bytecode-v1"

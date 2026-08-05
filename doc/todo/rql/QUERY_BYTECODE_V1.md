@@ -60,10 +60,10 @@ encoding of the same AST). It is **not** a second algebra.
 | Dialect `rql` → ENR+SDA **text** → `residiuum-sda` | Legal lineage; text is an interim encoding, not a second product runtime |
 | Former `query_exec_v1` / `execute_rql_full` | **Removed (X2d)** — semantics under `query_bytecode_v1/` |
 | Rust plan/AST as runtime input | Interim views — durable carrier is **`residiuum-query-isa-v1`** ([QUERY_ISA_V1.md](./QUERY_ISA_V1.md)) |
-| ENR+SDA text → `residiuum-sda` | Legal lineage; kernel **eval** as product substrate remains **RQL-X4** |
+| ENR+SDA text → `residiuum-sda` | Legal lineage; Core `where` now evaluates via kernel ([QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md)) |
 
-RQL-X3 freezes the durable ISA encoding. **RQL-X4** lowers execution into the
-ENR+SDA kernel evaluator.
+RQL-X3 freezes the durable ISA encoding. **RQL-X4** landed Core `where` on
+`residiuum-sda`. **RQL-X4b** ports full attach filters onto the same kernel.
 
 ---
 
@@ -168,7 +168,8 @@ violation.
 ## 9. Non-claims
 
 - No claim that bytecode encoding is unimplemented — see [QUERY_ISA_V1.md](./QUERY_ISA_V1.md).
-- No claim that ENR+SDA **eval** is the product executor yet (RQL-X4).
+- No claim that ENR+SDA **eval** is unused — Core `where` uses
+  [QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md); attach residual is X4b.
 - No APP-6 / APP-7 / APB-7 package accept.
 - No full RQL product qualification.
 - Phase 3 corpora remain **port inventory + evidence**, not a second architecture.

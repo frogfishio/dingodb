@@ -1,0 +1,448 @@
+//! ENR+SDA kernel substrate for Core predicate meaning (RQL-X4).
+//!
+//! Profile: **`residiuum-query-kernel-sda-v1`**
+//! Normative: [QUERY_KERNEL_SDA_V1.md](../../../../../doc/todo/rql/QUERY_KERNEL_SDA_V1.md)
+//!
+//! Application Core `where` evaluates through [`sda_core`] boolean programs
+//! lowered from [`Predicate`]. Host remains scan/index/get only.
+//!
+//! [`Predicate::eval`] remains the equivalence oracle in tests — not a second
+//! product path once Core page uses this module.
+
+use crate::error::Error;
+use crate::predicate::{CompareOp, Operand, Path, Predicate};
+use serde_json::Value as JsonValue;
+use std::collections::BTreeMap;
+
+/// Kernel profile id (SDA eval substrate for query meaning).
+pub const KERNEL_PROFILE: &str = "residiuum-query-kernel-sda-v1";
+
+/// Compiled Core `where` as a parsed SDA boolean program.
+#[derive(Debug)]
+pub struct CompiledKernelWhere {
+    /// Profile stamp.
+    pub profile: &'static str,
+    /// SDA source text (params already substituted).
+    pub source: String,
+    prog: sda_core::Program,
+}
+
+impl CompiledKernelWhere {
+    /// Evaluate against one document (`input` binding).
+    pub fn eval_doc(&self, doc: &JsonValue) -> Result<bool, Error> {
+        match self.prog.run_json("input", doc.clone()) {
+            Ok(JsonValue::Bool(b)) => Ok(b),
+            Ok(other) => Err(Error::QueryInvalid(format!(
+                "kernel SDA expected bool, got {other}"
+            ))),
+            Err(e) => Err(Error::QueryInvalid(format!(
+                "kernel SDA eval failed: {e}; src={}",
+                self.source
+            ))),
+        }
+    }
+}
+
+/// Lower Application Core `where` + bound params → SDA boolean program.
+pub fn compile_where(
+    pred: &Predicate,
+    params: &BTreeMap<String, JsonValue>,
+) -> Result<CompiledKernelWhere, Error> {
+    let source = lower_predicate(pred, params)?;
+    let prog = sda_core::Program::parse(&source).map_err(|e| {
+        Error::QueryInvalid(format!(
+            "kernel SDA parse failed: {e}; src={source}"
+        ))
+    })?;
+    Ok(CompiledKernelWhere {
+        profile: KERNEL_PROFILE,
+        source,
+        prog,
+    })
+}
+
+/// Lower predicate AST → SDA boolean expression (no trailing `;`).
+pub fn lower_predicate(
+    pred: &Predicate,
+    params: &BTreeMap<String, JsonValue>,
+) -> Result<String, Error> {
+    lower_pred(pred, params)
+}
+
+fn lower_pred(pred: &Predicate, params: &BTreeMap<String, JsonValue>) -> Result<String, Error> {
+    match pred {
+        Predicate::True => Ok("true".into()),
+        Predicate::False => Ok("false".into()),
+        Predicate::Cmp { cmp, left, right } => lower_cmp(*cmp, left, right, params),
+        Predicate::In {
+            left,
+            list,
+            negated,
+        } => {
+            let gp = match resolve_operand(left, params)? {
+                OpLower::Path(p) => path_get(&p)?,
+                OpLower::Lit(_) => {
+                    return Err(Error::QueryInvalid(
+                        "kernel: `in` left operand must be a path".into(),
+                    ));
+                }
+            };
+            let items = list
+                .iter()
+                .map(json_to_sda_literal)
+                .collect::<Vec<_>>()
+                .join(", ");
+            let member = format!("mapOpt({gp}, x => x in Seq[{items}]) = Some(true)");
+            if *negated {
+                // Residiuum: absent → false for `not in`; present ∩ not member.
+                Ok(format!("({gp} != None and not ({member}))"))
+            } else {
+                Ok(member)
+            }
+        }
+        Predicate::Present { path } => {
+            let gp = path_get(path)?;
+            Ok(format!("{gp} != None"))
+        }
+        Predicate::Missing { path } => {
+            let gp = path_get(path)?;
+            Ok(format!("{gp} = None"))
+        }
+        Predicate::IsNull { path, negated } => {
+            let gp = path_get(path)?;
+            if *negated {
+                // present and not null
+                Ok(format!("mapOpt({gp}, x => x != null) = Some(true)"))
+            } else {
+                Ok(format!("{gp} = Some(null)"))
+            }
+        }
+        Predicate::StartsWith { path, prefix } => {
+            let gp = path_get(path)?;
+            Ok(format!(
+                "mapOpt({gp}, s => startsWith(s, {})) = Some(true)",
+                sda_string_literal(prefix)
+            ))
+        }
+        Predicate::Contains { path, needle } => {
+            let gp = path_get(path)?;
+            let lit = json_to_sda_literal(needle);
+            if needle.is_string() {
+                Ok(format!(
+                    "((mapOpt({gp}, v => typeOf(v) = \"str\") = Some(true) and mapOpt({gp}, v => strContains(v, {lit})) = Some(true)) or (mapOpt({gp}, v => typeOf(v) = \"seq\") = Some(true) and mapOpt({gp}, v => {lit} in v) = Some(true)))"
+                ))
+            } else {
+                Ok(format!("mapOpt({gp}, v => {lit} in v) = Some(true)"))
+            }
+        }
+        Predicate::And { args } => {
+            if args.is_empty() {
+                return Ok("true".into());
+            }
+            let parts = args
+                .iter()
+                .map(|a| Ok(format!("({})", lower_pred(a, params)?)))
+                .collect::<Result<Vec<_>, Error>>()?;
+            Ok(parts.join(" and "))
+        }
+        Predicate::Or { args } => {
+            if args.is_empty() {
+                return Ok("false".into());
+            }
+            let parts = args
+                .iter()
+                .map(|a| Ok(format!("({})", lower_pred(a, params)?)))
+                .collect::<Result<Vec<_>, Error>>()?;
+            Ok(parts.join(" or "))
+        }
+        Predicate::Not { arg } => Ok(format!("not ({})", lower_pred(arg, params)?)),
+    }
+}
+
+enum OpLower {
+    Path(Path),
+    Lit(JsonValue),
+}
+
+fn resolve_operand(
+    op: &Operand,
+    params: &BTreeMap<String, JsonValue>,
+) -> Result<OpLower, Error> {
+    match op {
+        Operand::Path { path } => Ok(OpLower::Path(path.clone())),
+        Operand::Literal { value } => Ok(OpLower::Lit(value.clone())),
+        Operand::Param { name } => match params.get(name) {
+            Some(v) => Ok(OpLower::Lit(v.clone())),
+            None => Err(Error::QueryInvalid(format!(
+                "unbound predicate parameter `{name}`"
+            ))),
+        },
+    }
+}
+
+fn lower_cmp(
+    cmp: CompareOp,
+    left: &Operand,
+    right: &Operand,
+    params: &BTreeMap<String, JsonValue>,
+) -> Result<String, Error> {
+    let l = resolve_operand(left, params)?;
+    let r = resolve_operand(right, params)?;
+    match (l, r) {
+        (OpLower::Lit(a), OpLower::Lit(b)) => {
+            let ok = lit_compare(cmp, &a, &b);
+            Ok(if ok { "true" } else { "false" }.into())
+        }
+        (OpLower::Path(p), OpLower::Lit(v)) => path_lit_cmp(cmp, &p, &v),
+        (OpLower::Lit(v), OpLower::Path(p)) => match cmp {
+            CompareOp::Eq | CompareOp::Ne => path_lit_cmp(cmp, &p, &v),
+            CompareOp::Lt => path_lit_cmp(CompareOp::Gt, &p, &v),
+            CompareOp::Lte => path_lit_cmp(CompareOp::Gte, &p, &v),
+            CompareOp::Gt => path_lit_cmp(CompareOp::Lt, &p, &v),
+            CompareOp::Gte => path_lit_cmp(CompareOp::Lte, &p, &v),
+        },
+        (OpLower::Path(a), OpLower::Path(b)) => path_path_cmp(cmp, &a, &b),
+    }
+}
+
+fn path_lit_cmp(cmp: CompareOp, path: &Path, lit: &JsonValue) -> Result<String, Error> {
+    let gp = path_get(path)?;
+    let lit_s = json_to_sda_literal(lit);
+    Ok(match cmp {
+        // Absent = x → false (None ≠ Some)
+        CompareOp::Eq => format!("{gp} = Some({lit_s})"),
+        // Absent != x → false (mapOpt None → None ≠ Some(true))
+        CompareOp::Ne => format!("mapOpt({gp}, x => x != {lit_s}) = Some(true)"),
+        CompareOp::Lt => format!("mapOpt({gp}, x => x < {lit_s}) = Some(true)"),
+        CompareOp::Lte => format!("mapOpt({gp}, x => x <= {lit_s}) = Some(true)"),
+        CompareOp::Gt => format!("mapOpt({gp}, x => x > {lit_s}) = Some(true)"),
+        CompareOp::Gte => format!("mapOpt({gp}, x => x >= {lit_s}) = Some(true)"),
+    })
+}
+
+fn path_path_cmp(cmp: CompareOp, a: &Path, b: &Path) -> Result<String, Error> {
+    let ga = path_get(a)?;
+    let gb = path_get(b)?;
+    // Both must be Present; Absent on either side → false (Residiuum §6.2).
+    Ok(match cmp {
+        CompareOp::Eq => format!("({ga} != None and {gb} != None and {ga} = {gb})"),
+        CompareOp::Ne => format!("({ga} != None and {gb} != None and {ga} != {gb})"),
+        CompareOp::Lt => {
+            format!("mapOpt({ga}, x => mapOpt({gb}, y => x < y)) = Some(Some(true))")
+        }
+        CompareOp::Lte => {
+            format!("mapOpt({ga}, x => mapOpt({gb}, y => x <= y)) = Some(Some(true))")
+        }
+        CompareOp::Gt => {
+            format!("mapOpt({ga}, x => mapOpt({gb}, y => x > y)) = Some(Some(true))")
+        }
+        CompareOp::Gte => {
+            format!("mapOpt({ga}, x => mapOpt({gb}, y => x >= y)) = Some(Some(true))")
+        }
+    })
+}
+
+fn path_get(path: &Path) -> Result<String, Error> {
+    if path.0.first().map(|s| s.as_str()) == Some("$key") {
+        return Err(Error::QueryInvalid(
+            "kernel: `$key` in where is residual (not yet lowered to SDA)".into(),
+        ));
+    }
+    let segs: Vec<String> = path.0.iter().map(|s| sda_string_literal(s)).collect();
+    Ok(format!("getPath(input, Seq[{}])", segs.join(", ")))
+}
+
+fn lit_compare(cmp: CompareOp, a: &JsonValue, b: &JsonValue) -> bool {
+    match cmp {
+        CompareOp::Eq => a == b,
+        CompareOp::Ne => a != b,
+        CompareOp::Lt | CompareOp::Lte | CompareOp::Gt | CompareOp::Gte => {
+            // Mirror predicate ord_cmp for constants.
+            match (a, b) {
+                (JsonValue::Number(x), JsonValue::Number(y)) => {
+                    let (Some(xf), Some(yf)) = (x.as_f64(), y.as_f64()) else {
+                        return match (x.as_i64(), y.as_i64()) {
+                            (Some(xi), Some(yi)) => match cmp {
+                                CompareOp::Lt => xi < yi,
+                                CompareOp::Lte => xi <= yi,
+                                CompareOp::Gt => xi > yi,
+                                CompareOp::Gte => xi >= yi,
+                                _ => false,
+                            },
+                            _ => false,
+                        };
+                    };
+                    match cmp {
+                        CompareOp::Lt => xf < yf,
+                        CompareOp::Lte => xf <= yf,
+                        CompareOp::Gt => xf > yf,
+                        CompareOp::Gte => xf >= yf,
+                        _ => false,
+                    }
+                }
+                (JsonValue::String(x), JsonValue::String(y)) => match cmp {
+                    CompareOp::Lt => x < y,
+                    CompareOp::Lte => x <= y,
+                    CompareOp::Gt => x > y,
+                    CompareOp::Gte => x >= y,
+                    _ => false,
+                },
+                _ => false,
+            }
+        }
+    }
+}
+
+fn sda_string_literal(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for ch in s.chars() {
+        match ch {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if c.is_control() => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
+fn json_to_sda_literal(v: &JsonValue) -> String {
+    match v {
+        JsonValue::Null => "null".into(),
+        JsonValue::Bool(b) => if *b { "true" } else { "false" }.into(),
+        JsonValue::Number(n) => n.to_string(),
+        JsonValue::String(s) => sda_string_literal(s),
+        JsonValue::Array(items) => {
+            let inner = items
+                .iter()
+                .map(json_to_sda_literal)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("Seq[{inner}]")
+        }
+        JsonValue::Object(map) => {
+            let inner = map
+                .iter()
+                .map(|(k, val)| format!("{} -> {}", sda_string_literal(k), json_to_sda_literal(val)))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("Map{{{inner}}}")
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::predicate::{CompareOp, Operand, Path};
+    use serde_json::json;
+
+    fn eq_oracle(pred: &Predicate, doc: &JsonValue, params: &BTreeMap<String, JsonValue>) {
+        let k = compile_where(pred, params).expect("compile");
+        let via_kernel = k.eval_doc(doc).expect("kernel");
+        let via_pred = pred.eval(doc, params).expect("pred");
+        assert_eq!(
+            via_kernel, via_pred,
+            "mismatch kernel={via_kernel} pred={via_pred}\nsrc={}\ndoc={doc}",
+            k.source
+        );
+    }
+
+    #[test]
+    fn kernel_profile_constant() {
+        assert_eq!(KERNEL_PROFILE, "residiuum-query-kernel-sda-v1");
+    }
+
+    #[test]
+    fn eq_absent_null_and_value() {
+        let pred = Predicate::Cmp {
+            cmp: CompareOp::Eq,
+            left: Operand::path(Path::parse_dotted("status").unwrap()),
+            right: Operand::literal(json!("active")),
+        };
+        let params = BTreeMap::new();
+        eq_oracle(&pred, &json!({}), &params);
+        eq_oracle(&pred, &json!({"status": null}), &params);
+        eq_oracle(&pred, &json!({"status": "active"}), &params);
+        eq_oracle(&pred, &json!({"status": "paused"}), &params);
+    }
+
+    #[test]
+    fn ne_absent_is_false() {
+        let pred = Predicate::Cmp {
+            cmp: CompareOp::Ne,
+            left: Operand::path(Path::parse_dotted("status").unwrap()),
+            right: Operand::literal(json!("active")),
+        };
+        let params = BTreeMap::new();
+        eq_oracle(&pred, &json!({}), &params);
+        eq_oracle(&pred, &json!({"status": "active"}), &params);
+        eq_oracle(&pred, &json!({"status": "x"}), &params);
+    }
+
+    #[test]
+    fn present_missing_isnull() {
+        let params = BTreeMap::new();
+        let path = Path::parse_dotted("x").unwrap();
+        eq_oracle(&Predicate::Present { path: path.clone() }, &json!({}), &params);
+        eq_oracle(
+            &Predicate::Present { path: path.clone() },
+            &json!({"x": null}),
+            &params,
+        );
+        eq_oracle(&Predicate::Missing { path: path.clone() }, &json!({}), &params);
+        eq_oracle(
+            &Predicate::IsNull {
+                path: path.clone(),
+                negated: false,
+            },
+            &json!({"x": null}),
+            &params,
+        );
+        eq_oracle(
+            &Predicate::IsNull {
+                path,
+                negated: true,
+            },
+            &json!({"x": 1}),
+            &params,
+        );
+    }
+
+    #[test]
+    fn param_eq() {
+        let mut params = BTreeMap::new();
+        params.insert("s".into(), json!("active"));
+        let pred = Predicate::Cmp {
+            cmp: CompareOp::Eq,
+            left: Operand::path(Path::parse_dotted("status").unwrap()),
+            right: Operand::param("s"),
+        };
+        eq_oracle(&pred, &json!({"status": "active"}), &params);
+        eq_oracle(&pred, &json!({"status": "paused"}), &params);
+        eq_oracle(&pred, &json!({}), &params);
+    }
+
+    #[test]
+    fn starts_with_and_contains() {
+        let params = BTreeMap::new();
+        let pred = Predicate::StartsWith {
+            path: Path::parse_dotted("name").unwrap(),
+            prefix: "Ad".into(),
+        };
+        eq_oracle(&pred, &json!({"name": "Ada"}), &params);
+        eq_oracle(&pred, &json!({"name": "Bob"}), &params);
+        eq_oracle(&pred, &json!({}), &params);
+        let pred = Predicate::Contains {
+            path: Path::parse_dotted("tags").unwrap(),
+            needle: json!("x"),
+        };
+        eq_oracle(&pred, &json!({"tags": ["x", "y"]}), &params);
+        eq_oracle(&pred, &json!({"tags": ["z"]}), &params);
+    }
+}

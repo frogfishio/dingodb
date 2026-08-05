@@ -167,8 +167,8 @@ de-risk.
 **Canonical answer:** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)
 
 ```text
-NEXT labor  = RQL-X4 ENR+SDA kernel eval substrate
-LANDED      = ISA carrier + one runtime under query_bytecode_v1/ (X2b–X3; emb + op 118)
+NEXT labor  = RQL-X4b full_attach on SDA kernel
+LANDED      = Core where via residiuum-sda + ISA + one runtime (X2b–X4)
 NOT next    = S1, D1, premature “query qualified”
 ```
 

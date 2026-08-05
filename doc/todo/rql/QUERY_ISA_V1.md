@@ -63,8 +63,9 @@ Full-language ISA is encode/decode proven; Core wire execute stays on
 
 ## 4. Honesty / residual
 
-- Encoding is **ENR+SDA-equivalent AST carrier**, not yet evaluation inside
-  `residiuum-sda`. Kernel eval as shared substrate is **RQL-X4**.
+- Encoding is durable AST carrier; Core **eval** of `where` is via
+  [QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md).
+- Full attach kernel port remains **RQL-X4b**.
 - No claim that remote op 118 ships ISA bytes on the wire yet (packing residual).
 
 ---

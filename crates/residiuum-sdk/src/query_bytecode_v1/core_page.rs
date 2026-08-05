@@ -5,7 +5,8 @@
 //!
 //! Normative: CORE plan §10 / §14 APP-6 (partial). Compiles via
 //! [`crate::rql_app_core::compile_app_core`], scans with `list_keys` + `get`,
-//! evaluates predicates with [`crate::predicate::Predicate::eval`].
+//! evaluates predicates via the ENR+SDA kernel ([`super::kernel`]).
+//! [`Predicate::eval`] is the test oracle only.
 //!
 //! **T2 budgets:** `max_documents`, `max_bytes`, `max_result_bytes`.
 //! **T3 multipage field-order:** cursor `last_sort_tuple` carries order-term
@@ -134,6 +135,8 @@ pub fn execute_plan<S: DocScan>(
     let started = Instant::now();
     check_governance(options, started)?;
 
+    let where_k = super::kernel::compile_where(&plan.where_pred, params)?;
+
     let budget = merge_budgets(source_budget, options.budget);
     let page_size = options
         .page_size
@@ -222,7 +225,7 @@ pub fn execute_plan<S: DocScan>(
                         examined_bytes = examined_bytes.saturating_add(json_byte_len(&doc));
                         check_doc_budget(budget, examined_docs)?;
                         check_bytes_budget(budget, examined_bytes)?;
-                        if plan.where_pred.eval(&doc, params)? {
+                        if where_k.eval_doc(&doc)? {
                             last_full_for_cursor = Some((key.clone(), doc.clone()));
                             let value = project_doc(&doc, plan.project.as_ref())?;
                             let row_len = json_byte_len(&value);
@@ -247,7 +250,7 @@ pub fn execute_plan<S: DocScan>(
                     examined_bytes = examined_bytes.saturating_add(json_byte_len(&doc));
                     check_doc_budget(budget, examined_docs)?;
                     check_bytes_budget(budget, examined_bytes)?;
-                    if plan.where_pred.eval(&doc, params)? {
+                    if where_k.eval_doc(&doc)? {
                         full.push((key, doc));
                     }
                 } else {
@@ -307,7 +310,7 @@ pub fn execute_plan<S: DocScan>(
                         examined_bytes = examined_bytes.saturating_add(json_byte_len(&doc));
                         check_doc_budget(budget, examined_docs)?;
                         check_bytes_budget(budget, examined_bytes)?;
-                        if plan.where_pred.eval(&doc, params)? {
+                        if where_k.eval_doc(&doc)? {
                             last_full_for_cursor = Some((key.clone(), doc.clone()));
                             let value = project_doc(&doc, plan.project.as_ref())?;
                             let row_len = json_byte_len(&value);
@@ -340,7 +343,7 @@ pub fn execute_plan<S: DocScan>(
                     examined_bytes = examined_bytes.saturating_add(json_byte_len(&doc));
                     check_doc_budget(budget, examined_docs)?;
                     check_bytes_budget(budget, examined_bytes)?;
-                    if plan.where_pred.eval(&doc, params)? {
+                    if where_k.eval_doc(&doc)? {
                         full.push((key, doc));
                     }
                 } else {
@@ -402,8 +405,7 @@ pub fn execute_plan<S: DocScan>(
                 !has_later_match(
                     scan,
                     last_k,
-                    &plan.where_pred,
-                    params,
+                    &where_k,
                     budget,
                     examined_docs,
                     examined_bytes,
@@ -600,8 +602,7 @@ fn check_result_budget(budget: Option<QueryBudget>, result_bytes: u64) -> Result
 fn has_later_match<S: DocScan>(
     scan: &mut S,
     after_key: &str,
-    pred: &Predicate,
-    params: &BTreeMap<String, JsonValue>,
+    where_k: &super::kernel::CompiledKernelWhere,
     budget: Option<QueryBudget>,
     mut examined_docs: u64,
     mut examined_bytes: u64,
@@ -625,7 +626,7 @@ fn has_later_match<S: DocScan>(
                 if budget.and_then(|b| b.max_bytes).is_some_and(|m| examined_bytes > m) {
                     return Ok(false);
                 }
-                if pred.eval(&doc, params)? {
+                if where_k.eval_doc(&doc)? {
                     return Ok(true);
                 }
             } else {

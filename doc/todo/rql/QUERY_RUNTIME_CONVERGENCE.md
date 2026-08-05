@@ -75,7 +75,8 @@ proceeds.
 | 5–8 Port full attach; CI bytecode-only `execute_*` | **X2c done** — `full_attach.rs` |
 | Delete shims; unify op 118 | **X2d done** — shims deleted; evidence `rql_x2d_shim_delete.log` |
 | Durable binary ISA carrier | **X3 done** — [QUERY_ISA_V1.md](./QUERY_ISA_V1.md); evidence `rql_x3_isa.log` |
-| ENR+SDA kernel eval substrate | **RQL-X4** (next) |
+| ENR+SDA kernel eval (Core `where`) | **X4 done** — [QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md); evidence `rql_x4_kernel.log` |
+| Full attach on same kernel | **RQL-X4b** (next) |
 
 ---
 

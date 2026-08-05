@@ -10,12 +10,14 @@
 //! - [`core_page`] — Application Core page semantics
 //! - [`full_attach`] — enrich / within / project
 //! - [`isa`] — durable binary program encoding (RQL-X3)
+//! - [`kernel`] — ENR+SDA eval substrate for Core `where` (RQL-X4)
 //!
 //! Embedded SDK and op **118** both enter through this module tree.
 
 mod core_page;
 mod full_attach;
 mod isa;
+mod kernel;
 
 pub use core_page::{
     execute_plan, execute_rql, explain_rql_source, DocScan, EXEC_PROFILE,
@@ -34,6 +36,7 @@ pub use isa::{
     decode_isa, encode_core_program, encode_full_program, isa_hash, QueryIsaFullSection,
     QueryIsaProgram, ISA_MAGIC, ISA_PROFILE, ISA_VERSION,
 };
+pub use kernel::{compile_where, lower_predicate, CompiledKernelWhere, KERNEL_PROFILE};
 
 use crate::app_v1::{Parameters, QueryBudget, QueryExplanation, QueryPage, QueryRunOptions};
 use crate::error::Error;

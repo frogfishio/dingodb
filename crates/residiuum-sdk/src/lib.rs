@@ -124,7 +124,8 @@ pub use query_bytecode_v1::{
     QueryIsaProgram, RqlFullExecuteOptions, RqlFullPage, WithinStepV1, BYTECODE_PROFILE,
     DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL, DIAG_RQL_PROJECTION_CONFLICT,
     DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE, EXEC_PROFILE, FULL_EXPLAIN_HASH_DOMAIN, ISA_MAGIC,
-    ISA_PROFILE, ISA_VERSION, MAX_PROJECT_DEPTH, MAX_WITHIN_DEPTH, RQL_FULL_PROFILE,
+    ISA_PROFILE, ISA_VERSION, KERNEL_PROFILE, MAX_PROJECT_DEPTH, MAX_WITHIN_DEPTH, RQL_FULL_PROFILE,
+    compile_where, lower_predicate, CompiledKernelWhere,
 };
 pub use read_view_v1::{
     AuthoritativeFrontier, FrontierDrift, FrontierKind, PinCapability, ReadView, ReadViewInfo,

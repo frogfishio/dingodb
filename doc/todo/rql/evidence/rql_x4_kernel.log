@@ -1,0 +1,7 @@
+RQL-X4 ENR+SDA kernel substrate 2026-08-05
+Profile residiuum-query-kernel-sda-v1
+Module query_bytecode_v1/kernel.rs — Predicate→SDA lower; Core execute_plan filters via kernel
+Equivalence tests vs Predicate::eval (absent/null/ne/param/starts_with/contains)
+Doc QUERY_KERNEL_SDA_V1.md
+lib query_bytecode_v1 32/32; app6 4; apb7 4; rql_full_corpus 2
+Residual: X4b full_attach Predicate::eval → same kernel; $key-in-where
