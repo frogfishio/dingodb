@@ -167,9 +167,10 @@ de-risk.
 **Canonical answer:** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)
 
 ```text
-NEXT        = RQL-C1 accept (principal) / optional wire+$key residuals
+NEXT labor  = none on Decision 0 spine (labor closed through X4b)
+NEXT human  = RQL-C1 accept (or waiver)
 LANDED      = ISA + SDA kernel for Core and attach (X2b–X4b)
-NOT next    = S1, D1 without principal waiver
+NOT next    = S1, D1 without principal waiver; premature “query qualified”
 ```
 
 Prior Phase 3 / F1/F2/I1 labor is **port inventory** under Decision 0.
