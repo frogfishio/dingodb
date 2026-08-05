@@ -362,8 +362,32 @@ rg -n 'fn run_vm_attach' -A 80 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
   || fail "run_vm_attach foreign_cache must be CollectionId-keyed (RQL-R1)"
 rg -qi 'R1' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark R1"
-rg -qi 'QVM1|durable QVM|mandatory' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
-  || fail "SoT must name mandatory QVM1 residual"
+# RQL-QVM1: durable QVM bytecode is executable authority (not optional).
+rg -q 'fn encode_qvm' "$SDK_SRC/query_bytecode_v1/qvm.rs" \
+  || fail "missing encode_qvm (RQL-QVM1)"
+rg -q 'fn decode_qvm' "$SDK_SRC/query_bytecode_v1/qvm.rs" \
+  || fail "missing decode_qvm (RQL-QVM1)"
+rg -q 'fn materialize_qvm' "$SDK_SRC/query_bytecode_v1/qvm.rs" \
+  || fail "missing materialize_qvm (RQL-QVM1)"
+rg -q 'b"QVM1"' "$SDK_SRC/query_bytecode_v1/qvm.rs" \
+  || fail "QVM magic must be QVM1"
+rg -q 'struct VmPool' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
+  || fail "missing VmPool (RQL-QVM1)"
+# VmProgram must not keep pipeline/project semantic sidecar fields.
+if rg -n 'pub struct VmProgram' -A 20 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
+  | rg -q 'pipeline:|project:'; then
+  fail "VmProgram must not carry pipeline/project sidecars (RQL-QVM1)"
+fi
+if rg -n 'pub struct VmProgram' -A 20 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
+  | rg -q 'pub core:'; then
+  fail "VmProgram must not carry core sidecar field (RQL-QVM1); use VmPool"
+fi
+rg -n 'fn execute_decoded_core' -A 40 "$MOD" | rg -q 'materialize_qvm' \
+  || fail "execute_decoded_core must materialize QVM (RQL-QVM1)"
+rg -n 'fn execute_full_isa_with' -A 80 "$FULL" | rg -q 'materialize_qvm' \
+  || fail "execute_full_isa_with must materialize QVM (RQL-QVM1)"
+rg -qi 'QVM1 labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must mark QVM1 labor closed"
 rg -qi 'VM1 rejected|rejected.*VM1|VM1 / P1c' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark VM1 rejected"
 
@@ -425,4 +449,4 @@ rg -q 'QUERY_IR_RESIDUAL' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
 rg -qi 'P1b labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark P1b labor closed"
 
-echo "check_query_runtime_architecture: OK (R1 dialect refuse + cache-by-id; VM0–VM4 intermediate; VM1/P1c rejected; QVM1 mandatory; Decision 0 OPEN; C1 forbidden)"
+echo "check_query_runtime_architecture: OK (R1+QVM1; VM0–VM4 intermediate; VM1/P1c rejected; VM1R residual; Decision 0 OPEN; C1 forbidden)"

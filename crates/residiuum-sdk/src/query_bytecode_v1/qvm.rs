@@ -1,0 +1,426 @@
+//! Durable Query VM bytecode (**RQL-QVM1**).
+//!
+//! Profile: **`residiuum-query-vm-v1`** · magic **`QVM1`** (distinct from `RQB1`).
+//! Normative: [QUERY_VM_V1.md](../../../../../doc/todo/rql/QUERY_VM_V1.md)
+//!
+//! This is the **executable** authority: opcode stream + constant-pool operands.
+//! `RQB1` remains a compile/AST carrier that lowers into QVM before run.
+//! Decision 0 remains OPEN; **RQL-C1 must not be accepted.**
+
+use crate::app_v1::QueryBudget;
+use crate::error::Error;
+use crate::plan_v1::RqlPlanV1;
+use crate::predicate::Predicate;
+use residiuum_heap::CollectionId;
+use serde_json::Value as JsonValue;
+
+use super::full_attach::FullPipelineStepV1;
+use super::isa::{
+    parse_pipeline_step, parse_project_item, pipeline_step_json, project_item_json,
+};
+use super::vm::{OpCode, VM_PROFILE, VM_VERSION};
+use super::vm_exec::{VmImm, VmInstr, VmPool, VmProgram};
+
+/// Durable QVM magic (`QVM1`).
+pub const QVM_MAGIC: &[u8; 4] = b"QVM1";
+
+/// Hard cap on total QVM bytes.
+pub const QVM_MAX_TOTAL_BYTES: usize = 1 << 20;
+/// Hard cap on each length-prefixed blob.
+pub const QVM_MAX_BLOB_BYTES: usize = 1 << 20;
+
+const FLAG_BUDGET: u8 = 0x01;
+const FLAGS_KNOWN: u8 = FLAG_BUDGET;
+
+const IMM_NONE: u8 = 0;
+const IMM_COLLECTION: u8 = 1;
+const IMM_CORE: u8 = 2;
+const IMM_ENRICH: u8 = 3;
+const IMM_WITHIN: u8 = 4;
+const IMM_FILTER_ATTACH: u8 = 5;
+const IMM_PROJECT_BRACE: u8 = 6;
+
+/// Encode a lowered [`VmProgram`] into durable QVM bytes.
+pub(crate) fn encode_qvm(prog: &VmProgram) -> Result<Vec<u8>, Error> {
+    if prog.profile != VM_PROFILE {
+        return Err(Error::QueryInvalid(format!(
+            "qvm encode: profile mismatch {:?}",
+            prog.profile
+        )));
+    }
+    let core_body = prog.pool.core.canonical_bytes();
+    let mut flags: u8 = 0;
+    if prog.budget.is_some() {
+        flags |= FLAG_BUDGET;
+    }
+    let mut out = Vec::with_capacity(32 + core_body.len() + prog.ops.len() * 8);
+    out.extend_from_slice(QVM_MAGIC);
+    out.push(VM_VERSION);
+    out.push(flags);
+    push_u32(&mut out, core_body.len() as u32);
+    out.extend_from_slice(&core_body);
+    if let Some(b) = prog.budget {
+        push_budget(&mut out, b);
+    }
+    push_u32(&mut out, prog.ops.len() as u32);
+    for instr in &prog.ops {
+        out.push(instr.op.as_u8());
+        encode_imm(&mut out, &instr.imm)?;
+    }
+    if out.len() > QVM_MAX_TOTAL_BYTES {
+        return Err(Error::QueryInvalid(format!(
+            "qvm: encoded length {} exceeds max {QVM_MAX_TOTAL_BYTES}",
+            out.len()
+        )));
+    }
+    Ok(out)
+}
+
+/// Decode durable QVM bytes into a [`VmProgram`] (executable authority).
+pub(crate) fn decode_qvm(bytes: &[u8]) -> Result<VmProgram, Error> {
+    if bytes.len() > QVM_MAX_TOTAL_BYTES {
+        return Err(Error::QueryInvalid(format!(
+            "qvm: total length {} exceeds max {QVM_MAX_TOTAL_BYTES}",
+            bytes.len()
+        )));
+    }
+    if bytes.len() < 10 {
+        return Err(Error::QueryInvalid("qvm: truncated header".into()));
+    }
+    if &bytes[0..4] != QVM_MAGIC.as_slice() {
+        return Err(Error::QueryInvalid("qvm: bad magic (want QVM1)".into()));
+    }
+    if bytes[4] != VM_VERSION {
+        return Err(Error::QueryInvalid(format!(
+            "qvm: unsupported version {}",
+            bytes[4]
+        )));
+    }
+    let flags = bytes[5];
+    if flags & !FLAGS_KNOWN != 0 {
+        return Err(Error::QueryInvalid(format!(
+            "qvm: reserved flag bits set ({flags:#04x})"
+        )));
+    }
+    let mut off = 6;
+    let core_len = read_u32(bytes, &mut off)? as usize;
+    if core_len > QVM_MAX_BLOB_BYTES {
+        return Err(Error::QueryInvalid(format!(
+            "qvm: core blob {core_len} exceeds max {QVM_MAX_BLOB_BYTES}"
+        )));
+    }
+    if off + core_len > bytes.len() {
+        return Err(Error::QueryInvalid("qvm: truncated core".into()));
+    }
+    let core = decode_core_plan(&bytes[off..off + core_len])?;
+    off += core_len;
+    let budget = if flags & FLAG_BUDGET != 0 {
+        Some(read_budget(bytes, &mut off)?)
+    } else {
+        None
+    };
+    let op_count = read_u32(bytes, &mut off)? as usize;
+    let mut ops = Vec::with_capacity(op_count);
+    for _ in 0..op_count {
+        if off >= bytes.len() {
+            return Err(Error::QueryInvalid("qvm: truncated ops".into()));
+        }
+        let op = OpCode::from_u8(bytes[off]).ok_or_else(|| {
+            Error::QueryInvalid(format!("qvm: unknown opcode {:#04x}", bytes[off]))
+        })?;
+        off += 1;
+        let imm = decode_imm(bytes, &mut off)?;
+        ops.push(VmInstr { op, imm });
+    }
+    if off != bytes.len() {
+        return Err(Error::QueryInvalid(format!(
+            "qvm: trailing {} bytes",
+            bytes.len() - off
+        )));
+    }
+    Ok(VmProgram {
+        profile: VM_PROFILE,
+        ops,
+        pool: VmPool { core },
+        budget,
+    })
+}
+
+/// Lower → encode → decode so product execute consumes QVM authority (RQL-QVM1).
+pub(crate) fn materialize_qvm(prog: &VmProgram) -> Result<VmProgram, Error> {
+    let bytes = encode_qvm(prog)?;
+    decode_qvm(&bytes)
+}
+
+fn encode_imm(out: &mut Vec<u8>, imm: &VmImm) -> Result<(), Error> {
+    match imm {
+        VmImm::None => out.push(IMM_NONE),
+        VmImm::Collection(id) => {
+            out.push(IMM_COLLECTION);
+            out.extend_from_slice(id.as_bytes());
+        }
+        VmImm::Core => out.push(IMM_CORE),
+        VmImm::Enrich(e) => {
+            out.push(IMM_ENRICH);
+            let body = serde_json::to_vec(&pipeline_step_json(&FullPipelineStepV1::Enrich(
+                e.clone(),
+            ))?)
+            .map_err(|e| Error::QueryInvalid(format!("qvm enrich json: {e}")))?;
+            push_blob(out, &body)?;
+        }
+        VmImm::Within(w) => {
+            out.push(IMM_WITHIN);
+            let body = serde_json::to_vec(&pipeline_step_json(&FullPipelineStepV1::Within(
+                w.clone(),
+            ))?)
+            .map_err(|e| Error::QueryInvalid(format!("qvm within json: {e}")))?;
+            push_blob(out, &body)?;
+        }
+        VmImm::FilterAttach(p) => {
+            out.push(IMM_FILTER_ATTACH);
+            let body = serde_json::to_vec(&p.to_canonical_json())
+                .map_err(|e| Error::QueryInvalid(format!("qvm filter json: {e}")))?;
+            push_blob(out, &body)?;
+        }
+        VmImm::ProjectBrace(fields) => {
+            out.push(IMM_PROJECT_BRACE);
+            let arr: Result<Vec<_>, _> = fields.iter().map(project_item_json).collect();
+            let body = serde_json::to_vec(&JsonValue::Array(arr?))
+                .map_err(|e| Error::QueryInvalid(format!("qvm project json: {e}")))?;
+            push_blob(out, &body)?;
+        }
+    }
+    Ok(())
+}
+
+fn decode_imm(bytes: &[u8], off: &mut usize) -> Result<VmImm, Error> {
+    if *off >= bytes.len() {
+        return Err(Error::QueryInvalid("qvm: truncated imm tag".into()));
+    }
+    let tag = bytes[*off];
+    *off += 1;
+    match tag {
+        IMM_NONE => Ok(VmImm::None),
+        IMM_COLLECTION => {
+            if *off + 16 > bytes.len() {
+                return Err(Error::QueryInvalid("qvm: truncated collection id".into()));
+            }
+            let mut idb = [0u8; 16];
+            idb.copy_from_slice(&bytes[*off..*off + 16]);
+            *off += 16;
+            let id = CollectionId::from_bytes(idb).map_err(|e| {
+                Error::QueryInvalid(format!("qvm: collection id: {e}"))
+            })?;
+            Ok(VmImm::Collection(id))
+        }
+        IMM_CORE => Ok(VmImm::Core),
+        IMM_ENRICH => {
+            let body = read_blob(bytes, off)?;
+            let v: JsonValue = serde_json::from_slice(&body)
+                .map_err(|e| Error::QueryInvalid(format!("qvm enrich json: {e}")))?;
+            match parse_pipeline_step(&v)? {
+                FullPipelineStepV1::Enrich(e) => Ok(VmImm::Enrich(e)),
+                _ => Err(Error::QueryInvalid("qvm: enrich imm kind mismatch".into())),
+            }
+        }
+        IMM_WITHIN => {
+            let body = read_blob(bytes, off)?;
+            let v: JsonValue = serde_json::from_slice(&body)
+                .map_err(|e| Error::QueryInvalid(format!("qvm within json: {e}")))?;
+            match parse_pipeline_step(&v)? {
+                FullPipelineStepV1::Within(w) => Ok(VmImm::Within(w)),
+                _ => Err(Error::QueryInvalid("qvm: within imm kind mismatch".into())),
+            }
+        }
+        IMM_FILTER_ATTACH => {
+            let body = read_blob(bytes, off)?;
+            let v: JsonValue = serde_json::from_slice(&body)
+                .map_err(|e| Error::QueryInvalid(format!("qvm filter json: {e}")))?;
+            Ok(VmImm::FilterAttach(Predicate::from_plan_json(&v)?))
+        }
+        IMM_PROJECT_BRACE => {
+            let body = read_blob(bytes, off)?;
+            let v: JsonValue = serde_json::from_slice(&body)
+                .map_err(|e| Error::QueryInvalid(format!("qvm project json: {e}")))?;
+            let arr = v
+                .as_array()
+                .ok_or_else(|| Error::QueryInvalid("qvm project must be array".into()))?;
+            let fields = arr
+                .iter()
+                .map(parse_project_item)
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(VmImm::ProjectBrace(fields))
+        }
+        other => Err(Error::QueryInvalid(format!(
+            "qvm: unknown imm tag {other:#04x}"
+        ))),
+    }
+}
+
+fn decode_core_plan(body: &[u8]) -> Result<RqlPlanV1, Error> {
+    let v: JsonValue = serde_json::from_slice(body)
+        .map_err(|e| Error::QueryInvalid(format!("qvm core json: {e}")))?;
+    RqlPlanV1::from_plan_vector_json(&v)
+}
+
+fn push_blob(out: &mut Vec<u8>, body: &[u8]) -> Result<(), Error> {
+    if body.len() > QVM_MAX_BLOB_BYTES {
+        return Err(Error::QueryInvalid(format!(
+            "qvm: blob {} exceeds max {QVM_MAX_BLOB_BYTES}",
+            body.len()
+        )));
+    }
+    push_u32(out, body.len() as u32);
+    out.extend_from_slice(body);
+    Ok(())
+}
+
+fn read_blob(bytes: &[u8], off: &mut usize) -> Result<Vec<u8>, Error> {
+    let len = read_u32(bytes, off)? as usize;
+    if len > QVM_MAX_BLOB_BYTES {
+        return Err(Error::QueryInvalid(format!(
+            "qvm: blob {len} exceeds max {QVM_MAX_BLOB_BYTES}"
+        )));
+    }
+    if *off + len > bytes.len() {
+        return Err(Error::QueryInvalid("qvm: truncated blob".into()));
+    }
+    let body = bytes[*off..*off + len].to_vec();
+    *off += len;
+    Ok(body)
+}
+
+fn push_u32(out: &mut Vec<u8>, n: u32) {
+    out.extend_from_slice(&n.to_le_bytes());
+}
+
+fn read_u32(bytes: &[u8], off: &mut usize) -> Result<u32, Error> {
+    if *off + 4 > bytes.len() {
+        return Err(Error::QueryInvalid("qvm: need u32".into()));
+    }
+    let n = u32::from_le_bytes(bytes[*off..*off + 4].try_into().expect("4"));
+    *off += 4;
+    Ok(n)
+}
+
+fn push_budget(out: &mut Vec<u8>, b: QueryBudget) {
+    let mut flags: u8 = 0;
+    if b.max_documents.is_some() {
+        flags |= 0x01;
+    }
+    if b.max_bytes.is_some() {
+        flags |= 0x02;
+    }
+    if b.max_result_bytes.is_some() {
+        flags |= 0x04;
+    }
+    out.push(flags);
+    if let Some(n) = b.max_documents {
+        out.extend_from_slice(&n.to_le_bytes());
+    }
+    if let Some(n) = b.max_bytes {
+        out.extend_from_slice(&n.to_le_bytes());
+    }
+    if let Some(n) = b.max_result_bytes {
+        out.extend_from_slice(&n.to_le_bytes());
+    }
+}
+
+fn read_budget(bytes: &[u8], off: &mut usize) -> Result<QueryBudget, Error> {
+    if *off >= bytes.len() {
+        return Err(Error::QueryInvalid("qvm: truncated budget flags".into()));
+    }
+    let flags = bytes[*off];
+    *off += 1;
+    if flags & !0x07 != 0 {
+        return Err(Error::QueryInvalid(format!(
+            "qvm: reserved budget flags ({flags:#04x})"
+        )));
+    }
+    let mut b = QueryBudget {
+        max_documents: None,
+        max_bytes: None,
+        max_result_bytes: None,
+    };
+    if flags & 0x01 != 0 {
+        if *off + 8 > bytes.len() {
+            return Err(Error::QueryInvalid("qvm: truncated max_documents".into()));
+        }
+        b.max_documents = Some(u64::from_le_bytes(
+            bytes[*off..*off + 8].try_into().expect("8"),
+        ));
+        *off += 8;
+    }
+    if flags & 0x02 != 0 {
+        if *off + 8 > bytes.len() {
+            return Err(Error::QueryInvalid("qvm: truncated max_bytes".into()));
+        }
+        b.max_bytes = Some(u64::from_le_bytes(
+            bytes[*off..*off + 8].try_into().expect("8"),
+        ));
+        *off += 8;
+    }
+    if flags & 0x04 != 0 {
+        if *off + 8 > bytes.len() {
+            return Err(Error::QueryInvalid("qvm: truncated max_result_bytes".into()));
+        }
+        b.max_result_bytes = Some(u64::from_le_bytes(
+            bytes[*off..*off + 8].try_into().expect("8"),
+        ));
+        *off += 8;
+    }
+    Ok(b)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::plan_v1::{CollectionBindings, PlanBuilder};
+    use crate::query_bytecode_v1::vm_exec::lower_core;
+    use residiuum_heap::CollectionId;
+
+    fn uuidish(seed: u8) -> [u8; 16] {
+        let mut b = [0u8; 16];
+        b[0] = seed;
+        b[6] = (b[6] & 0x0f) | 0x40;
+        b[8] = (b[8] & 0x3f) | 0x80;
+        b
+    }
+
+    #[test]
+    fn qvm_roundtrip_core() {
+        let id = CollectionId::from_bytes(uuidish(9)).expect("id");
+        let mut bindings = CollectionBindings::default();
+        bindings.bind("items", id);
+        let core = PlanBuilder::from_source("items")
+            .compile(&bindings)
+            .expect("plan");
+        let prog = lower_core(core, None);
+        let bytes = encode_qvm(&prog).expect("encode");
+        assert_eq!(&bytes[0..4], QVM_MAGIC);
+        let again = decode_qvm(&bytes).expect("decode");
+        assert_eq!(again.ops.len(), prog.ops.len());
+        assert_eq!(again.pool.core, prog.pool.core);
+        assert_eq!(again.ops[0].op, OpCode::BindCollection);
+    }
+
+    #[test]
+    fn qvm_mutation_of_opcode_fails_or_changes() {
+        let id = CollectionId::from_bytes(uuidish(10)).expect("id");
+        let mut bindings = CollectionBindings::default();
+        bindings.bind("items", id);
+        let core = PlanBuilder::from_source("items")
+            .compile(&bindings)
+            .expect("plan");
+        let prog = lower_core(core, None);
+        let mut bytes = encode_qvm(&prog).expect("encode");
+        // Corrupt Halt opcode (penultimate byte: opcode then IMM_NONE).
+        let corrupt_at = bytes.len() - 2;
+        bytes[corrupt_at] = 0xEE;
+        let err = decode_qvm(&bytes).unwrap_err();
+        assert!(
+            err.to_string().contains("unknown opcode") || err.to_string().contains("qvm:"),
+            "got {err}"
+        );
+    }
+}

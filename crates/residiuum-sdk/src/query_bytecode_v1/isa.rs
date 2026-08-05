@@ -362,7 +362,7 @@ fn decode_full_section(body: &[u8]) -> Result<QueryIsaFullSection, Error> {
     Ok(QueryIsaFullSection { pipeline, project })
 }
 
-fn pipeline_step_json(step: &FullPipelineStepV1) -> Result<JsonValue, Error> {
+pub(crate) fn pipeline_step_json(step: &FullPipelineStepV1) -> Result<JsonValue, Error> {
     match step {
         FullPipelineStepV1::Enrich(e) => {
             let mut m = BTreeMap::new();
@@ -413,7 +413,7 @@ fn pipeline_step_json(step: &FullPipelineStepV1) -> Result<JsonValue, Error> {
     }
 }
 
-fn parse_pipeline_step(v: &JsonValue) -> Result<FullPipelineStepV1, Error> {
+pub(crate) fn parse_pipeline_step(v: &JsonValue) -> Result<FullPipelineStepV1, Error> {
     let obj = v
         .as_object()
         .ok_or_else(|| Error::QueryInvalid("pipeline step object".into()))?;
@@ -472,7 +472,7 @@ fn parse_pipeline_step(v: &JsonValue) -> Result<FullPipelineStepV1, Error> {
     }
 }
 
-fn project_item_json(item: &ProjectItemV1) -> Result<JsonValue, Error> {
+pub(crate) fn project_item_json(item: &ProjectItemV1) -> Result<JsonValue, Error> {
     match item {
         ProjectItemV1::Leaf { output, source } => {
             let mut m = BTreeMap::new();
@@ -499,7 +499,7 @@ fn project_item_json(item: &ProjectItemV1) -> Result<JsonValue, Error> {
     }
 }
 
-fn parse_project_item(v: &JsonValue) -> Result<ProjectItemV1, Error> {
+pub(crate) fn parse_project_item(v: &JsonValue) -> Result<ProjectItemV1, Error> {
     let obj = v
         .as_object()
         .ok_or_else(|| Error::QueryInvalid("project item object".into()))?;

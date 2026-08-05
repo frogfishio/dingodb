@@ -28,6 +28,7 @@ mod ir_page;
 mod ir_project;
 mod isa;
 mod kernel;
+mod qvm;
 mod vm;
 mod vm_exec;
 
@@ -298,6 +299,7 @@ pub(crate) fn execute_decoded_core<H: HostCapabilities>(
         ));
     }
     let prog = vm_exec::lower_core(core.clone(), budget);
+    let prog = qvm::materialize_qvm(&prog)?;
     let mut scan = HostDocScan {
         host,
         collection_id,

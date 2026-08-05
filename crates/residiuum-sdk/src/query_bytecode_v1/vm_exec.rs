@@ -35,12 +35,12 @@ struct WithinScope {
     parents: Vec<(String, JsonValue)>,
 }
 
-/// Typed immediate for one VM instruction (in-memory form; wire encoding later).
+/// Typed immediate for one VM instruction (operands live here or in [`VmPool`]).
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum VmImm {
     /// Bind / verify collection id.
     Collection(CollectionId),
-    /// Core pipeline op: semantics come from [`VmProgram::core`] until VM2.
+    /// Core pipeline op: meaning comes from [`VmPool::core`] (bound at Bind).
     Core,
     /// Enrich step (root or nested inside Within…WithinEnd).
     Enrich(EnrichStepV1),
@@ -54,6 +54,16 @@ pub(crate) enum VmImm {
     ProjectBrace(Vec<ProjectItemV1>),
 }
 
+/// Constant pool for Core plan operands (**RQL-QVM1**).
+///
+/// Executable meaning for Core opcodes is recovered from this pool after Bind —
+/// not from a parallel `VmProgram::core` sidecar.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct VmPool {
+    /// Application Core plan (owned; also durable in QVM bytes).
+    pub core: RqlPlanV1,
+}
+
 /// One typed VM instruction.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct VmInstr {
@@ -63,21 +73,17 @@ pub(crate) struct VmInstr {
     pub imm: VmImm,
 }
 
-/// Lowered Query VM program (Core or Full).
+/// Lowered Query VM program (Core or Full) — **no plan/pipeline/project sidecars**.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct VmProgram {
     /// Profile stamp.
     pub profile: &'static str,
-    /// Instruction stream.
+    /// Instruction stream (executable with [`VmPool`]).
     pub ops: Vec<VmInstr>,
-    /// Core plan (compiler intermediate; Core opcode body until VM2).
-    pub core: RqlPlanV1,
-    /// Optional execute budget from ISA.
+    /// Constant pool (Core plan).
+    pub pool: VmPool,
+    /// Optional execute budget from ISA/QVM.
     pub budget: Option<QueryBudget>,
-    /// Original Full pipeline (diagnostics / page artefact; may be empty).
-    pub pipeline: Vec<FullPipelineStepV1>,
-    /// Original brace project (diagnostics).
-    pub project: Option<Vec<ProjectItemV1>>,
 }
 
 impl VmProgram {
@@ -140,10 +146,8 @@ pub(crate) fn lower_core(core: RqlPlanV1, budget: Option<QueryBudget>) -> VmProg
     VmProgram {
         profile: VM_PROFILE,
         ops,
-        core,
+        pool: VmPool { core },
         budget,
-        pipeline: Vec::new(),
-        project: None,
     }
 }
 
@@ -232,10 +236,8 @@ pub(crate) fn lower_full(
     VmProgram {
         profile: VM_PROFILE,
         ops,
-        core,
+        pool: VmPool { core },
         budget,
-        pipeline,
-        project,
     }
 }
 
@@ -271,14 +273,14 @@ pub(crate) fn run_vm_core<S: DocScan>(
                         "run_vm: BindCollection immediate mismatch".into(),
                     ));
                 };
-                if *id != collection_id || *id != prog.core.from.collection_id {
+                if *id != collection_id || *id != prog.pool.core.from.collection_id {
                     return Err(Error::QueryInvalid(
                         "run_vm: BindCollection id mismatch".into(),
                     ));
                 }
                 bound = Some(*id);
                 frame = Some(CoreFrame::begin(
-                    &prog.core,
+                    &prog.pool.core,
                     params,
                     options,
                     heap_id,

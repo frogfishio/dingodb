@@ -1825,6 +1825,7 @@ pub fn execute_full_isa_with(
         pipeline.clone(),
         project.clone(),
     );
+    let vm = super::qvm::materialize_qvm(&vm)?;
     let (rows, enrich_loads) = run_vm_attach(
         client,
         &vm,
