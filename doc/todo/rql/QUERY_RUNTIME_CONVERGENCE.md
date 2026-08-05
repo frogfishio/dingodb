@@ -60,9 +60,17 @@ is the first convergence deliverable.
 7. **Delete** the production Rust executors and their semantic implementations.
 8. **Add** a CI architecture test that fails if another semantic executor appears.
 
-Until steps 1–2 are frozen in this ledger (and companion bytecode draft),
+Until steps 1–2 are frozen ([QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md)),
 **no additional RQL feature work** (S1, D1, wire parity, within-index, …)
 proceeds.
+
+### Step status (2026-08-05)
+
+| Step | State |
+|---|---|
+| 1 Freeze `query_exec_v1` / `execute_rql_full` features | **done** (Decision 0 + module banners) |
+| 2 Define bytecode + host boundary | **done** — [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md) (`residiuum-query-bytecode-v1`) |
+| 3–8 Lower / route / port / equivalence / delete / CI | **RQL-X2** (next) |
 
 ---
 

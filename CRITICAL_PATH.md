@@ -185,23 +185,19 @@ small feasibility spikes only. It does not become the active programme.
 
 ### 4.6 Immediate RQL package
 
-The next work package is **RQL-0 — semantic and implementation inventory**:
+The inventory package **RQL-0** produced the gap ledger and package sequence
+([RQL0_GAP_LEDGER.md](./doc/todo/rql/RQL0_GAP_LEDGER.md)). **Decision 0**
+(2026-08-05) amended that ledger: parallel semantic executors are an
+architectural violation. **RQL-X1** freezes the bytecode + host boundary
+([QUERY_BYTECODE_V1.md](./doc/todo/rql/QUERY_BYTECODE_V1.md)). The active
+convergence package is **RQL-X2** (one runtime; delete frozen Rust executors).
 
-1. map every normative RQL construct to parser, canonical plan, executor,
-   index path, SDK/wire surface and test evidence;
-2. classify each as implemented, partial, contradictory or absent;
-3. build the SQL-use-case corpus against which adequacy will be judged;
-4. freeze the reference-oracle boundary and differential-test contract;
-5. produce the smallest dependency-ordered implementation packages; and
-6. refuse to add syntax until its semantics and execution owner are named.
+Living short status:
+[RQL_WHAT_IS_LEFT.md](./doc/todo/rql/RQL_WHAT_IS_LEFT.md).
 
-RQL-0 produces one gap ledger and one package sequence. It does not produce a
-new family of explanatory roadmaps. Living labour artefacts:
-[doc/todo/rql/RQL_WHAT_IS_LEFT.md](./doc/todo/rql/RQL_WHAT_IS_LEFT.md)
-(short “what’s next”) and
-[doc/todo/rql/RQL0_GAP_LEDGER.md](./doc/todo/rql/RQL0_GAP_LEDGER.md)
-(full construct ledger).
-
+RQL-0 still forbids adding syntax until its semantics and execution owner are
+named. Execution owner under Decision 0 is the **one bytecode runtime**, not a
+new Rust façade.
 ## 5. Gate 2 — Atomics
 
 ### 5.1 Question to answer

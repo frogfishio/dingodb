@@ -1,10 +1,28 @@
 # RQL — what is left to do
 
-Status: **2026-08-05** · single page for principals · **Decision 0 active**  
-Authority: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md) (RQL → Atomics → Cluster)  
-Detail: [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) §0 · [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) · [PHASE3_SURFACE_RESIDUAL.md](./PHASE3_SURFACE_RESIDUAL.md)
+Status: **2026-08-05** · single page for principals · **Decision 0 + X1 freeze**  
+Authority: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md)  
+Detail: [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) §0 · [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md) · [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md)
 
 If this page disagrees with PATH §6 or chat summaries, **this page wins** until amended.
+
+---
+
+## Ordered programme (only this order)
+
+```text
+Decision 0  ──►  RQL-X1 bytecode+host freeze  ──►  RQL-X2 converge runtime
+                                                      │
+                                                      ├─ lower all syntaxes
+                                                      ├─ emb + op 118 same runtime
+                                                      ├─ port frozen executors
+                                                      ├─ equivalence
+                                                      ├─ delete Rust semantic executors
+                                                      └─ CI anti-executor gate
+```
+
+Everything else (S1, D1, wire enrich, perf, C1 accept) waits on **X2** (or an
+explicit principal waiver).
 
 ---
 
@@ -12,69 +30,57 @@ If this page disagrees with PATH §6 or chat summaries, **this page wins** until
 
 | # | Who | Package | What “done” means |
 |---|---|---|---|
-| **1** | **Labor** | **RQL-X1** | Freeze **one query bytecode** + host-capability boundary (scan/index/get only). No new RQL features until this exists. |
-| **2** | **Labor** | **RQL-X2** | Lower all syntaxes; one runtime for emb + op 118; port; equivalence; delete `query_exec_v1` / `execute_rql_full`; CI anti-executor gate |
-| **3** | **Human** | **RQL-C1** | Accept APP-6 / APP-7 / APB-7 only after shared-runtime honesty (or explicit waiver) |
+| **1** | **Labor** | **RQL-X2** | Implement one bytecode runtime; route emb+op118; port; prove; delete `query_exec_v1` + `execute_rql_full`; CI gate |
+| **2** | **Human** | Review X1 / 0D | Confirm `residiuum-query-bytecode-v1` boundary |
+| **3** | **Human** | **RQL-C1** | Scoreboard APP-6/7/APB-7 accept **after** shared-runtime honesty |
 
 ---
 
-## Hard freeze (Decision 0)
+## Hard freeze (in force)
 
-Parallel semantic executors are an **architectural violation**.
-
-- **Frozen (no feature growth):** `query_exec_v1`, `execute_rql_full`
-- **Allowed:** bugfix / evidence honesty only; test-only oracle interpreter
-- **Not next:** RQL-S1, wire enrich parity, D1, within-index, more Phase-3 surface on the façades
-
-```text
-Multiple syntaxes: yes
-Multiple compiler stages: yes
-Multiple physical access strategies: yes
-Multiple semantic executors: absolutely not
-```
-
----
-
-## Waiting on principal (not labor)
-
-| # | Package | Action |
-|---|---|---|
-| **P1** | Review Decision 0 / RQL-0D | Confirm freeze + convergence sequence |
-| **P2** | Review queue | Accept/reject prior labor `in_review` (inventory / Phase 3 — now **port inventory**, not grow-path) |
-| **P3** | **RQL-C1** | Scoreboard accept after convergence (or waiver) |
-
----
-
-## Later (blocked on RQL-X1)
-
-| # | Package | Why deferred |
-|---|---|---|
-| **L1** | Op-118 enrich/within **parity** | Must be same runtime, not a third executor |
-| **L2** | **RQL-S1** SQL+ → enrich/`within` emit | Frontend only after bytecode freeze |
-| **L3** | **RQL-D1** `at rank` / access | Needs DDA + shared bytecode |
-| **L4** | Within-nested enrich index | Port into bytecode machine |
-| **L5** | Post-attach global re-page / re-limit | Design on shared runtime |
-| **L6** | **RQL-Q1** query perf | After shared runtime + C1 |
-
----
-
-## Already done (do not re-do / do not grow)
-
-| Item | State under Decision 0 |
+| Item | Rule |
 |---|---|
-| APP-5 Application Core compile | scoreboard **accept** (compile remains) |
-| Phase 3 attach surface + corpus | labor **in_review** — **port inventory** |
-| RQL-0 gap ledger | amended with **§0 Decision 0** |
-| RQL-0D convergence charter | labor **in_review** |
-| RQL-F1 / F2 / I1 | labor **in_review** — frozen façades; port later |
+| `query_exec_v1` | No feature growth |
+| `execute_rql_full` | No feature growth |
+| Host | scan / index / get only — no query algebra |
+| Semantic executors | **One** only (bytecode machine) |
+| Test oracle | Allowed in tests; never product |
+
+Profile: **`residiuum-query-bytecode-v1`** — [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md)
+
+---
+
+## Board legend (bring to order)
+
+| Stage | Cards | How to read them |
+|---|---|---|
+| **todo** | RQL-X2 (when staged) | Only claimable labor for query spine |
+| **doing** | (empty when X1 closed) | Active convergence only |
+| **in_review** | 0D, X1, Phase3/F*/I1/RQL-0/clarity | Charter + **port inventory** — not “grow these façades” |
+| **done** | (principal only) | Human accept |
+
+Prior Phase 3 / F1 / F2 / I1 evidence is **inventory to port**, not a license
+to extend those modules.
+
+---
+
+## Blocked until X2
+
+| Package | Note |
+|---|---|
+| RQL-S1 SQL+ enrich emit | Frontend → shared plan/bytecode only |
+| Op-118 enrich parity | Same runtime — not a third executor |
+| RQL-D1 `at rank` | Needs DDA + shared bytecode |
+| Within-nested index / re-page | Port into bytecode machine |
+| RQL-Q1 perf | After shared runtime |
 
 ---
 
 ## One-line status
 
 ```text
-NEXT labor  = RQL-X1 define query bytecode + host boundary
-FROZEN      = query_exec_v1 + execute_rql_full feature growth
-NOT next    = S1, D1, wire parity, more façade features
-JUST LANDED = Decision 0 (RQL-0 §0 + QUERY_RUNTIME_CONVERGENCE.md)
+ORDERED    = Decision 0 → X1 freeze (done) → X2 converge (next)
+FROZEN     = query_exec_v1 + execute_rql_full
+BYTECODE   = residiuum-query-bytecode-v1 (architecture freeze)
+NOT next   = S1, D1, façade features, premature C1 “query qualified”
 ```

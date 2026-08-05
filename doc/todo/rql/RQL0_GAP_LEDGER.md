@@ -167,8 +167,8 @@ is forbidden.
 | ID | Package | Depends on | Exit (labor → principal) |
 |---|---|---|---|
 | **RQL-0** | This ledger | CRITICAL_PATH | Ledger + sequence accepted (this card) |
-| **RQL-0D** | Decision 0 charter + feature freeze | RQL-0 | **this amend** — [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md); freeze `query_exec_v1` / `execute_rql_full` |
-| **RQL-X1** | Freeze query **bytecode** + host-capability boundary | RQL-0D | Normative bytecode profile; host = scan/index/get only |
+| **RQL-0D** | Decision 0 charter + feature freeze | RQL-0 | **labor closed** — [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) |
+| **RQL-X1** | Freeze query **bytecode** + host-capability boundary | RQL-0D | **labor closed** — [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md) (`residiuum-query-bytecode-v1`) |
 | **RQL-X2** | Lower all syntaxes + route emb/op118; port; equivalence; delete Rust executors; CI anti-executor | RQL-X1 | One runtime; CI gate; production semantic executors gone |
 | **RQL-C1** | Core product accept residuals | RQL-X2 (or principal waiver) | Scoreboard APP-6/APP-7/APB-7 → `accept` (principal) |
 | **RQL-F1** | Full explain artefact for `rql-full-v1` | RQL-0, Phase 3 surface | **labor closed** — port inventory only under Decision 0 |

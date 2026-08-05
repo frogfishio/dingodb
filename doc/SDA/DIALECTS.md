@@ -16,12 +16,19 @@ Dialects are frontends that *compile into* the same ENR+SDA IR / bytecode.
 They never redefine SDA meaning. Compile is the expensive semantic step;
 execution is shared.
 
+**Decision 0 / RQL-X1 (2026-08-05):** parallel product semantic executors are
+forbidden. Architecture freeze:
+[QUERY_BYTECODE_V1.md](../todo/rql/QUERY_BYTECODE_V1.md)
+(`residiuum-query-bytecode-v1`). Host = scan/index/get only. Interim Rust
+executors (`query_exec_v1`, `execute_rql_full`) are frozen violations pending
+convergence — not a second doctrine.
+
 ```text
   Pure ENR+SDA ──┐
   RQL (official) ┤
-  JSON/Mongo ────┼── compile ──► [ENR + SDA IR / bytecode] ──► residiuum-sda eval
-  SQL mimicry ───┤
-  GraphQL / … ───┤
+  JSON/Mongo ────┼── compile ──► [ENR + SDA IR / bytecode] ──► one runtime
+  SQL mimicry ───┤                         │
+  GraphQL / … ───┤                         └─► host: scan / index / get
   Fluent API ────┘
 ```
 

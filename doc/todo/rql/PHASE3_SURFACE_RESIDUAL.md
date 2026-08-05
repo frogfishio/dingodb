@@ -1,10 +1,14 @@
 # Phase 3 — `rql-full-v1` surface residual inventory
 
-Status: **labor 2026-08-05** · T3.10 + **RQL-F1/F2 residual close**  
-Profile: **`rql-full-v1`**  
+Status: **labor 2026-08-05** · T3.10 + F1/F2/I1 · **Decision 0: PORT INVENTORY ONLY**  
+Profile: **`rql-full-v1`** (frozen façade — do not grow)  
 Corpus: [`spec/app/v1/rql_full_v1_corpus_v1.json`](../../../spec/app/v1/rql_full_v1_corpus_v1.json)  
 Kickoff: [PHASE3_FULL_RQL_KICKOFF.md](./PHASE3_FULL_RQL_KICKOFF.md)  
-**What’s left:** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md) · detail [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) §5
+**Architecture:** [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md) · [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)
+
+Under Decision 0, this inventory records what the illegal `execute_rql_full`
+façade already demonstrated so **RQL-X2 can port it** into the one bytecode
+runtime. It is not a growth roadmap for a second executor.
 
 ## Delivered surface (honest)
 
@@ -23,15 +27,16 @@ Kickoff: [PHASE3_FULL_RQL_KICKOFF.md](./PHASE3_FULL_RQL_KICKOFF.md)
 | Root enrich equality-index pushdown | **yes** (RQL-I1; scan fallback; differential oracle) |
 | Pre-enrich root `where` stays in Core | **yes** (correct; not a defect) |
 
-## Still open
+## Still open (as port targets / later packages — not façade growth)
 
 | Residual | Why open | Owner |
 |---|---|---|
-| `at rank` / `access` policies | DDA-dependent | **RQL-D1** |
-| Within-nested enrich index pushdown | I1 is root enrich only | later |
-| Remote op-118 enrich/within/project **parity** | F2 chose refuse; wire execute still absent | future after F2 decision |
-| Post-attach `where` global re-page / re-limit | Page-then-attach filters within Core page | design / later package |
-| Package accept / APB-7 accept | Principal gate | **RQL-C1** |
+| Shared bytecode runtime for attach | Decision 0 | **RQL-X2** |
+| `at rank` / `access` policies | DDA-dependent | **RQL-D1** (after X1) |
+| Within-nested enrich index pushdown | I1 is root enrich only | port in X2 / later |
+| Remote op-118 enrich/within/project | Must be same runtime | **RQL-X2** |
+| Post-attach `where` global re-page / re-limit | Design honesty | later on shared runtime |
+| Package accept / APB-7 accept | Principal gate | **RQL-C1** after X2 honesty |
 
 ## Evidence commands
 
@@ -49,5 +54,6 @@ Logs: `doc/todo/rql/evidence/phase3_corpus.log`,
 ## Non-claim
 
 This inventory locks the **delivered attach-class surface + explain + wire
-refuse**. It does **not** claim full RQL-v1 product readiness, query
-qualification, index-backed enrich, or op-118 enrich parity.
+refuse** as **port evidence**. It does **not** claim full RQL-v1 product
+readiness, a legitimate second executor, query qualification, or op-118 enrich
+parity. Decision 0 forbids growing `execute_rql_full`.

@@ -1,10 +1,11 @@
 # Path to full RQL — de-risk expressiveness + performance
 
 Status: **labor map 2026-08-05** (post store P0 / packaging 0.2.2 diversion);  
-**Decision 0 (HARD):** [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) — one bytecode / one runtime; freeze `query_exec_v1` + `execute_rql_full`  
+**Decision 0 (HARD):** [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md)  
+**Bytecode freeze (RQL-X1):** [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md) (`residiuum-query-bytecode-v1`)  
 **What’s left (read this first):** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)  
 **RQL-0** gap ledger [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) §0 (CRITICAL_PATH §4.6);  
-**Phase 1–3** checklists under `doc/todo/rql/`  
+**Phase 1–3** checklists under `doc/todo/rql/` (Phase 3 = **port inventory**)  
 Authority: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md) ·  
 [NEXT_BUILD_STATUS.md](../../wip/status/NEXT_BUILD_STATUS.md) ·  
 [RQL_SPEC.md](../../wip/query/RQL_SPEC.md) ·  
@@ -166,10 +167,10 @@ de-risk.
 **Canonical answer:** [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)
 
 ```text
-NEXT labor  = RQL-X1 freeze query bytecode + host boundary
-FROZEN      = query_exec_v1 + execute_rql_full feature growth (Decision 0)
-NEXT human  = confirm Decision 0; C1 accept only after shared-runtime honesty
-NOT next    = S1, D1, wire parity, more façade features
+NEXT labor  = RQL-X2 implement shared bytecode runtime + delete frozen executors
+FROZEN      = query_exec_v1 + execute_rql_full (Decision 0)
+BYTECODE    = residiuum-query-bytecode-v1 (RQL-X1 architecture freeze)
+NOT next    = S1, D1, wire parity, façade features, premature “query qualified”
 ```
 
 Prior Phase 3 / F1/F2/I1 labor is **port inventory** under Decision 0 — do not grow those executors.
