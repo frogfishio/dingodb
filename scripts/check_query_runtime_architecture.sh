@@ -82,25 +82,29 @@ rg -q 'fn lower_full' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
 rg -q 'execute_bytecode_uses_isa_not_sidecar_plan' "$MOD" \
   || fail "missing ISA-drives-execution mismatch test"
 
-# RQL-X5b: full path must encode→decode via ISA entry (not CompiledRqlFull authority).
+# Full product path: compile → lower_full → encode_qvm → execute_full_qvm_with.
+rg -q 'fn execute_full_qvm_with' "$FULL" \
+  || fail "missing execute_full_qvm_with (Full QVM entry)"
+rg -n 'fn execute_rql_full_with' -A 40 "$FULL" | rg -q 'encode_qvm' \
+  || fail "execute_rql_full_with must encode_qvm (not RQB1 product path)"
+rg -n 'fn execute_rql_full_with' -A 40 "$FULL" | rg -q 'execute_full_qvm_with' \
+  || fail "execute_rql_full_with must dispatch execute_full_qvm_with"
+if rg -n 'fn execute_rql_full_with' -A 40 "$FULL" | rg -q 'encode_full_program'; then
+  fail "execute_rql_full_with must not encode_full_program (RQB1 demoted)"
+fi
+rg -n 'fn execute_full_qvm_with' -A 50 "$FULL" | rg -q 'decode_qvm' \
+  || fail "execute_full_qvm_with must decode_qvm"
+rg -n 'fn execute_full_qvm_with' -A 50 "$FULL" | rg -q 'run_vm\b' \
+  || fail "execute_full_qvm_with must call run_vm"
+# Legacy RQB1 import remains but is not product compile path.
 rg -q 'fn execute_full_isa_with' "$FULL" \
-  || fail "missing execute_full_isa_with (full ISA entry)"
-rg -n 'fn execute_rql_full_with' -A 35 "$FULL" | rg -q 'encode_full_program' \
-  || fail "execute_rql_full_with must encode_full_program"
-rg -n 'fn execute_rql_full_with' -A 35 "$FULL" | rg -q 'execute_full_isa_with' \
-  || fail "execute_rql_full_with must dispatch execute_full_isa_with"
-rg -n 'fn execute_full_isa_with' -A 50 "$FULL" | rg -q 'decode_isa' \
-  || fail "execute_full_isa_with must decode_isa"
-# RQL-VM1R: full lowers once and enters the same run_vm (no dual dispatcher).
-rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'lower_full' \
-  || fail "execute_full_isa_with must lower_full"
-rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'run_vm\b' \
-  || fail "execute_full_isa_with must call run_vm (RQL-VM1R)"
+  || fail "missing execute_full_isa_with (legacy RQB1 import)"
+rg -n 'fn execute_full_isa_with' -A 40 "$FULL" | rg -q 'decode_isa_canonical|decode_qvm' \
+  || fail "execute_full_isa_with must decode RQB1 or QVM"
+rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'lower_full|execute_full_qvm' \
+  || fail "execute_full_isa_with must lower or hand off to QVM"
 if rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'run_vm_attach|execute_decoded_core'; then
   fail "execute_full_isa_with must not dual-dispatch (RQL-VM1R)"
-fi
-if rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'encode_core_program'; then
-  fail "execute_full_isa_with must not re-encode Core ISA"
 fi
 rg -q 'execute_full_isa_enrich_within_project_nonempty' \
   crates/residiuum-sdk/tests/rql_full_isa_execute.rs \
@@ -146,12 +150,26 @@ fi
 rg -q 'fn finish_coverage' "$SDK_SRC/query_bytecode_v1/ir_page.rs" \
   || fail "ir_page must define finish_coverage"
 
-# RQL-IR4: attach helpers remain; product Full path dispatches via run_vm (VM1R).
-rg -q 'fn run_attach_pipeline' "$SDK_SRC/query_bytecode_v1/ir_attach.rs" \
-  || fail "ir_attach must define run_attach_pipeline"
+# RQL-IR4: one executor — run_attach_pipeline deleted; product Full uses run_vm.
+if rg -q 'fn run_attach_pipeline' "$SDK_SRC/query_bytecode_v1"; then
+  fail "run_attach_pipeline must remain deleted (one executor)"
+fi
 rg -q 'fn run_vm\b' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
   || fail "vm_exec must define run_vm (VM1R)"
-if rg -n 'fn execute_full_isa_with' -A 120 "$FULL" | rg -q 'FullPipelineStepV1::Enrich'; then
+# Filter is sole where authority (IndexEq has no predicate).
+if rg -n 'enum VmImm' -A 40 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'IndexEq \{[^}]*where_pred'; then
+  fail "IndexEq imm must not carry where_pred (Filter sole authority)"
+fi
+rg -n 'fn IndexEq' -A 5 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" 2>/dev/null || true
+# program_hash derived from complete QVM, not trusted wire plan_hash field.
+if rg -n 'struct VmPool' -A 20 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'plan_hash'; then
+  fail "VmPool must not carry plan_hash (use program_hash on VmProgram from qvm_hash)"
+fi
+rg -q 'program_hash' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
+  || fail "VmProgram must carry program_hash (cursor identity)"
+rg -n 'fn decode_qvm' -A 25 "$SDK_SRC/query_bytecode_v1/qvm.rs" | rg -q 'non-canonical|encode_qvm' \
+  || fail "decode_qvm must enforce canonical re-encode"
+if rg -n 'fn execute_full_isa_with' -A 55 "$FULL" | rg -q 'attach_enrich_rows|for step in'; then
   fail "execute_full_isa_with must not inline Enrich pipeline loop (moved to VM/IR)"
 fi
 
@@ -187,8 +205,8 @@ rg -q 'decode_isa_canonical' "$SDK_SRC/query_bytecode_v1/isa.rs" \
 rg -q 'open_collection_bound' "$FULL" \
   || fail "full_attach must bind collections by immutable id (D0R)"
 rg -n 'fn execute_isa_bytes' -A 40 "$MOD" | rg -q 'decode_isa_canonical|decode_qvm|execute_qvm'   || fail "execute_isa_bytes must handle QVM and/or RQB1"
-rg -n 'fn execute_full_isa_with' -A 20 "$FULL" | rg -q 'decode_isa_canonical' \
-  || fail "execute_full_isa_with must use decode_isa_canonical"
+rg -n 'fn execute_full_isa_with' -A 40 "$FULL" | rg -q 'decode_isa_canonical|decode_qvm|QVM_MAGIC' \
+  || fail "execute_full_isa_with must handle legacy RQB1 or QVM"
 # SoT must not claim NEXT is principal C1 acceptance while VM unfinished.
 if rg -n '^NEXT' doc/todo/rql/RQL_WHAT_IS_LEFT.md | rg -qi 'principal.*C1'; then
   fail "SoT must not set NEXT to principal C1 while Query VM unfinished"
@@ -397,10 +415,21 @@ if rg -n 'pub struct VmProgram' -A 20 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
   | rg -q 'pub core:'; then
   fail "VmProgram must not carry core sidecar field (RQL-QVM1); use VmPool"
 fi
-rg -n 'fn execute_decoded_core' -A 40 "$MOD" | rg -q 'materialize_qvm' \
-  || fail "execute_decoded_core must materialize QVM (RQL-QVM1)"
-rg -n 'fn execute_full_isa_with' -A 80 "$FULL" | rg -q 'materialize_qvm' \
-  || fail "execute_full_isa_with must materialize QVM (RQL-QVM1)"
+rg -n 'fn execute_decoded_core' -A 40 "$MOD" | rg -q 'materialize_qvm|encode_qvm|run_vm' \
+  || fail "execute_decoded_core must use QVM path (RQL-QVM1)"
+rg -n 'fn execute_full_qvm_with' -A 50 "$FULL" | rg -q 'run_vm\b' \
+  || fail "execute_full_qvm_with must call run_vm"
+# Public QVM API is byte-oriented (no public VmProgram).
+if rg -n 'pub fn encode_qvm' "$SDK_SRC/query_bytecode_v1/qvm.rs" | rg -q .; then
+  fail "encode_qvm must be crate-private (VmProgram is not public)"
+fi
+if rg -n 'pub fn decode_qvm' "$SDK_SRC/query_bytecode_v1/qvm.rs" | rg -q .; then
+  fail "decode_qvm must be crate-private (VmProgram is not public)"
+fi
+rg -q 'pub fn validate_qvm' "$SDK_SRC/query_bytecode_v1/qvm.rs" \
+  || fail "missing public validate_qvm byte API"
+rg -q 'pub fn qvm_hash' "$SDK_SRC/query_bytecode_v1/qvm.rs" \
+  || fail "missing public qvm_hash"
 rg -qi 'QVM1 labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark QVM1 labor closed"
 rg -qi 'VM1 rejected|rejected.*VM1|VM1 / P1c' doc/todo/rql/RQL_WHAT_IS_LEFT.md \

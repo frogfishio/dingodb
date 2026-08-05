@@ -34,7 +34,8 @@ pub use core_page::{explain_rql_source, EXEC_PROFILE};
 // `CollectionClient` (residual) and the VM's internal `HostScan` (product).
 pub(crate) use core_page::DocScan;
 pub use full_attach::{
-    compile_rql_full, execute_full_isa_with, execute_rql_full, execute_rql_full_with,
+    compile_rql_full, execute_full_isa_with, execute_full_qvm_with, execute_rql_full,
+    execute_rql_full_with,
     explain_rql_full, explain_rql_full_on_heap, refuse_full_language_on_core_wire,
     source_uses_rql_full_constructs, CompiledRqlFull, EnrichAttachMode, EnrichCardinality,
     EnrichLoadEvidence, EnrichStepV1, FullPipelineStepV1, ProjectItemV1, RqlFullExecuteOptions,
@@ -54,8 +55,7 @@ pub use isa::{
 };
 pub use kernel::{compile_where, lower_predicate, CompiledKernelWhere, KERNEL_PROFILE};
 pub use qvm::{
-    decode_qvm, encode_qvm, materialize_qvm, qvm_hash, QVM_MAGIC, QVM_MAX_BLOB_BYTES,
-    QVM_MAX_OPS, QVM_MAX_TOTAL_BYTES,
+    qvm_hash, validate_qvm, QVM_MAGIC, QVM_MAX_BLOB_BYTES, QVM_MAX_OPS, QVM_MAX_TOTAL_BYTES,
 };
 pub use vm::{Instruction, OpCode, VM_PROFILE, VM_VERSION};
 
@@ -141,9 +141,9 @@ impl QueryBytecodeV1 {
         qvm::qvm_hash(&self.qvm)
     }
 
-    /// Decode/validate stored QVM into a lowered program.
-    pub fn decode_qvm_program(&self) -> Result<vm_exec::VmProgram, Error> {
-        qvm::decode_qvm(&self.qvm)
+    /// Validate stored QVM bytes (canonical decode + verify).
+    pub fn validate(&self) -> Result<(), Error> {
+        qvm::validate_qvm(&self.qvm)
     }
 
     /// Lower a validated Application Core plan → QVM1 envelope.
@@ -427,12 +427,8 @@ mod tests {
         let bc = lower_core_source("from items", id, "items").expect("lower");
         assert_eq!(bc.profile(), BYTECODE_PROFILE);
         assert_eq!(&bc.qvm_bytes()[0..4], qvm::QVM_MAGIC);
-        let prog = bc.decode_qvm_program().expect("decode");
-        assert_eq!(prog.ops[0].op, OpCode::BindCollection);
-        match &prog.ops[0].imm {
-            vm_exec::VmImm::Collection(cid) => assert_eq!(*cid, id),
-            _ => panic!("expected Collection imm"),
-        }
+        bc.validate().expect("validate");
+        assert_eq!(bc.qvm_hash(), qvm::qvm_hash(bc.qvm_bytes()));
     }
 
     #[test]

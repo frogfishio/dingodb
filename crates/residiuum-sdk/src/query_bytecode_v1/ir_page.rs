@@ -22,28 +22,6 @@ use serde_json::Value as JsonValue;
 /// IR profile id for Core page / coverage.
 pub const PAGE_IR_PROFILE: &str = "residiuum-query-ir-page-v1";
 
-/// Compiled page-size + coverage defaults from the plan.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct CompiledPageIr {
-    /// Profile stamp.
-    pub profile: &'static str,
-    /// Plan page size (before run-option override).
-    pub page_size: u32,
-    /// Plan coverage policy.
-    pub coverage: CoveragePolicy,
-}
-
-impl CompiledPageIr {
-    /// Lower plan page/coverage fields.
-    pub fn lower(page_size: u32, coverage: CoveragePolicy) -> Self {
-        Self {
-            profile: PAGE_IR_PROFILE,
-            page_size,
-            coverage,
-        }
-    }
-}
-
 /// Effective page size: run option overrides plan, clamped to `[1, 4096]`.
 pub(crate) fn resolve_page_size(plan_page_size: u32, options_page_size: Option<u32>) -> usize {
     options_page_size

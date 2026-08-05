@@ -15,54 +15,6 @@ use std::cmp::Ordering;
 /// IR profile id for Core order / sort-tuple.
 pub const ORDER_IR_PROFILE: &str = "residiuum-query-ir-order-v1";
 
-/// Compiled Core order terms.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct CompiledOrderIr {
-    /// Profile stamp.
-    pub profile: &'static str,
-    terms: Vec<OrderTerm>,
-}
-
-impl CompiledOrderIr {
-    /// Lower plan order list.
-    pub fn lower(order: &[OrderTerm]) -> Self {
-        Self {
-            profile: ORDER_IR_PROFILE,
-            terms: order.to_vec(),
-        }
-    }
-
-    /// Order terms.
-    pub fn terms(&self) -> &[OrderTerm] {
-        &self.terms
-    }
-
-    /// Compare two keyed documents under this order.
-    pub(crate) fn compare_rows(
-        &self,
-        ka: &str,
-        va: &JsonValue,
-        kb: &str,
-        vb: &JsonValue,
-    ) -> Ordering {
-        compare_rows(ka, va, kb, vb, &self.terms)
-    }
-
-    /// Build cursor sort-tuple for a full (pre-project) document.
-    pub fn build_sort_tuple(&self, key: &str, doc: &JsonValue) -> JsonValue {
-        build_sort_tuple(key, doc, &self.terms)
-    }
-
-    /// Drop rows whose sort-tuple is `<= last` (multipage field-order resume).
-    pub(crate) fn retain_after_sort_tuple(
-        &self,
-        full: &mut Vec<(String, JsonValue)>,
-        last: &JsonValue,
-    ) {
-        retain_after_sort_tuple(full, &self.terms, last)
-    }
-}
-
 /// Compare two keyed documents under `order`.
 pub fn compare_rows(
     ka: &str,
@@ -196,22 +148,18 @@ fn json_ord(a: &JsonValue, b: &JsonValue) -> Ordering {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::plan_v1::{OrderDir, OrderTerm, NullsOrder};
     use crate::predicate::Path;
+    use serde_json::json;
+    use std::cmp::Ordering;
 
-    fn term_n() -> OrderTerm {
+    fn key_term() -> OrderTerm {
         OrderTerm {
-            path: Path(vec!["n".into()]),
-            dir: OrderDir::Asc,
-            nulls: NullsOrder::Last,
-            tie_break: false,
-        }
-    }
-    fn term_key() -> OrderTerm {
-        OrderTerm {
-            path: Path(vec!["$key".into()]),
+            path: Path::parse_dotted("$key").unwrap(),
             dir: OrderDir::Asc,
             nulls: NullsOrder::Last,
             tie_break: true,
@@ -224,35 +172,42 @@ mod tests {
     }
 
     #[test]
-    fn after_c20_keeps_b30_and_d40() {
-        let order = vec![term_n(), term_key()];
-        let ir = CompiledOrderIr::lower(&order);
-        let last = ir.build_sort_tuple("c", &serde_json::json!({"n": 20}));
-        assert_eq!(last, serde_json::json!([20, "c"]));
-        let mut full: Vec<(String, JsonValue)> = vec![
-            ("a".to_string(), serde_json::json!({"n": 10})),
-            ("b".to_string(), serde_json::json!({"n": 30})),
-            ("c".to_string(), serde_json::json!({"n": 20})),
-            ("d".to_string(), serde_json::json!({"n": 40})),
-        ];
-        full.sort_by(|(ka, va), (kb, vb)| ir.compare_rows(ka, va, kb, vb));
-        ir.retain_after_sort_tuple(&mut full, &last);
-        let keys: Vec<String> = full.iter().map(|(k, _)| k.clone()).collect();
-        assert_eq!(keys, vec!["b".to_string(), "d".to_string()], "last={last:?}");
-    }
-
-    #[test]
     fn compare_rows_key_only() {
-        let order = vec![term_key()];
+        let order = vec![key_term()];
         assert_eq!(
-            compare_rows("a", &JsonValue::Null, "b", &JsonValue::Null, &order),
+            compare_rows("a", &json!({}), "b", &json!({}), &order),
             Ordering::Less
         );
     }
 
     #[test]
+    fn after_c20_keeps_b30_and_d40() {
+        let order = vec![
+            OrderTerm {
+                path: Path::parse_dotted("n").unwrap(),
+                dir: OrderDir::Asc,
+                nulls: NullsOrder::Last,
+                tie_break: false,
+            },
+            key_term(),
+        ];
+        let mut full: Vec<(String, serde_json::Value)> = vec![
+            ("a".to_string(), json!({"n": 10})),
+            ("b".to_string(), json!({"n": 30})),
+            ("c".to_string(), json!({"n": 20})),
+            ("d".to_string(), json!({"n": 40})),
+        ];
+        full.sort_by(|(ka, va), (kb, vb)| compare_rows(ka, va, kb, vb, &order));
+        let last = build_sort_tuple("c", &json!({"n": 20}), &order);
+        retain_after_sort_tuple(&mut full, &order, &last);
+        let keys: Vec<_> = full.iter().map(|(k, _)| k.as_str()).collect();
+        assert_eq!(keys, ["b", "d"]);
+    }
+
+    #[test]
     fn key_from_sort_tuple_trailing() {
-        let t = serde_json::json!([20, "c"]);
-        assert_eq!(key_from_sort_tuple(&t).as_deref(), Some("c"));
+        let order = vec![key_term()];
+        let t = build_sort_tuple("k1", &json!({}), &order);
+        assert_eq!(key_from_sort_tuple(&t).as_deref(), Some("k1"));
     }
 }

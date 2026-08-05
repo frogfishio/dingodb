@@ -28,7 +28,7 @@ use super::full_attach::{
     load_foreign_docs_for_root_enrich, within_enter, within_leave, EnrichAttachMode,
     EnrichLoadEvidence, EnrichStepV1, FullPipelineStepV1, ProjectItemV1, WithinStepV1,
 };
-use super::vm::{Instruction, OpCode, VM_PROFILE};
+use super::vm::{OpCode, VM_PROFILE};
 use super::HostCapabilities;
 
 /// Bound-collection [`DocScan`] over [`HostCapabilities`] for Core opcodes.
@@ -85,9 +85,8 @@ struct WithinScope {
 pub(crate) enum VmImm {
     /// Bind / verify collection id.
     Collection(CollectionId),
-    /// IndexEq: where for equality probe + optional force-scan (skip index).
+    /// IndexEq: force-scan only; where is sole authority on Filter (`Where`).
     IndexEq {
-        where_pred: Predicate,
         force_scan: bool,
     },
     /// Scan has no payload (key-source mode is derived from order at run start).
@@ -113,14 +112,14 @@ pub(crate) enum VmImm {
     ProjectBrace(Vec<ProjectItemV1>),
 }
 
-/// Constant pool for program identity / page artefact (**RQL-QVM typed**).
+/// Constant pool for page policy (**RQL-QVM typed**).
 ///
-/// Does **not** hold a full logical plan. Core executable meaning lives on
-/// opcode immediates ([`VmImm`]).
+/// Does **not** hold a full logical plan or trusted cursor identity.
+/// Cursor / page identity is the **canonical QVM program hash** computed over
+/// the durable bytes after encode (see [`super::qvm::qvm_hash`]), not an
+/// embedded wire field.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct VmPool {
-    /// Stable plan hash (from compile-time plan identity for cursor binding).
-    pub plan_hash: [u8; 32],
     /// Coverage policy for the Core page artefact.
     pub coverage: CoveragePolicy,
     /// Consistency mode stamped on the plan at compile time.
@@ -143,38 +142,17 @@ pub(crate) struct VmProgram {
     pub profile: &'static str,
     /// Instruction stream (executable with [`VmPool`]).
     pub ops: Vec<VmInstr>,
-    /// Constant pool (page identity only).
+    /// Constant pool (coverage / consistency only).
     pub pool: VmPool,
     /// Optional execute budget from ISA/QVM.
     pub budget: Option<QueryBudget>,
+    /// Canonical QVM program hash (cursor / page identity).
+    ///
+    /// Set by [`super::qvm::decode_qvm`] / encode path from the **complete**
+    /// durable bytes — never trusted as an independent wire field.
+    pub program_hash: [u8; 32],
 }
 
-impl VmProgram {
-    /// Flatten to opcode+raw-imm instructions (diagnostics / evidence).
-    pub fn to_instructions(&self) -> Vec<Instruction> {
-        self.ops
-            .iter()
-            .map(|i| Instruction {
-                op: i.op,
-                imm: match &i.imm {
-                    VmImm::Collection(id) => id.as_bytes().to_vec(),
-                    VmImm::None => Vec::new(),
-                    VmImm::IndexEq { force_scan, .. } => {
-                        vec![if *force_scan { 1 } else { 0 }]
-                    }
-                    VmImm::Where(_) => Vec::new(),
-                    VmImm::Order(o) => (o.len() as u32).to_le_bytes().to_vec(),
-                    VmImm::Page { page_size, .. } => page_size.to_le_bytes().to_vec(),
-                    VmImm::Project(_) => Vec::new(),
-                    VmImm::Enrich(e) => e.using_id.as_bytes().to_vec(),
-                    VmImm::Within(_) => Vec::new(),
-                    VmImm::FilterAttach(_) => Vec::new(),
-                    VmImm::ProjectBrace(_) => Vec::new(),
-                },
-            })
-            .collect()
-    }
-}
 
 /// Core operands extracted from a verified opcode stream (not a plan sidecar).
 #[derive(Debug, Clone)]
@@ -200,13 +178,11 @@ pub(crate) fn extract_core_operands(ops: &[VmInstr]) -> Result<CoreOperands, Err
     let mut force_scan = false;
     for i in ops {
         match (&i.op, &i.imm) {
-            (OpCode::IndexEq, VmImm::IndexEq { where_pred: w, force_scan: fs }) => {
+            (OpCode::IndexEq, VmImm::IndexEq { force_scan: fs }) => {
                 force_scan = *fs;
-                if where_pred.is_none() {
-                    where_pred = Some(w.clone());
-                }
             }
             (OpCode::Filter, VmImm::Where(w)) => {
+                // Filter is the sole where authority.
                 where_pred = Some(w.clone());
             }
             (OpCode::Order, VmImm::Order(o)) => {
@@ -224,7 +200,7 @@ pub(crate) fn extract_core_operands(ops: &[VmInstr]) -> Result<CoreOperands, Err
     }
     Ok(CoreOperands {
         where_pred: where_pred.ok_or_else(|| {
-            Error::QueryInvalid("qvm: missing Core where (IndexEq/Filter)".into())
+            Error::QueryInvalid("qvm: missing Core Filter Where".into())
         })?,
         order: order.ok_or_else(|| Error::QueryInvalid("qvm: missing Core Order".into()))?,
         project: project.ok_or_else(|| {
@@ -305,10 +281,11 @@ pub(crate) fn verify_vm_program(prog: &VmProgram) -> Result<(), Error> {
         VmImm::IndexEq { .. } => {}
         _ => {
             return Err(Error::QueryInvalid(
-                "verify: IndexEq requires IndexEq imm".into(),
+                "verify: IndexEq requires IndexEq{force_scan} imm".into(),
             ))
         }
     }
+    // Filter is sole where authority; IndexEq must not carry a predicate.
     if !matches!(prog.ops[2].imm, VmImm::None) {
         return Err(Error::QueryInvalid(
             "verify: Scan requires None imm".into(),
@@ -440,7 +417,6 @@ pub(crate) fn lower_core_with_force_scan(
     let page_size = core.page_size;
     let limit = core.limit;
     let pool = VmPool {
-        plan_hash: core.plan_hash(),
         coverage: core.coverage,
         consistency: core.consistency,
     };
@@ -451,10 +427,7 @@ pub(crate) fn lower_core_with_force_scan(
         },
         VmInstr {
             op: OpCode::IndexEq,
-            imm: VmImm::IndexEq {
-                where_pred: where_pred.clone(),
-                force_scan,
-            },
+            imm: VmImm::IndexEq { force_scan },
         },
         VmInstr {
             op: OpCode::Scan,
@@ -486,6 +459,8 @@ pub(crate) fn lower_core_with_force_scan(
         ops,
         pool,
         budget,
+        // Filled by encode/decode (canonical QVM hash of complete program).
+        program_hash: [0u8; 32],
     }
 }
 
@@ -592,6 +567,7 @@ pub(crate) fn run_vm<H: HostCapabilities>(
                 }
                 let core_ops = extract_core_operands(&prog.ops)?;
                 frame = Some(CoreFrame::begin(
+                    prog.program_hash,
                     &prog.pool,
                     &core_ops,
                     params,
@@ -606,14 +582,19 @@ pub(crate) fn run_vm<H: HostCapabilities>(
                 let f = frame.as_mut().ok_or_else(|| {
                     Error::QueryInvalid("run_vm: IndexEq before BindCollection".into())
                 })?;
-                let VmImm::IndexEq {
-                    where_pred,
-                    force_scan,
-                } = &instr.imm
-                else {
+                let VmImm::IndexEq { force_scan } = &instr.imm else {
                     return Err(Error::QueryInvalid(
                         "run_vm: IndexEq immediate mismatch".into(),
                     ));
+                };
+                // Where is sole authority on Filter; IndexEq only probes equalities.
+                let where_pred = match prog.ops.iter().find(|i| i.op == OpCode::Filter).map(|i| &i.imm) {
+                    Some(VmImm::Where(w)) => w,
+                    _ => {
+                        return Err(Error::QueryInvalid(
+                            "run_vm: IndexEq requires Filter Where in program".into(),
+                        ))
+                    }
                 };
                 let mut scan = HostScan {
                     host,
@@ -870,7 +851,7 @@ mod tests {
                 "Halt",
             ]
         );
-        assert_eq!(prog.to_instructions().len(), 8);
+        assert_eq!(prog.ops.len(), 8);
     }
 
     #[test]

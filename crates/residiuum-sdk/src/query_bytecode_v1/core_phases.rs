@@ -180,7 +180,12 @@ pub(crate) struct CoreFrame<'a> {
 
 impl<'a> CoreFrame<'a> {
     /// Prepare frame after BindCollection from typed pool + Core opcode operands.
+    ///
+    /// `program_hash` is the canonical QVM hash of the **complete** program
+    /// (including Full attach ops) — used for cursor identity, never an
+    /// independent trusted wire field.
     pub fn begin(
+        program_hash: [u8; 32],
         pool: &VmPool,
         core: &CoreOperands,
         params: &'a BTreeMap<String, JsonValue>,
@@ -200,7 +205,7 @@ impl<'a> CoreFrame<'a> {
                 cont,
                 heap_id,
                 collection_id,
-                &pool.plan_hash,
+                &program_hash,
                 &param_hash,
             )?
         } else {
@@ -211,7 +216,7 @@ impl<'a> CoreFrame<'a> {
             .iter()
             .all(|t| t.tie_break || t.path.0 == ["$key"]);
         Ok(Self {
-            plan_hash: pool.plan_hash,
+            plan_hash: program_hash,
             coverage: pool.coverage,
             consistency: pool.consistency,
             order: core.order.clone(),

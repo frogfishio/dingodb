@@ -4,9 +4,9 @@
 //! Normative: [QUERY_VM_V1.md](../../../../../doc/todo/rql/QUERY_VM_V1.md)
 //!
 //! This is the **public executable** authority: opcode stream + typed immediates
-//! + identity pool (plan_hash / coverage / consistency). No full `RqlPlanV1`
-//! sidecar is embedded. `RQB1` remains an optional compile/AST carrier that
-//! lowers into QVM before product execute.
+//! + policy pool (coverage / consistency). Cursor identity is the domain hash
+//! of the **complete canonical QVM bytes** ([`qvm_hash`]) — not an embedded
+//! trusted field. `RQB1` is legacy import only.
 //! Decision 0 remains OPEN; **RQL-C1 must not be accepted.**
 
 use crate::app_v1::{ConsistencyMode, CoveragePolicy, QueryBudget};
@@ -58,8 +58,11 @@ const IMM_WITHIN: u8 = 8;
 const IMM_FILTER_ATTACH: u8 = 9;
 const IMM_PROJECT_BRACE: u8 = 10;
 
-/// Encode a lowered [`VmProgram`] into durable QVM bytes.
-pub fn encode_qvm(prog: &VmProgram) -> Result<Vec<u8>, Error> {
+/// Encode a lowered [`VmProgram`] into durable QVM bytes (crate-internal).
+///
+/// Public callers use [`crate::query_bytecode_v1::QueryBytecodeV1`] or
+/// [`validate_qvm`] / [`qvm_hash`] byte APIs — [`VmProgram`] is not public.
+pub(crate) fn encode_qvm(prog: &VmProgram) -> Result<Vec<u8>, Error> {
     if prog.profile != VM_PROFILE {
         return Err(Error::QueryInvalid(format!(
             "qvm encode: profile mismatch {:?}",
@@ -81,8 +84,7 @@ pub fn encode_qvm(prog: &VmProgram) -> Result<Vec<u8>, Error> {
     out.extend_from_slice(QVM_MAGIC);
     out.push(VM_VERSION);
     out.push(flags);
-    // Identity pool (not a full plan body).
-    out.extend_from_slice(&prog.pool.plan_hash);
+    // Policy pool only — no trusted plan_hash field on the wire.
     out.push(coverage_to_u8(prog.pool.coverage));
     out.push(consistency_to_u8(prog.pool.consistency));
     if let Some(b) = prog.budget {
@@ -102,16 +104,37 @@ pub fn encode_qvm(prog: &VmProgram) -> Result<Vec<u8>, Error> {
     Ok(out)
 }
 
-/// Decode durable QVM bytes into a [`VmProgram`] (executable authority).
-pub fn decode_qvm(bytes: &[u8]) -> Result<VmProgram, Error> {
+/// Decode durable QVM bytes into a [`VmProgram`] (crate-internal).
+///
+/// Enforces **canonical** form: `encode_qvm(decode(bytes)) == bytes`.
+/// Sets [`VmProgram::program_hash`] to [`qvm_hash`] of the input bytes
+/// (complete program identity for cursors).
+pub(crate) fn decode_qvm(bytes: &[u8]) -> Result<VmProgram, Error> {
+    let prog = decode_qvm_structural(bytes)?;
+    // Canonical re-encode: reject non-canonical JSON/imm padding.
+    let again = encode_qvm(&prog)?;
+    if again.as_slice() != bytes {
+        return Err(Error::QueryInvalid(
+            "qvm: non-canonical encoding (encode(decode(bytes)) != bytes)".into(),
+        ));
+    }
+    Ok(VmProgram {
+        program_hash: qvm_hash(bytes),
+        ..prog
+    })
+}
+
+/// Structural decode + verify (no canonical re-encode). Used by encode path
+/// internal tests; product entry uses [`decode_qvm`].
+fn decode_qvm_structural(bytes: &[u8]) -> Result<VmProgram, Error> {
     if bytes.len() > QVM_MAX_TOTAL_BYTES {
         return Err(Error::QueryInvalid(format!(
             "qvm: total length {} exceeds max {QVM_MAX_TOTAL_BYTES}",
             bytes.len()
         )));
     }
-    // Header: magic(4) + ver(1) + flags(1) + plan_hash(32) + cov(1) + cons(1) = 40
-    if bytes.len() < 40 {
+    // Header: magic(4) + ver(1) + flags(1) + cov(1) + cons(1) = 8
+    if bytes.len() < 8 {
         return Err(Error::QueryInvalid("qvm: truncated header".into()));
     }
     if &bytes[0..4] != QVM_MAGIC.as_slice() {
@@ -130,9 +153,6 @@ pub fn decode_qvm(bytes: &[u8]) -> Result<VmProgram, Error> {
         )));
     }
     let mut off = 6;
-    let mut plan_hash = [0u8; 32];
-    plan_hash.copy_from_slice(&bytes[off..off + 32]);
-    off += 32;
     let coverage = coverage_from_u8(bytes[off])?;
     off += 1;
     let consistency = consistency_from_u8(bytes[off])?;
@@ -182,18 +202,24 @@ pub fn decode_qvm(bytes: &[u8]) -> Result<VmProgram, Error> {
         profile: VM_PROFILE,
         ops,
         pool: VmPool {
-            plan_hash,
             coverage,
             consistency,
         },
         budget,
+        program_hash: [0u8; 32],
     };
     verify_vm_program(&prog)?;
     Ok(prog)
 }
 
+/// Validate durable QVM bytes (decode + canonical + verify). Public byte API.
+pub fn validate_qvm(bytes: &[u8]) -> Result<(), Error> {
+    let _ = decode_qvm(bytes)?;
+    Ok(())
+}
+
 /// Lower → encode → decode so product execute consumes QVM authority (RQL-QVM1).
-pub fn materialize_qvm(prog: &VmProgram) -> Result<VmProgram, Error> {
+pub(crate) fn materialize_qvm(prog: &VmProgram) -> Result<VmProgram, Error> {
     let bytes = encode_qvm(prog)?;
     decode_qvm(&bytes)
 }
@@ -239,13 +265,9 @@ fn encode_imm(out: &mut Vec<u8>, imm: &VmImm) -> Result<(), Error> {
             out.push(IMM_COLLECTION);
             out.extend_from_slice(id.as_bytes());
         }
-        VmImm::IndexEq {
-            where_pred,
-            force_scan,
-        } => {
+        VmImm::IndexEq { force_scan } => {
             out.push(IMM_INDEX_EQ);
             out.push(if *force_scan { 1 } else { 0 });
-            push_predicate(out, where_pred)?;
         }
         VmImm::Where(p) => {
             out.push(IMM_WHERE);
@@ -327,11 +349,7 @@ fn decode_imm(bytes: &[u8], off: &mut usize) -> Result<VmImm, Error> {
             }
             let force_scan = bytes[*off] != 0;
             *off += 1;
-            let where_pred = read_predicate(bytes, off)?;
-            Ok(VmImm::IndexEq {
-                where_pred,
-                force_scan,
-            })
+            Ok(VmImm::IndexEq { force_scan })
         }
         IMM_WHERE => Ok(VmImm::Where(read_predicate(bytes, off)?)),
         IMM_ORDER => Ok(VmImm::Order(read_order(bytes, off)?)),
@@ -690,9 +708,12 @@ mod tests {
         assert_eq!(&bytes[0..4], QVM_MAGIC);
         let again = decode_qvm(&bytes).expect("decode");
         assert_eq!(again.ops.len(), prog.ops.len());
-        assert_eq!(again.pool.plan_hash, prog.pool.plan_hash);
+        assert_ne!(again.program_hash, [0u8; 32]);
+        assert_eq!(again.program_hash, qvm_hash(&bytes));
         assert_eq!(again.ops[0].op, OpCode::BindCollection);
         assert!(matches!(again.ops[1].imm, VmImm::IndexEq { .. }));
+        // Canonical: re-encode equals original.
+        assert_eq!(encode_qvm(&again).unwrap(), bytes);
     }
 
     #[test]
@@ -705,9 +726,8 @@ mod tests {
             .expect("plan");
         let prog = lower_core(core, None);
         let mut bytes = encode_qvm(&prog).expect("encode");
-        // Overwrite op_count (last 4 bytes before ops): find position after pool.
-        // Corrupt op_count at fixed offset: magic4+ver1+flags1+hash32+cov1+cons1 = 40
-        let op_count_off = 40;
+        // Corrupt op_count at fixed offset: magic4+ver1+flags1+cov1+cons1 = 8
+        let op_count_off = 8;
         bytes[op_count_off..op_count_off + 4]
             .copy_from_slice(&(u32::MAX).to_le_bytes());
         let err = decode_qvm(&bytes).unwrap_err();
@@ -749,5 +769,48 @@ mod tests {
         prog.ops.pop(); // drop Halt
         let err = encode_qvm(&prog).unwrap_err();
         assert!(err.to_string().contains("Halt") || err.to_string().contains("verify"));
+    }
+
+    #[test]
+    fn qvm_program_hash_covers_full_attach() {
+        use crate::query_bytecode_v1::full_attach::{EnrichCardinality, EnrichStepV1, FullPipelineStepV1};
+        use crate::query_bytecode_v1::vm_exec::lower_full;
+        use crate::predicate::Path;
+        let id = CollectionId::from_bytes(uuidish(20)).expect("id");
+        let fid = CollectionId::from_bytes(uuidish(21)).expect("id");
+        let mut bindings = CollectionBindings::default();
+        bindings.bind("items", id);
+        let core = PlanBuilder::from_source("items").compile(&bindings).expect("plan");
+        let core_only = encode_qvm(&lower_core(core.clone(), None)).expect("enc core");
+        let pipeline = vec![FullPipelineStepV1::Enrich(EnrichStepV1 {
+            output: "f".into(),
+            using_name: "foreign".into(),
+            using_id: fid,
+            left: Path::parse_dotted("a").unwrap(),
+            right: Path::parse_dotted("b").unwrap(),
+            candidate_where: None,
+            expect: EnrichCardinality::Optional,
+        })];
+        let full = encode_qvm(&lower_full(core, None, pipeline, None)).expect("enc full");
+        assert_ne!(qvm_hash(&core_only), qvm_hash(&full));
+        let d = decode_qvm(&full).expect("decode");
+        assert_eq!(d.program_hash, qvm_hash(&full));
+    }
+
+    #[test]
+    fn index_eq_force_scan_has_no_where_imm() {
+        let id = CollectionId::from_bytes(uuidish(22)).expect("id");
+        let mut bindings = CollectionBindings::default();
+        bindings.bind("items", id);
+        let core = PlanBuilder::from_source("items")
+            .where_(crate::predicate::Predicate::True)
+            .compile(&bindings)
+            .expect("plan");
+        let prog = lower_core(core, None);
+        match &prog.ops[1].imm {
+            VmImm::IndexEq { force_scan } => assert!(!force_scan),
+            other => panic!("expected IndexEq, got {other:?}"),
+        }
+        assert!(matches!(prog.ops[3].imm, VmImm::Where(_)));
     }
 }

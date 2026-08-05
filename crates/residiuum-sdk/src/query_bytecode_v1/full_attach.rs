@@ -1744,8 +1744,9 @@ pub fn execute_rql_full(
 
 /// [`execute_rql_full`] with differential-oracle controls.
 ///
-/// Authority is ISA: compile lowers to bytes, then [`execute_full_isa_with`]
-/// decodes and runs. [`CompiledRqlFull`] is not an executable sidecar.
+/// Authority is **QVM1**: compile lowers Core+Full to QVM bytes, then
+/// [`execute_full_qvm_with`] decodes/verifies and runs. RQB1 is not on the
+/// product path. [`CompiledRqlFull`] is not an executable sidecar.
 pub fn execute_rql_full_with(
     client: &mut HeapClient,
     source: &str,
@@ -1758,26 +1759,72 @@ pub fn execute_rql_full_with(
         bindings.bind(&info.name, info.collection_id);
     }
     let compiled = compile_rql_full(source, &bindings)?;
-    let isa = encode_full_program(
-        &compiled.base.plan,
+    let vm = lower_full(
+        compiled.base.plan.clone(),
         compiled.base.budget,
-        &compiled.pipeline,
-        &compiled.project,
-    )?;
-    execute_full_isa_with(client, &isa, parameters, options)
+        compiled.pipeline.clone(),
+        compiled.project.clone(),
+    );
+    let qvm = super::qvm::encode_qvm(&vm)?;
+    execute_full_qvm_with(client, &qvm, parameters, options)
 }
 
-/// Full-language entry: decode ISA (must carry full section), then execute.
+/// Full-language product entry: decode **QVM1**, then [`run_vm`] once.
 ///
-/// Lowers Core+attach into one VM program and runs [`run_vm`] once
-/// (RQL-VM1R). Foreign loads use collection-qualified HostCapabilities
-/// by immutable collection id (no name-only open bypass; RQL-P1b).
+/// Foreign loads use collection-qualified HostCapabilities by immutable
+/// collection id (RQL-P1b).
+pub fn execute_full_qvm_with(
+    client: &mut HeapClient,
+    qvm_bytes: &[u8],
+    parameters: &Parameters,
+    options: RqlFullExecuteOptions,
+) -> Result<RqlFullPage, Error> {
+    let vm = super::qvm::decode_qvm(qvm_bytes)?;
+    // BindCollection imm is the collection id.
+    let collection_id = match vm.ops.first().map(|i| &i.imm) {
+        Some(super::vm_exec::VmImm::Collection(id)) => *id,
+        _ => {
+            return Err(Error::QueryInvalid(
+                "execute_full_qvm: missing BindCollection".into(),
+            ))
+        }
+    };
+    let heap_id = client.id();
+    // Recover attach pipeline/project for response diagnostics only (not authority).
+    let (pipeline, project) = reconstruct_attach_from_ops(&vm.ops)?;
+    let out = run_vm(
+        client,
+        &vm,
+        &parameters.values,
+        &options.query,
+        heap_id,
+        collection_id,
+        options.force_enrich_scan,
+    )?;
+
+    Ok(RqlFullPage {
+        profile: RQL_FULL_PROFILE,
+        rows: out.rows,
+        base: out.page,
+        pipeline,
+        project,
+        enrich_loads: out.enrich_loads,
+    })
+}
+
+/// Legacy RQB1 Full import: decode RQB1 → lower → QVM → run.
+///
+/// Prefer [`execute_full_qvm_with`] / [`execute_rql_full_with`] for product paths.
 pub fn execute_full_isa_with(
     client: &mut HeapClient,
     isa_bytes: &[u8],
     parameters: &Parameters,
     options: RqlFullExecuteOptions,
 ) -> Result<RqlFullPage, Error> {
+    // Accept QVM1 directly (shared ingress for callers still naming "isa").
+    if isa_bytes.len() >= 4 && &isa_bytes[0..4] == super::qvm::QVM_MAGIC.as_slice() {
+        return execute_full_qvm_with(client, isa_bytes, parameters, options);
+    }
     let prog = decode_isa_canonical(isa_bytes)?;
     if prog.profile != ISA_PROFILE {
         return Err(Error::QueryInvalid(format!(
@@ -1793,14 +1840,11 @@ pub fn execute_full_isa_with(
 
     let collection_id = prog.core.from.collection_id;
     let heap_id = client.id();
-    // Optional name↔id honesty check (D0R): when the ISA carries a source name,
-    // refuse if the live collection under that name has a different id.
     let from_name = prog.core.from.source_name.as_str();
     if !from_name.is_empty() {
         let _ = open_collection_bound(client, from_name, collection_id)?;
     }
 
-    // One Query VM entry — Core + attach in a single `run_vm` (RQL-VM1R).
     let pipeline = full.pipeline.clone();
     let project = full.project.clone();
     let vm = lower_full(
@@ -1828,6 +1872,112 @@ pub fn execute_full_isa_with(
         project,
         enrich_loads: out.enrich_loads,
     })
+}
+
+/// Rebuild attach pipeline/project from verified flat ops (response diagnostics).
+fn reconstruct_attach_from_ops(
+    ops: &[super::vm_exec::VmInstr],
+) -> Result<(Vec<FullPipelineStepV1>, Option<Vec<ProjectItemV1>>), Error> {
+    use super::vm::OpCode;
+    use super::vm_exec::VmImm;
+    // Skip Core prefix (7 ops) until after ProjectPaths.
+    let mut i = 7usize;
+    let mut pipeline = Vec::new();
+    let mut project = None;
+    while i < ops.len() {
+        match ops[i].op {
+            OpCode::Halt => break,
+            OpCode::Enrich => {
+                let VmImm::Enrich(e) = &ops[i].imm else {
+                    return Err(Error::QueryInvalid("reconstruct: Enrich imm".into()));
+                };
+                pipeline.push(FullPipelineStepV1::Enrich(e.clone()));
+                i += 1;
+            }
+            OpCode::Within => {
+                let VmImm::Within(w) = &ops[i].imm else {
+                    return Err(Error::QueryInvalid("reconstruct: Within imm".into()));
+                };
+                let (steps, next) = reconstruct_within_body(ops, i + 1)?;
+                pipeline.push(FullPipelineStepV1::Within(WithinStepV1 {
+                    carrier: w.carrier.clone(),
+                    element_alias: w.element_alias.clone(),
+                    steps,
+                }));
+                i = next;
+            }
+            OpCode::FilterAttach => {
+                let VmImm::FilterAttach(p) = &ops[i].imm else {
+                    return Err(Error::QueryInvalid("reconstruct: FilterAttach imm".into()));
+                };
+                pipeline.push(FullPipelineStepV1::Filter(p.clone()));
+                i += 1;
+            }
+            OpCode::ProjectBrace => {
+                let VmImm::ProjectBrace(fields) = &ops[i].imm else {
+                    return Err(Error::QueryInvalid("reconstruct: ProjectBrace imm".into()));
+                };
+                project = Some(fields.clone());
+                i += 1;
+            }
+            other => {
+                return Err(Error::QueryInvalid(format!(
+                    "reconstruct: unexpected op {} at {i}",
+                    other.name()
+                )));
+            }
+        }
+    }
+    Ok((pipeline, project))
+}
+
+fn reconstruct_within_body(
+    ops: &[super::vm_exec::VmInstr],
+    mut i: usize,
+) -> Result<(Vec<FullPipelineStepV1>, usize), Error> {
+    use super::vm::OpCode;
+    use super::vm_exec::VmImm;
+    let mut steps = Vec::new();
+    while i < ops.len() {
+        match ops[i].op {
+            OpCode::WithinEnd => return Ok((steps, i + 1)),
+            OpCode::Enrich => {
+                let VmImm::Enrich(e) = &ops[i].imm else {
+                    return Err(Error::QueryInvalid("reconstruct within: Enrich".into()));
+                };
+                steps.push(FullPipelineStepV1::Enrich(e.clone()));
+                i += 1;
+            }
+            OpCode::Within => {
+                let VmImm::Within(w) = &ops[i].imm else {
+                    return Err(Error::QueryInvalid("reconstruct within: Within".into()));
+                };
+                let (inner, next) = reconstruct_within_body(ops, i + 1)?;
+                steps.push(FullPipelineStepV1::Within(WithinStepV1 {
+                    carrier: w.carrier.clone(),
+                    element_alias: w.element_alias.clone(),
+                    steps: inner,
+                }));
+                i = next;
+            }
+            OpCode::FilterAttach => {
+                let VmImm::FilterAttach(p) = &ops[i].imm else {
+                    return Err(Error::QueryInvalid("reconstruct within: Filter".into()));
+                };
+                steps.push(FullPipelineStepV1::Filter(p.clone()));
+                i += 1;
+            }
+            other => {
+                return Err(Error::QueryInvalid(format!(
+                    "reconstruct within: unexpected {} at {i}",
+                    other.name()
+                )));
+            }
+        }
+    }
+    Err(Error::QueryInvalid(
+        "reconstruct within: missing WithinEnd".into(),
+    ))
 }
 
 /// Load foreign docs for a **root** enrich: equality index when usable, else scan.

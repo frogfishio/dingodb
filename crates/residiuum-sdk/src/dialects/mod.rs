@@ -189,7 +189,7 @@ impl BuiltinDialect {
             Self::Rql => "Retired from dialect→SDA; use CollectionClient::rql / execute_rql_full (Query VM)",
             Self::Json => "DX portable filter object; complete for §7.1 vocabulary",
             Self::Mongo => "Alias of json (Mongo-style $ops object filter)",
-            Self::Sql => "Partial SELECT/WHERE → SDA; not full SQL",
+            Self::Sql => "Partial SELECT/WHERE → portable Filter → Query VM; not full SQL",
             Self::Graphql => "Id reserved; not implemented",
         }
     }

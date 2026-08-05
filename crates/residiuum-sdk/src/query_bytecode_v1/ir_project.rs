@@ -14,35 +14,6 @@ use serde_json::Value as JsonValue;
 /// IR profile id for Core path-project.
 pub const PROJECT_IR_PROFILE: &str = "residiuum-query-ir-project-v1";
 
-/// Compiled Core path-project (identity when paths empty / absent).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct CompiledProjectIr {
-    /// Profile stamp.
-    pub profile: &'static str,
-    /// Paths to keep; `None` means identity (full document).
-    paths: Option<Vec<Path>>,
-}
-
-impl CompiledProjectIr {
-    /// Lower plan project list (or identity).
-    pub fn lower(project: Option<&Vec<Path>>) -> Self {
-        Self {
-            profile: PROJECT_IR_PROFILE,
-            paths: project.map(|p| p.to_vec()),
-        }
-    }
-
-    /// Apply projection to one document.
-    pub fn apply(&self, doc: &JsonValue) -> Result<JsonValue, Error> {
-        apply_project_paths(doc, self.paths.as_ref())
-    }
-
-    /// Paths carried (None = identity).
-    pub fn paths(&self) -> Option<&[Path]> {
-        self.paths.as_deref()
-    }
-}
-
 /// Apply Core path-project (identity when `paths` is None).
 pub(crate) fn apply_project_paths(
     doc: &JsonValue,
@@ -68,9 +39,11 @@ pub(crate) fn apply_project_paths(
     Ok(JsonValue::Object(out))
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::predicate::Path;
     use serde_json::json;
 
     #[test]
@@ -80,32 +53,28 @@ mod tests {
 
     #[test]
     fn identity_when_no_project() {
-        let ir = CompiledProjectIr::lower(None);
-        assert_eq!(ir.profile, PROJECT_IR_PROFILE);
         let doc = json!({"a": 1, "b": 2});
-        assert_eq!(ir.apply(&doc).unwrap(), doc);
+        let out = apply_project_paths(&doc, None).unwrap();
+        assert_eq!(out, doc);
     }
 
     #[test]
     fn single_and_multi_segment_paths() {
+        let doc = json!({"a": 1, "nested": {"x": 9}});
         let paths = vec![
-            Path::parse_dotted("name").unwrap(),
-            Path::parse_dotted("meta.sku").unwrap(),
+            Path::parse_dotted("a").unwrap(),
+            Path::parse_dotted("nested.x").unwrap(),
         ];
-        let ir = CompiledProjectIr::lower(Some(&paths));
-        let doc = json!({"name": "Ada", "meta": {"sku": "A"}, "drop": true});
-        let out = ir.apply(&doc).unwrap();
-        assert_eq!(out["name"], "Ada");
-        assert_eq!(out["meta.sku"], "A");
-        assert!(out.get("drop").is_none());
-        assert!(out.get("meta").is_none());
+        let out = apply_project_paths(&doc, Some(&paths)).unwrap();
+        // Path project uses dotted keys for multi-segment paths.
+        assert_eq!(out, json!({"a": 1, "nested.x": 9}));
     }
 
     #[test]
     fn absent_paths_omitted() {
+        let doc = json!({"a": 1});
         let paths = vec![Path::parse_dotted("missing").unwrap()];
-        let ir = CompiledProjectIr::lower(Some(&paths));
-        let out = ir.apply(&json!({"a": 1})).unwrap();
+        let out = apply_project_paths(&doc, Some(&paths)).unwrap();
         assert_eq!(out, json!({}));
     }
 }

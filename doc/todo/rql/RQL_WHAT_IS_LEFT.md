@@ -47,7 +47,7 @@ Raw SDA → explicitly raw SDA APIs only (dialect `sda` / Collection::sda)
 
 ---
 
-## Just shipped (typed QVM + WIRE1 + DEL1)
+## Just shipped (typed QVM + WIRE1 + DEL1 + correctness)
 
 - Architecture gate forbids deleted `run_core_page` / `execute_plan`
 - `VmPool` holds plan_hash / coverage / consistency only (no `RqlPlanV1`)
@@ -58,6 +58,12 @@ Raw SDA → explicitly raw SDA APIs only (dialect `sda` / Collection::sda)
 - `order_by` / `force_scan` compiled into portable dialect → QVM
 - `compile_json_value` → `CompiledPortable` (not SDA)
 - Custom `QueryDialect` is portable-only; raw SDA is explicit surface only
+- Filter is sole where authority (`IndexEq` is force_scan only)
+- Cursor identity = `qvm_hash` of complete canonical QVM bytes (not wire plan_hash)
+- Full product path: compile → `encode_qvm` → `execute_full_qvm_with` (RQB1 legacy import only)
+- Canonical decode: `encode(decode(bytes)) == bytes`
+- Public QVM API is byte-oriented (`validate_qvm` / `qvm_hash`); `encode`/`decode` crate-private
+- `run_attach_pipeline` deleted; dead Compiled*Ir wrappers removed
 - Evidence path: architecture gate + focused corpus
 
 ---
