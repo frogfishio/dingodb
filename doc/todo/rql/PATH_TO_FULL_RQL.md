@@ -1,10 +1,11 @@
 # Path to full RQL — de-risk expressiveness + performance
 
 Status: **labor map 2026-08-05** (post store P0 / packaging 0.2.2 diversion);  
+**RQL-0** gap ledger + package sequence [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) (CRITICAL_PATH §4.6);  
 **Phase 1 labor** residual checklist [PHASE1_CORE_BASELINE_RESIDUAL.md](./PHASE1_CORE_BASELINE_RESIDUAL.md);  
 **Phase 2 labor** [PHASE2_EXPRESSIVENESS.md](./PHASE2_EXPRESSIVENESS.md);  
 **Phase 3** [PHASE3_FULL_RQL_KICKOFF.md](./PHASE3_FULL_RQL_KICKOFF.md) — through **T3.10** corpus+residual; attach-class surface locked; `at rank`/access still residual (DDA)  
-Authority: [MASTER_DELIVERY_PLAN.md](../../../MASTER_DELIVERY_PLAN.md) §0.8 ·  
+Authority: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md) ·  
 [NEXT_BUILD_STATUS.md](../../wip/status/NEXT_BUILD_STATUS.md) ·  
 [RQL_SPEC.md](../../wip/query/RQL_SPEC.md) · APP-5 / APB-7 inventories
 
@@ -22,7 +23,7 @@ queries perform?
 | **APP-5** Application Core compiler | **accept** | `from` / multi-`where` / `project` / `order` / coverage / consistency / budgets → plan; **rejects** `enrich` / `within` / `at rank` / access / Core-`after` |
 | **APP-6** page executor + cursors | **active** (labor largely in_review historically) | Bounded multipage execution for Core plans |
 | **APP-7 / APB-7** `rql_query` op **118** | **active**, **not package accept** | Embedded + remote façade path; dual-pack evidence; **no** product “query qualified” claim |
-| **RQL-v1 full language** | board **backlog** `89a80e77` | Explicitly **out of APB-7**; placeholder after Core product |
+| **RQL-v1 full language** (`rql-full-v1`) | labor through **T3.10** `in_review`; **not package accept** | Enrich/within/project + locked corpus; scan-attach façade; **not** on op-118 product wire; `at rank`/index residual |
 | **SQL-ish+ → RQL** | design [SQL_TO_RQL_SPEC.md](./SQL_TO_RQL_SPEC.md) | Spec only; not a shipped compiler package |
 | **v0.1 dialect** (`dialects/rql`) | guide [USER_GUIDE.md](../../RQL/USER_GUIDE.md) | ENR/SDA `from`/`enrich`/`project` subset — **parallel** to Application Core, not the APB-7 plan runtime |
 
@@ -161,8 +162,9 @@ de-risk.
 
 ## 6. Next concrete pull (after this card)
 
-1. Inventory APB-7 / APP-6 **accept residuals** still open on the board / scoreboard.  
-2. Pre-stage Phase 1–2 tasks under Feature **Query spine** (`1a8a3e05-…`).  
-3. Expand Core execute corpus until independent oracles cover multipage +
-   index/scan + remote.  
-4. Only then promote `89a80e77` for enrich/full language.
+Follow [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) §5 — not ad-hoc PATH T* invention:
+
+1. **RQL-C1** — principal accept APP-6 / APP-7 / APB-7 when residuals clear.  
+2. **RQL-F1** — structured `explain` for `rql-full-v1` (next labor code slice).  
+3. **RQL-F2** — op-118 enrich/within/project wire **or** explicit wire refuse.  
+4. **RQL-I1** / **RQL-S1** / **RQL-D1** / **RQL-Q1** as sequenced in the ledger.

@@ -83,6 +83,9 @@ Evidence: `doc/todo/rql/evidence/phase3_corpus.log`
 
 ## Next slices
 
-1. `at rank` / access policies (DDA-dependent).
-2. Optional: index pushdown for enrich match keys.
-3. Optional: structured `explain` for `rql-full-v1`.
+Superseded by [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) §5:
+
+1. **RQL-F1** — structured `explain` for `rql-full-v1`.
+2. **RQL-F2** — op-118 enrich/within/project wire or explicit refuse.
+3. **RQL-I1** — index pushdown for enrich match keys.
+4. **RQL-D1** — `at rank` / access (DDA-dependent; do not invent early).

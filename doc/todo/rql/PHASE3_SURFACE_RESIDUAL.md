@@ -3,7 +3,8 @@
 Status: **labor 2026-08-05** · board `4994c4bd` (T3.10)  
 Profile: **`rql-full-v1`**  
 Corpus: [`spec/app/v1/rql_full_v1_corpus_v1.json`](../../../spec/app/v1/rql_full_v1_corpus_v1.json)  
-Kickoff: [PHASE3_FULL_RQL_KICKOFF.md](./PHASE3_FULL_RQL_KICKOFF.md)
+Kickoff: [PHASE3_FULL_RQL_KICKOFF.md](./PHASE3_FULL_RQL_KICKOFF.md)  
+Next packages: [RQL0_GAP_LEDGER.md](./RQL0_GAP_LEDGER.md) §5
 
 ## Delivered surface (honest)
 

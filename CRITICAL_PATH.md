@@ -196,7 +196,8 @@ The next work package is **RQL-0 — semantic and implementation inventory**:
 6. refuse to add syntax until its semantics and execution owner are named.
 
 RQL-0 produces one gap ledger and one package sequence. It does not produce a
-new family of explanatory roadmaps.
+new family of explanatory roadmaps. Living labor artefact:
+[doc/todo/rql/RQL0_GAP_LEDGER.md](./doc/todo/rql/RQL0_GAP_LEDGER.md).
 
 ## 5. Gate 2 — Atomics
 
