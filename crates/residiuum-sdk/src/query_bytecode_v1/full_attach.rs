@@ -39,6 +39,7 @@ use std::collections::BTreeMap;
 
 use super::isa::{decode_isa, encode_full_program, ISA_PROFILE};
 use super::execute_decoded_core;
+use super::ir_attach::CompiledAttachIr;
 
 /// Full-language compile profile (Phase 3 kickoff).
 pub const RQL_FULL_PROFILE: &str = "rql-full-v1";
@@ -1777,50 +1778,20 @@ pub fn execute_full_isa_with(
     let pipeline = full.pipeline.clone();
     let project = full.project.clone();
 
-    let mut rows: Vec<(String, JsonValue)> = page
+    let rows: Vec<(String, JsonValue)> = page
         .rows
         .iter()
         .map(|r| (r.key.clone(), r.value.clone()))
         .collect();
 
-    let mut foreign_cache: BTreeMap<String, Vec<(String, JsonValue)>> = BTreeMap::new();
-    let mut enrich_loads = Vec::new();
-    for step in &pipeline {
-        match step {
-            FullPipelineStepV1::Enrich(e) => {
-                let (foreign, mode) = load_foreign_docs_for_root_enrich(
-                    client,
-                    e,
-                    &rows,
-                    options.force_enrich_scan,
-                )?;
-                enrich_loads.push(EnrichLoadEvidence {
-                    using: e.using_name.clone(),
-                    output: e.output.clone(),
-                    mode,
-                });
-                // Index hits are step-local; do not poison the within scan cache
-                // with a partial collection view under the same using-name.
-                if mode == EnrichAttachMode::Scan {
-                    foreign_cache
-                        .entry(e.using_name.clone())
-                        .or_insert_with(|| foreign.clone());
-                }
-                rows = attach_enrich_rows(&rows, &foreign, e, &parameters.values)?;
-            }
-            FullPipelineStepV1::Within(w) => {
-                collect_within_using_names(w, &mut foreign_cache, client)?;
-                rows = attach_within_rows(&rows, &foreign_cache, w, &parameters.values)?;
-            }
-            FullPipelineStepV1::Filter(pred) => {
-                rows = filter_rows(&rows, pred, &parameters.values)?;
-            }
-        }
-    }
-
-    if let Some(fields) = &project {
-        rows = apply_project_rows(&rows, fields)?;
-    }
+    // RQL-IR4: attach orchestration via named IR phase.
+    let attach = CompiledAttachIr::lower(pipeline.clone(), project.clone());
+    let (rows, enrich_loads) = attach.run(
+        client,
+        rows,
+        parameters,
+        options.force_enrich_scan,
+    )?;
 
     Ok(RqlFullPage {
         profile: RQL_FULL_PROFILE,
@@ -1833,7 +1804,7 @@ pub fn execute_full_isa_with(
 }
 
 /// Load foreign docs for a **root** enrich: equality index when usable, else scan.
-fn load_foreign_docs_for_root_enrich(
+pub(crate) fn load_foreign_docs_for_root_enrich(
     client: &mut HeapClient,
     step: &EnrichStepV1,
     roots: &[(String, JsonValue)],
@@ -1924,7 +1895,7 @@ fn ensure_foreign_docs(
     Ok(())
 }
 
-fn collect_within_using_names(
+pub(crate) fn collect_within_using_names(
     step: &WithinStepV1,
     cache: &mut BTreeMap<String, Vec<(String, JsonValue)>>,
     client: &mut HeapClient,

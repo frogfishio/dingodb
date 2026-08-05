@@ -20,10 +20,12 @@ IR_DOC="$ROOT/doc/todo/rql/QUERY_IR_RESIDUAL.md"
 [[ -f "$SDK_SRC/query_bytecode_v1/ir_project.rs" ]] || fail "missing ir_project.rs (RQL-IR1)"
 [[ -f "$SDK_SRC/query_bytecode_v1/ir_order.rs" ]] || fail "missing ir_order.rs (RQL-IR2)"
 [[ -f "$SDK_SRC/query_bytecode_v1/ir_page.rs" ]] || fail "missing ir_page.rs (RQL-IR3)"
+[[ -f "$SDK_SRC/query_bytecode_v1/ir_attach.rs" ]] || fail "missing ir_attach.rs (RQL-IR4)"
 [[ -f "$IR_DOC" ]] || fail "missing QUERY_IR_RESIDUAL.md (X5c honesty)"
 [[ -f "$ROOT/doc/todo/rql/QUERY_IR_PROJECT_V1.md" ]] || fail "missing QUERY_IR_PROJECT_V1.md"
 [[ -f "$ROOT/doc/todo/rql/QUERY_IR_ORDER_V1.md" ]] || fail "missing QUERY_IR_ORDER_V1.md"
 [[ -f "$ROOT/doc/todo/rql/QUERY_IR_PAGE_V1.md" ]] || fail "missing QUERY_IR_PAGE_V1.md"
+[[ -f "$ROOT/doc/todo/rql/QUERY_IR_ATTACH_V1.md" ]] || fail "missing QUERY_IR_ATTACH_V1.md"
 
 # Shims must be gone.
 [[ ! -e "$SDK_SRC/query_exec_v1.rs" ]] || fail "query_exec_v1.rs shim must be deleted"
@@ -39,6 +41,8 @@ rg -q 'residiuum-query-ir-order-v1' "$SDK_SRC/query_bytecode_v1/ir_order.rs" \
   || fail "ORDER_IR_PROFILE missing"
 rg -q 'residiuum-query-ir-page-v1' "$SDK_SRC/query_bytecode_v1/ir_page.rs" \
   || fail "PAGE_IR_PROFILE missing"
+rg -q 'residiuum-query-ir-attach-v1' "$SDK_SRC/query_bytecode_v1/ir_attach.rs" \
+  || fail "ATTACH_IR_PROFILE missing"
 rg -q 'residiuum-query-bytecode-v1' "$MOD" \
   || fail "BYTECODE_PROFILE missing"
 
@@ -122,13 +126,23 @@ fi
 rg -q 'fn finish_coverage' "$SDK_SRC/query_bytecode_v1/ir_page.rs" \
   || fail "ir_page must define finish_coverage"
 
+# RQL-IR4: full attach orchestration must use named IR module.
+rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'CompiledAttachIr' \
+  || fail "execute_full_isa_with must use CompiledAttachIr"
+rg -q 'fn run_attach_pipeline' "$SDK_SRC/query_bytecode_v1/ir_attach.rs" \
+  || fail "ir_attach must define run_attach_pipeline"
+if rg -n 'fn execute_full_isa_with' -A 120 "$FULL" | rg -q 'FullPipelineStepV1::Enrich'; then
+  fail "execute_full_isa_with must not inline Enrich pipeline loop (moved to ir_attach)"
+fi
+
 # IR residual honesty.
 rg -qi 'Rust IR residual' "$IR_DOC" || fail "IR residual doc must name Rust IR residual"
 rg -qi 'RQL-C1 must not be accepted' "$IR_DOC" || fail "IR residual doc must forbid C1"
 rg -q 'ir_project' "$IR_DOC" || fail "IR residual doc must name ir_project (IR1)"
 rg -q 'ir_order' "$IR_DOC" || fail "IR residual doc must name ir_order (IR2)"
 rg -q 'ir_page' "$IR_DOC" || fail "IR residual doc must name ir_page (IR3)"
-rg -q 'RQL-IR4' doc/todo/rql/RQL_WHAT_IS_LEFT.md || fail "SoT must name RQL-IR4 residual"
+rg -q 'ir_attach' "$IR_DOC" || fail "IR residual doc must name ir_attach (IR4)"
+rg -q 'RQL-C1' doc/todo/rql/RQL_WHAT_IS_LEFT.md || fail "SoT must name RQL-C1 residual"
 
 hits="$(
   rg -n --glob '*.rs' '\.eval\(' "$SDK_SRC/query_bytecode_v1" \
@@ -164,4 +178,4 @@ rg -qi 'RQL-C1 must not be accepted' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
 rg -q 'QUERY_IR_RESIDUAL' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must point at QUERY_IR_RESIDUAL"
 
-echo "check_query_runtime_architecture: OK (X5+X5b+X5c+IR1+IR2+IR3; Decision 0 OPEN; C1 forbidden)"
+echo "check_query_runtime_architecture: OK (X5+X5b+X5c+IR1+IR2+IR3+IR4; Decision 0 OPEN; C1 forbidden)"

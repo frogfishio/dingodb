@@ -15,13 +15,13 @@
 //!
 //! Host adapters supply scan/index/get only.
 //!
-//! Residual (Decision 0 still open): enrich/within brace-project loops remain
-//! Rust interpreters of **ISA-decoded** structures — not a finished bytecode
-//! machine. Core project/order/page are named IR phases (still Rust).
-//! **RQL-C1 must not be accepted.**
+//! Residual (Decision 0 still open): attach helpers remain Rust; orchestration
+//! is a named IR phase (`ir_attach`). Core project/order/page are named IR
+//! phases (still Rust). **RQL-C1 must not be accepted.**
 
 mod core_page;
 mod full_attach;
+mod ir_attach;
 mod ir_order;
 mod ir_page;
 mod ir_project;
@@ -40,6 +40,9 @@ pub use full_attach::{
     RqlFullPage, WithinStepV1, DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL,
     DIAG_RQL_PROJECTION_CONFLICT, DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE,
     FULL_EXPLAIN_HASH_DOMAIN, MAX_PROJECT_DEPTH, MAX_WITHIN_DEPTH, RQL_FULL_PROFILE,
+};
+pub use ir_attach::{
+    run_attach_pipeline, CompiledAttachIr, ATTACH_IR_PROFILE,
 };
 pub use ir_order::{
     build_sort_tuple, cmp_sort_tuples, compare_rows, key_from_sort_tuple, retain_after_sort_tuple,

@@ -83,6 +83,7 @@ proceeds.
 | Core path-project named IR | **IR1 done** — [QUERY_IR_PROJECT_V1.md](./QUERY_IR_PROJECT_V1.md) |
 | Core order/sort-tuple named IR | **IR2 done** — [QUERY_IR_ORDER_V1.md](./QUERY_IR_ORDER_V1.md) |
 | Core page/coverage named IR | **IR3 done** — [QUERY_IR_PAGE_V1.md](./QUERY_IR_PAGE_V1.md) |
+| Enrich/within attach named IR | **IR4 done** — [QUERY_IR_ATTACH_V1.md](./QUERY_IR_ATTACH_V1.md) |
 | Core product accept | **RQL-C1** — **forbidden**; Decision 0 OPEN (IR residual remains) |
 
 ---
