@@ -1,7 +1,15 @@
-//! Core VM phase helpers (RQL-VM2).
+//! Core VM phase helpers (RQL-VM2 / RQL-VM3).
 //!
 //! Product Core execute goes through Query VM opcodes → [`CoreFrame`] phases.
-//! [`super::core_page::execute_plan`] is a demoted thin wrapper.
+//! Each Core opcode owns a real phase body (RQL-VM3):
+//! - **IndexEq** — host equality-index probe
+//! - **Scan** — host `list_keys` / `get` into a working bag
+//! - **Filter** — kernel `where` (key-stream may apply where during Scan for early-stop)
+//! - **Order** — sort-tuple order
+//! - **Page** — limit / page-size / field-order resume
+//! - **ProjectPaths** — path-project + page artefact
+//!
+//! [`super::core_page::execute_plan`] remains a demoted thin wrapper.
 //! Decision 0 remains OPEN; RQL-C1 must not be accepted.
 
 use crate::app_v1::{
@@ -18,13 +26,12 @@ use std::collections::BTreeMap;
 use std::time::Instant;
 
 use super::core_page::{equality_constraints, DocScan};
+use super::kernel::CompiledKernelWhere;
 
 fn json_byte_len(v: &JsonValue) -> u64 {
-    // Compact JSON encoding length — stable enough for budget accounting.
     serde_json::to_vec(v).map(|b| b.len() as u64).unwrap_or(0)
 }
 
-/// Cooperative deadline + cancellation (APB-7 T8).
 fn check_governance(options: &QueryRunOptions, started: Instant) -> Result<(), Error> {
     if let Some(ref cancel) = options.cancel {
         cancel.check()?;
@@ -75,7 +82,7 @@ fn check_result_budget(budget: Option<QueryBudget>, result_bytes: u64) -> Result
 fn has_later_match<S: DocScan>(
     scan: &mut S,
     after_key: &str,
-    where_k: &super::kernel::CompiledKernelWhere,
+    where_k: &CompiledKernelWhere,
     budget: Option<QueryBudget>,
     mut examined_docs: u64,
     mut examined_bytes: u64,
@@ -109,7 +116,6 @@ fn has_later_match<S: DocScan>(
                 }
             }
             if probes >= 64 {
-                // Residual: may still have matches further — conservative not exhausted.
                 return Ok(true);
             }
         }
@@ -117,8 +123,7 @@ fn has_later_match<S: DocScan>(
     Ok(false)
 }
 
-
-/// Mutable Core pipeline state driven by Query VM opcodes (RQL-VM2).
+/// Mutable Core pipeline state driven by Query VM opcodes (RQL-VM2/VM3).
 pub(crate) struct CoreFrame<'a> {
     plan: &'a RqlPlanV1,
     params: &'a BTreeMap<String, JsonValue>,
@@ -126,8 +131,27 @@ pub(crate) struct CoreFrame<'a> {
     heap_id: HeapId,
     collection_id: CollectionId,
     budget: Option<QueryBudget>,
+    started: Instant,
+    where_k: CompiledKernelWhere,
+    page_size: usize,
+    param_hash: String,
+    last_sort_tuple_resume: Option<JsonValue>,
+    remaining_limit: Option<u64>,
+    key_only_order: bool,
     /// `None` until [`Self::index_eq`].
     index_keys: Option<Option<Vec<String>>>,
+    /// Full documents in the working bag (pre-project).
+    working: Vec<(String, JsonValue)>,
+    known_holes: Vec<HoleEvidence>,
+    examined_docs: u64,
+    examined_bytes: u64,
+    used_index: bool,
+    /// Key-stream / index early-stop: more candidates remain.
+    index_more: bool,
+    /// Field-order: truncated for page size.
+    field_order_more: bool,
+    /// Key-stream Scan applied `where` for early-stop (Filter becomes confirm).
+    filtered_during_scan: bool,
     saw_scan: bool,
     saw_filter: bool,
     saw_order: bool,
@@ -144,14 +168,50 @@ impl<'a> CoreFrame<'a> {
         collection_id: CollectionId,
         source_budget: Option<QueryBudget>,
     ) -> Result<Self, Error> {
+        let started = Instant::now();
+        check_governance(options, started)?;
+        let where_k = super::kernel::compile_where(&plan.where_pred, params)?;
+        let budget = merge_budgets(source_budget, options.budget);
+        let page_size = super::ir_page::resolve_page_size(plan.page_size, options.page_size);
+        let param_hash = cursor_parameter_hash(params);
+        let (last_sort_tuple_resume, remaining_limit) = if let Some(ref cont) = options.after {
+            super::ir_page::decode_after(
+                cont,
+                heap_id,
+                collection_id,
+                &plan.plan_hash(),
+                &param_hash,
+            )?
+        } else {
+            (None, plan.limit)
+        };
+        let key_only_order = plan
+            .order
+            .iter()
+            .all(|t| t.tie_break || t.path.0 == ["$key"]);
         Ok(Self {
             plan,
             params,
             options,
             heap_id,
             collection_id,
-            budget: source_budget,
+            budget,
+            started,
+            where_k,
+            page_size,
+            param_hash,
+            last_sort_tuple_resume,
+            remaining_limit,
+            key_only_order,
             index_keys: None,
+            working: Vec::new(),
+            known_holes: Vec::new(),
+            examined_docs: 0,
+            examined_bytes: 0,
+            used_index: false,
+            index_more: false,
+            field_order_more: false,
+            filtered_during_scan: false,
             saw_scan: false,
             saw_filter: false,
             saw_order: false,
@@ -171,68 +231,359 @@ impl<'a> CoreFrame<'a> {
         Ok(())
     }
 
-    /// OpCode::Scan.
-    pub fn scan(&mut self) -> Result<(), Error> {
-        if self.index_keys.is_none() {
-            return Err(Error::QueryInvalid("core frame: Scan before IndexEq".into()));
+    /// OpCode::Scan — host load into the working bag.
+    ///
+    /// Key-stream order applies `where` during Scan so APP-6 can early-stop at
+    /// page size (Filter then confirms). Field-order loads docs unfiltered.
+    pub fn scan<S: DocScan>(&mut self, scan: &mut S) -> Result<(), Error> {
+        let index_keys = self.index_keys.as_ref().ok_or_else(|| {
+            Error::QueryInvalid("core frame: Scan before IndexEq".into())
+        })?;
+        self.used_index = index_keys.is_some();
+        let after_key = self
+            .last_sort_tuple_resume
+            .as_ref()
+            .and_then(super::ir_order::key_from_sort_tuple);
+        let need = super::ir_page::rows_needed(self.remaining_limit, self.page_size);
+
+        if let Some(candidates) = index_keys.clone() {
+            self.scan_index(scan, candidates, after_key.as_deref(), need)?;
+        } else if self.key_only_order {
+            self.scan_key_stream(scan, after_key.as_deref(), need)?;
+        } else {
+            self.scan_full_unordered(scan)?;
         }
         self.saw_scan = true;
         Ok(())
     }
 
-    /// OpCode::Filter.
+    fn scan_index<S: DocScan>(
+        &mut self,
+        scan: &mut S,
+        mut candidates: Vec<String>,
+        after_key: Option<&str>,
+        need: usize,
+    ) -> Result<(), Error> {
+        candidates.sort();
+        if self.key_only_order {
+            if let Some(ak) = after_key {
+                candidates.retain(|k| k.as_str() > ak);
+            }
+            let mut iter = candidates.into_iter();
+            while let Some(key) = iter.next() {
+                check_governance(self.options, self.started)?;
+                match scan.get_json(&key)? {
+                    None => {
+                        self.examined_docs += 1;
+                        check_doc_budget(self.budget, self.examined_docs)?;
+                        self.known_holes.push(HoleEvidence {
+                            code: "index_key_absent".into(),
+                            key: Some(key),
+                        });
+                    }
+                    Some(doc) => {
+                        self.examined_docs += 1;
+                        self.examined_bytes =
+                            self.examined_bytes.saturating_add(json_byte_len(&doc));
+                        check_doc_budget(self.budget, self.examined_docs)?;
+                        check_bytes_budget(self.budget, self.examined_bytes)?;
+                        if self.where_k.eval_doc(&doc)? {
+                            self.working.push((key, doc));
+                            if self.working.len() >= need {
+                                self.index_more = iter.next().is_some();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            self.filtered_during_scan = true;
+        } else {
+            for key in candidates {
+                check_governance(self.options, self.started)?;
+                if let Some(doc) = scan.get_json(&key)? {
+                    self.examined_docs += 1;
+                    self.examined_bytes =
+                        self.examined_bytes.saturating_add(json_byte_len(&doc));
+                    check_doc_budget(self.budget, self.examined_docs)?;
+                    check_bytes_budget(self.budget, self.examined_bytes)?;
+                    self.working.push((key, doc));
+                } else {
+                    self.examined_docs += 1;
+                    check_doc_budget(self.budget, self.examined_docs)?;
+                    self.known_holes.push(HoleEvidence {
+                        code: "index_key_absent".into(),
+                        key: Some(key),
+                    });
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn scan_key_stream<S: DocScan>(
+        &mut self,
+        scan: &mut S,
+        after_key: Option<&str>,
+        need: usize,
+    ) -> Result<(), Error> {
+        let mut after = after_key.map(|s| s.to_string());
+        'outer: loop {
+            check_governance(self.options, self.started)?;
+            let batch = scan.list_keys(Some(256), after.as_deref())?;
+            if batch.is_empty() {
+                break;
+            }
+            for key in batch {
+                check_governance(self.options, self.started)?;
+                after = Some(key.clone());
+                match scan.get_json(&key)? {
+                    None => {
+                        self.known_holes.push(HoleEvidence {
+                            code: "key_listed_absent".into(),
+                            key: Some(key),
+                        });
+                        self.examined_docs += 1;
+                        check_doc_budget(self.budget, self.examined_docs)?;
+                    }
+                    Some(doc) => {
+                        self.examined_docs += 1;
+                        self.examined_bytes =
+                            self.examined_bytes.saturating_add(json_byte_len(&doc));
+                        check_doc_budget(self.budget, self.examined_docs)?;
+                        check_bytes_budget(self.budget, self.examined_bytes)?;
+                        if self.where_k.eval_doc(&doc)? {
+                            self.working.push((key, doc));
+                            if self.working.len() >= need {
+                                break 'outer;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        self.filtered_during_scan = true;
+        Ok(())
+    }
+
+    fn scan_full_unordered<S: DocScan>(&mut self, scan: &mut S) -> Result<(), Error> {
+        let mut after: Option<String> = None;
+        loop {
+            check_governance(self.options, self.started)?;
+            let batch = scan.list_keys(Some(256), after.as_deref())?;
+            if batch.is_empty() {
+                break;
+            }
+            for key in batch {
+                check_governance(self.options, self.started)?;
+                after = Some(key.clone());
+                if let Some(doc) = scan.get_json(&key)? {
+                    self.examined_docs += 1;
+                    self.examined_bytes =
+                        self.examined_bytes.saturating_add(json_byte_len(&doc));
+                    check_doc_budget(self.budget, self.examined_docs)?;
+                    check_bytes_budget(self.budget, self.examined_bytes)?;
+                    self.working.push((key, doc));
+                } else {
+                    self.examined_docs += 1;
+                    check_doc_budget(self.budget, self.examined_docs)?;
+                    self.known_holes.push(HoleEvidence {
+                        code: "key_listed_absent".into(),
+                        key: Some(key),
+                    });
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// OpCode::Filter — kernel where over the working bag.
     pub fn filter(&mut self) -> Result<(), Error> {
         if !self.saw_scan {
             return Err(Error::QueryInvalid("core frame: Filter before Scan".into()));
+        }
+        if !self.filtered_during_scan {
+            let mut kept = Vec::with_capacity(self.working.len());
+            for (key, doc) in self.working.drain(..) {
+                check_governance(self.options, self.started)?;
+                if self.where_k.eval_doc(&doc)? {
+                    kept.push((key, doc));
+                }
+            }
+            self.working = kept;
         }
         self.saw_filter = true;
         Ok(())
     }
 
-    /// OpCode::Order.
+    /// OpCode::Order — sort-tuple order (no-op for key-only stream).
     pub fn order(&mut self) -> Result<(), Error> {
         if !self.saw_filter {
             return Err(Error::QueryInvalid("core frame: Order before Filter".into()));
+        }
+        if !self.key_only_order {
+            self.working.sort_by(|(ka, va), (kb, vb)| {
+                super::ir_order::compare_rows(ka, va, kb, vb, &self.plan.order)
+            });
         }
         self.saw_order = true;
         Ok(())
     }
 
-    /// OpCode::Page.
+    /// OpCode::Page — field-order resume + limit + page-size truncate.
     pub fn page(&mut self) -> Result<(), Error> {
         if !self.saw_order {
             return Err(Error::QueryInvalid("core frame: Page before Order".into()));
+        }
+        if !self.key_only_order {
+            if let Some(ref lst) = self.last_sort_tuple_resume {
+                super::ir_order::retain_after_sort_tuple(
+                    &mut self.working,
+                    &self.plan.order,
+                    lst,
+                );
+            }
+            if let Some(n) = self.remaining_limit {
+                self.working.truncate(n as usize);
+            }
+            if self.working.len() > self.page_size {
+                self.field_order_more = true;
+                self.working.truncate(self.page_size);
+            }
         }
         self.saw_page = true;
         Ok(())
     }
 
-    /// OpCode::ProjectPaths — completes Core page via [`run_core_page`].
-    ///
-    /// Scan/Filter/Order/Page gate sequencing; IndexEq owns the host index probe.
-    /// Materialize/page/project remain one function for APP-6 equivalence (honest residual).
+    /// OpCode::ProjectPaths — path-project + coverage / cursor page artefact.
     pub fn project_paths<S: DocScan>(&mut self, scan: &mut S) -> Result<QueryPage, Error> {
         if !self.saw_page {
-            return Err(Error::QueryInvalid("core frame: ProjectPaths before Page".into()));
+            return Err(Error::QueryInvalid(
+                "core frame: ProjectPaths before Page".into(),
+            ));
         }
-        let pre = self.index_keys.take().ok_or_else(|| {
-            Error::QueryInvalid("core frame: ProjectPaths without IndexEq".into())
-        })?;
-        run_core_page(
-            scan,
-            self.plan,
-            self.params,
-            self.options,
-            self.heap_id,
-            self.collection_id,
-            self.budget,
-            Some(pre),
-        )
+        let _ = self.index_keys.take();
+
+        let mut matched: Vec<(String, JsonValue)> = Vec::with_capacity(self.working.len());
+        let mut result_bytes: u64 = 0;
+        let mut last_full_for_cursor: Option<(String, JsonValue)> = None;
+
+        for (key, doc) in self.working.drain(..) {
+            check_governance(self.options, self.started)?;
+            last_full_for_cursor = Some((key.clone(), doc.clone()));
+            let value =
+                super::ir_project::apply_project_paths(&doc, self.plan.project.as_ref())?;
+            let row_len = json_byte_len(&value);
+            let next_result = result_bytes.saturating_add(row_len);
+            check_result_budget(self.budget, next_result)?;
+            result_bytes = next_result;
+            matched.push((key, value));
+        }
+
+        let took = matched.len();
+        let need = super::ir_page::rows_needed(self.remaining_limit, self.page_size);
+        let exhausted = if self.used_index {
+            if self.key_only_order {
+                !self.index_more && took <= need
+            } else {
+                !self.field_order_more
+            }
+        } else if self.key_only_order {
+            took < need
+        } else {
+            !self.field_order_more
+        };
+
+        let exhausted = if !self.used_index && self.key_only_order && took == need {
+            if let Some((last_k, _)) = matched.last() {
+                let more = scan.list_keys(Some(1), Some(last_k.as_str()))?;
+                if more.is_empty() {
+                    true
+                } else {
+                    !has_later_match(
+                        scan,
+                        last_k,
+                        &self.where_k,
+                        self.budget,
+                        self.examined_docs,
+                        self.examined_bytes,
+                    )?
+                }
+            } else {
+                true
+            }
+        } else if self.used_index && self.key_only_order {
+            !self.index_more
+        } else {
+            exhausted
+        };
+
+        let rows: Vec<QueryRow> = matched
+            .into_iter()
+            .map(|(key, value)| QueryRow { key, value })
+            .collect();
+
+        let remaining_after = self
+            .remaining_limit
+            .map(|n| n.saturating_sub(rows.len() as u64));
+        let next = if exhausted || rows.is_empty() {
+            None
+        } else {
+            let (last_key, last_doc) = last_full_for_cursor.unwrap_or_else(|| {
+                (
+                    rows.last().map(|r| r.key.clone()).unwrap_or_default(),
+                    JsonValue::Null,
+                )
+            });
+            let last_tuple =
+                super::ir_order::build_sort_tuple(&last_key, &last_doc, &self.plan.order);
+            Some(super::ir_page::mint_page_cursor(
+                self.heap_id,
+                self.collection_id,
+                &self.plan.plan_hash(),
+                &self.param_hash,
+                &self.plan.order,
+                &last_tuple,
+                remaining_after,
+                self.page_size as u32,
+                self.plan.coverage,
+                self.plan.consistency,
+            )?)
+        };
+
+        let coverage_mode =
+            super::ir_page::resolve_coverage_mode(self.plan.coverage, self.options.coverage);
+        let coverage = super::ir_page::finish_coverage(
+            coverage_mode,
+            &self.known_holes,
+            self.examined_docs,
+        )?;
+
+        let _ = result_bytes;
+        let _ = self.examined_bytes;
+
+        Ok(QueryPage {
+            query_id: QueryId(residiuum_store::random_id().map_err(Error::from)?),
+            plan_hash: self.plan.plan_hash(),
+            heap_id: self.heap_id,
+            collection_id: self.collection_id,
+            rows,
+            next: if exhausted { None } else { next },
+            exhausted,
+            coverage,
+            consistency: ConsistencyEvidence {
+                mode: self.options.consistency,
+            },
+            remaining_limit: remaining_after,
+            known_holes: std::mem::take(&mut self.known_holes),
+        })
     }
 }
 
-
-/// Core page materialize (Scan→Project). Invoked from [`CoreFrame::project_paths`].
+/// Demoted orchestrator (RQL-VM3): drives [`CoreFrame`] phases.
+///
+/// Prefer Query VM / [`CoreFrame`] directly. Kept for residual callers that
+/// pass a precomputed IndexEq probe.
 pub(crate) fn run_core_page<S: DocScan>(
     scan: &mut S,
     plan: &RqlPlanV1,
@@ -243,360 +594,22 @@ pub(crate) fn run_core_page<S: DocScan>(
     source_budget: Option<QueryBudget>,
     precomputed_index_keys: Option<Option<Vec<String>>>,
 ) -> Result<QueryPage, Error> {
-    let started = Instant::now();
-    check_governance(options, started)?;
-
-    let where_k = super::kernel::compile_where(&plan.where_pred, params)?;
-
-    let budget = merge_budgets(source_budget, options.budget);
-    let page_size = super::ir_page::resolve_page_size(plan.page_size, options.page_size);
-
-    let param_hash = cursor_parameter_hash(params);
-    let (last_sort_tuple_resume, remaining_limit) = if let Some(ref cont) = options.after {
-        super::ir_page::decode_after(
-            cont,
-            heap_id,
-            collection_id,
-            &plan.plan_hash(),
-            &param_hash,
-        )?
-    } else {
-        (None, plan.limit)
-    };
-    // Key-stream resume (when order is key-only): last element of sort tuple is the key.
-    let after_key = last_sort_tuple_resume
-        .as_ref()
-        .and_then(super::ir_order::key_from_sort_tuple);
-
-    let total_limit = remaining_limit;
-    let need = super::ir_page::rows_needed(total_limit, page_size);
-
-    // Key-stream order when order is only key tie-break; else collect+sort.
-    let key_only_order = plan
-        .order
-        .iter()
-        .all(|t| t.tie_break || t.path.0 == ["$key"]);
-
-    // APB-7 T4: equality index — prefer IndexEq phase probe when provided.
-    let index_keys = if let Some(pre) = precomputed_index_keys {
-        pre
-    } else {
-        let eqs = equality_constraints(&plan.where_pred, params);
-        if eqs.is_empty() {
-            None
-        } else {
-            scan.try_equality_index_keys(&eqs)?
-        }
-    };
-    let used_index = index_keys.is_some();
-
-    // Matched rows keep projected values (key-only) or full docs until project (field-order).
-    let mut matched: Vec<(String, JsonValue)> = Vec::new();
-    // Last full document on the page (for field-order sort-tuple mint; pre-project).
-    let mut last_full_for_cursor: Option<(String, JsonValue)> = None;
-    let mut examined_docs: u64 = 0;
-    let mut examined_bytes: u64 = 0;
-    let mut result_bytes: u64 = 0;
-    // Key-stream resume only for key-only order. Field-order always full-scans
-    // then resumes with last_sort_tuple (key after would drop out-of-key-order rows).
-    let mut after = if key_only_order {
-        after_key.clone()
-    } else {
-        None
-    };
-    let mut known_holes = Vec::new();
-    // When index path stops early, whether more candidate keys remain.
-    let mut index_more = false;
-    // Field-order: more rows after page truncate.
-    let mut field_order_more = false;
-
-    if let Some(mut candidates) = index_keys {
-        // Index path: examine only candidate keys; re-eval full predicate.
-        candidates.sort();
-        if key_only_order {
-            if let Some(ref ak) = after_key {
-                candidates.retain(|k| k.as_str() > ak.as_str());
-            }
-            let mut iter = candidates.into_iter();
-            while let Some(key) = iter.next() {
-                check_governance(options, started)?;
-                match scan.get_json(&key)? {
-                    None => {
-                        examined_docs += 1;
-                        check_doc_budget(budget, examined_docs)?;
-                        known_holes.push(HoleEvidence {
-                            code: "index_key_absent".into(),
-                            key: Some(key),
-                        });
-                    }
-                    Some(doc) => {
-                        examined_docs += 1;
-                        examined_bytes = examined_bytes.saturating_add(json_byte_len(&doc));
-                        check_doc_budget(budget, examined_docs)?;
-                        check_bytes_budget(budget, examined_bytes)?;
-                        if where_k.eval_doc(&doc)? {
-                            last_full_for_cursor = Some((key.clone(), doc.clone()));
-                            let value = super::ir_project::apply_project_paths(
-                                &doc,
-                                plan.project.as_ref(),
-                            )?;
-                            let row_len = json_byte_len(&value);
-                            let next_result = result_bytes.saturating_add(row_len);
-                            check_result_budget(budget, next_result)?;
-                            result_bytes = next_result;
-                            matched.push((key, value));
-                            if matched.len() >= need {
-                                index_more = iter.next().is_some();
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            let mut full: Vec<(String, JsonValue)> = Vec::new();
-            for key in candidates {
-                check_governance(options, started)?;
-                if let Some(doc) = scan.get_json(&key)? {
-                    examined_docs += 1;
-                    examined_bytes = examined_bytes.saturating_add(json_byte_len(&doc));
-                    check_doc_budget(budget, examined_docs)?;
-                    check_bytes_budget(budget, examined_bytes)?;
-                    if where_k.eval_doc(&doc)? {
-                        full.push((key, doc));
-                    }
-                } else {
-                    examined_docs += 1;
-                    check_doc_budget(budget, examined_docs)?;
-                    known_holes.push(HoleEvidence {
-                        code: "index_key_absent".into(),
-                        key: Some(key),
-                    });
-                }
-            }
-            full.sort_by(|(ka, va), (kb, vb)| {
-                super::ir_order::compare_rows(ka, va, kb, vb, &plan.order)
-            });
-            if let Some(ref lst) = last_sort_tuple_resume {
-                super::ir_order::retain_after_sort_tuple(&mut full, &plan.order, lst);
-            }
-            // remaining_limit is rows still allowed after prior pages.
-            if let Some(n) = total_limit {
-                full.truncate(n as usize);
-            }
-            if full.len() > page_size {
-                field_order_more = true;
-                full.truncate(page_size);
-            }
-            for (key, doc) in full {
-                check_governance(options, started)?;
-                last_full_for_cursor = Some((key.clone(), doc.clone()));
-                let value = super::ir_project::apply_project_paths(
-                    &doc,
-                    plan.project.as_ref(),
-                )?;
-                let row_len = json_byte_len(&value);
-                let next_result = result_bytes.saturating_add(row_len);
-                check_result_budget(budget, next_result)?;
-                result_bytes = next_result;
-                matched.push((key, value));
-            }
-        }
-    } else if key_only_order {
-        // Full key-stream until page full or scan ends.
-        'outer: loop {
-            check_governance(options, started)?;
-            let batch = scan.list_keys(Some(256), after.as_deref())?;
-            if batch.is_empty() {
-                break;
-            }
-            for key in batch {
-                check_governance(options, started)?;
-                after = Some(key.clone());
-                match scan.get_json(&key)? {
-                    None => {
-                        known_holes.push(HoleEvidence {
-                            code: "key_listed_absent".into(),
-                            key: Some(key),
-                        });
-                        examined_docs += 1;
-                        check_doc_budget(budget, examined_docs)?;
-                    }
-                    Some(doc) => {
-                        examined_docs += 1;
-                        examined_bytes = examined_bytes.saturating_add(json_byte_len(&doc));
-                        check_doc_budget(budget, examined_docs)?;
-                        check_bytes_budget(budget, examined_bytes)?;
-                        if where_k.eval_doc(&doc)? {
-                            last_full_for_cursor = Some((key.clone(), doc.clone()));
-                            let value = super::ir_project::apply_project_paths(
-                                &doc,
-                                plan.project.as_ref(),
-                            )?;
-                            let row_len = json_byte_len(&value);
-                            let next_result = result_bytes.saturating_add(row_len);
-                            check_result_budget(budget, next_result)?;
-                            result_bytes = next_result;
-                            matched.push((key, value));
-                            if matched.len() >= need {
-                                break 'outer;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    } else {
-        // Full scan under budget, sort on full docs, resume by sort-tuple, page + project.
-        let mut full: Vec<(String, JsonValue)> = Vec::new();
-        loop {
-            check_governance(options, started)?;
-            let batch = scan.list_keys(Some(256), after.as_deref())?;
-            if batch.is_empty() {
-                break;
-            }
-            for key in batch {
-                check_governance(options, started)?;
-                after = Some(key.clone());
-                if let Some(doc) = scan.get_json(&key)? {
-                    examined_docs += 1;
-                    examined_bytes = examined_bytes.saturating_add(json_byte_len(&doc));
-                    check_doc_budget(budget, examined_docs)?;
-                    check_bytes_budget(budget, examined_bytes)?;
-                    if where_k.eval_doc(&doc)? {
-                        full.push((key, doc));
-                    }
-                } else {
-                    examined_docs += 1;
-                    check_doc_budget(budget, examined_docs)?;
-                    known_holes.push(HoleEvidence {
-                        code: "key_listed_absent".into(),
-                        key: Some(key),
-                    });
-                }
-            }
-        }
-        full.sort_by(|(ka, va), (kb, vb)| {
-            super::ir_order::compare_rows(ka, va, kb, vb, &plan.order)
-        });
-        // APP-6 T3: multipage field-order uses last_sort_tuple, not key position.
-        if let Some(ref lst) = last_sort_tuple_resume {
-            super::ir_order::retain_after_sort_tuple(&mut full, &plan.order, lst);
-        }
-        // remaining_limit is rows still allowed after prior pages.
-        if let Some(n) = total_limit {
-            full.truncate(n as usize);
-        }
-        if full.len() > page_size {
-            field_order_more = true;
-            full.truncate(page_size);
-        }
-        for (key, doc) in full {
-            check_governance(options, started)?;
-            last_full_for_cursor = Some((key.clone(), doc.clone()));
-            let value = super::ir_project::apply_project_paths(
-                &doc,
-                plan.project.as_ref(),
-            )?;
-            let row_len = json_byte_len(&value);
-            let next_result = result_bytes.saturating_add(row_len);
-            check_result_budget(budget, next_result)?;
-            result_bytes = next_result;
-            matched.push((key, value));
-        }
-    }
-
-    let took = matched.len();
-    let exhausted = if used_index {
-        // Index candidates fully considered unless we stopped early for page size.
-        if key_only_order {
-            !index_more && took <= need
-        } else {
-            !field_order_more
-        }
-    } else if key_only_order {
-        took < need
-    } else {
-        !field_order_more
-    };
-
-    // Full-scan key-only: if took == need, probe whether more matches exist.
-    let exhausted = if !used_index && key_only_order && took == need {
-        if let Some((last_k, _)) = matched.last() {
-            let more = scan.list_keys(Some(1), Some(last_k.as_str()))?;
-            if more.is_empty() {
-                true
-            } else {
-                !has_later_match(
-                    scan,
-                    last_k,
-                    &where_k,
-                    budget,
-                    examined_docs,
-                    examined_bytes,
-                )?
-            }
-        } else {
-            true
-        }
-    } else if used_index && key_only_order {
-        !index_more
-    } else {
-        exhausted
-    };
-
-    let rows: Vec<QueryRow> = matched
-        .into_iter()
-        .map(|(key, value)| QueryRow { key, value })
-        .collect();
-
-    let remaining_after = total_limit.map(|n| n.saturating_sub(rows.len() as u64));
-    let next = if exhausted || rows.is_empty() {
-        None
-    } else {
-        let (last_key, last_doc) = last_full_for_cursor.unwrap_or_else(|| {
-            (
-                rows.last().map(|r| r.key.clone()).unwrap_or_default(),
-                JsonValue::Null,
-            )
-        });
-        let last_tuple = super::ir_order::build_sort_tuple(&last_key, &last_doc, &plan.order);
-        Some(super::ir_page::mint_page_cursor(
-            heap_id,
-            collection_id,
-            &plan.plan_hash(),
-            &param_hash,
-            &plan.order,
-            &last_tuple,
-            remaining_after,
-            page_size as u32,
-            plan.coverage,
-            plan.consistency,
-        )?)
-    };
-
-    // APB-7 T9: coverage policy from the plan (RQL/builder); complete-by-default.
-    let coverage_mode =
-        super::ir_page::resolve_coverage_mode(plan.coverage, options.coverage);
-    let coverage =
-        super::ir_page::finish_coverage(coverage_mode, &known_holes, examined_docs)?;
-
-    let _ = result_bytes; // accounted during fill; residual: surface on QueryPage later
-    let _ = examined_bytes;
-
-    Ok(QueryPage {
-        query_id: QueryId(residiuum_store::random_id().map_err(Error::from)?),
-        plan_hash: plan.plan_hash(),
+    let mut frame = CoreFrame::begin(
+        plan,
+        params,
+        options,
         heap_id,
         collection_id,
-        rows,
-        next: if exhausted { None } else { next },
-        exhausted,
-        coverage,
-        consistency: ConsistencyEvidence {
-            mode: options.consistency,
-        },
-        remaining_limit: remaining_after,
-        known_holes,
-    })
+        source_budget,
+    )?;
+    if let Some(pre) = precomputed_index_keys {
+        frame.index_keys = Some(pre);
+    } else {
+        frame.index_eq(scan)?;
+    }
+    frame.scan(scan)?;
+    frame.filter()?;
+    frame.order()?;
+    frame.page()?;
+    frame.project_paths(scan)
 }

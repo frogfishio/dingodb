@@ -1,0 +1,363 @@
+=== RQL-VM3 evidence 2026-08-05T10:17:02Z ===
+check_query_runtime_architecture: OK (X5+IR+D0R+P0b+VM0–VM3+P1b+P1c; Decision 0 OPEN; C1 forbidden; key-stream residual)
+warning: function `resolve_path_value` is never used
+   --> crates/residiuum-sdk/src/filter.rs:960:15
+    |
+960 | pub(crate) fn resolve_path_value<'a>(doc: &'a JsonValue, path: &str) -> Option<&'a JsonValue> {
+    |               ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `compare_field` is never used
+    --> crates/residiuum-sdk/src/filter.rs:1132:15
+     |
+1132 | pub(crate) fn compare_field(
+     |               ^^^^^^^^^^^^^
+
+warning: function `execute_plan` is never used
+  --> crates/residiuum-sdk/src/query_bytecode_v1/core_page.rs:90:15
+   |
+90 | pub(crate) fn execute_plan<S: DocScan>(
+   |               ^^^^^^^^^^^^
+
+warning: function `run_core_page` is never used
+   --> crates/residiuum-sdk/src/query_bytecode_v1/core_phases.rs:587:15
+    |
+587 | pub(crate) fn run_core_page<S: DocScan>(
+    |               ^^^^^^^^^^^^^
+
+warning: method `run` is never used
+  --> crates/residiuum-sdk/src/query_bytecode_v1/ir_attach.rs:51:12
+   |
+37 | impl CompiledAttachIr {
+   | --------------------- method in this implementation
+...
+51 |     pub fn run<H: HostCapabilities>(
+   |            ^^^
+
+warning: function `run_attach_pipeline` is never used
+  --> crates/residiuum-sdk/src/query_bytecode_v1/ir_attach.rs:70:15
+   |
+70 | pub(crate) fn run_attach_pipeline<H: HostCapabilities>(
+   |               ^^^^^^^^^^^^^^^^^^^
+
+warning: method `terms` is never used
+  --> crates/residiuum-sdk/src/query_bytecode_v1/ir_order.rs:36:12
+   |
+26 | impl CompiledOrderIr {
+   | -------------------- method in this implementation
+...
+36 |     pub fn terms(&self) -> &[OrderTerm] {
+   |            ^^^^^
+
+warning: struct `CompiledPageIr` is never constructed
+  --> crates/residiuum-sdk/src/query_bytecode_v1/ir_page.rs:27:19
+   |
+27 | pub(crate) struct CompiledPageIr {
+   |                   ^^^^^^^^^^^^^^
+
+warning: associated function `lower` is never used
+  --> crates/residiuum-sdk/src/query_bytecode_v1/ir_page.rs:38:12
+   |
+36 | impl CompiledPageIr {
+   | ------------------- associated function in this implementation
+37 |     /// Lower plan page/coverage fields.
+38 |     pub fn lower(page_size: u32, coverage: CoveragePolicy) -> Self {
+   |            ^^^^^
+
+warning: method `paths` is never used
+  --> crates/residiuum-sdk/src/query_bytecode_v1/ir_project.rs:41:12
+   |
+26 | impl CompiledProjectIr {
+   | ---------------------- method in this implementation
+...
+41 |     pub fn paths(&self) -> Option<&[Path]> {
+   |            ^^^^^
+
+warning: constant `BUILD_CHECKPOINT_EVERY` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:33:7
+   |
+33 | const BUILD_CHECKPOINT_EVERY: usize = 32;
+   |       ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `BUILD_PAGE_SIZE` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:35:7
+   |
+35 | const BUILD_PAGE_SIZE: usize = 64;
+   |       ^^^^^^^^^^^^^^^
+
+warning: constant `FP_INDEX_BUILD_AFTER_PLAN` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:37:11
+   |
+37 | pub const FP_INDEX_BUILD_AFTER_PLAN: &str = "index.build.after_plan";
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `FP_INDEX_BUILD_MID` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:39:11
+   |
+39 | pub const FP_INDEX_BUILD_MID: &str = "index.build.mid";
+   |           ^^^^^^^^^^^^^^^^^^
+
+warning: constant `FP_INDEX_BUILD_BEFORE_READY` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:41:11
+   |
+41 | pub const FP_INDEX_BUILD_BEFORE_READY: &str = "index.build.before_ready";
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check_result_bytes` is never used
+   --> crates/residiuum-sdk/src/resource.rs:200:8
+    |
+200 | pub fn check_result_bytes(
+    |        ^^^^^^^^^^^^^^^^^^
+
+warning: `residiuum-sdk` (lib test) generated 16 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.22s
+     Running unittests src/lib.rs (target/debug/deps/residiuum_sdk-299d1e6376b1a40d)
+
+running 56 tests
+test query_bytecode_v1::full_attach::tests::attach_exactly_one_and_optional ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_many ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_multi_root_enrich ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_enrich_after_within ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_multi_within_enrich ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_apply_nested_project ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_candidate_where ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_nested_within ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_root_where_after_enrich ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_where_after_enrich_in_within ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_within ... ok
+test query_bytecode_v1::full_attach::tests::compile_single_enrich ... ok
+test query_bytecode_v1::full_attach::tests::core_still_rejects_enrich ... ok
+test query_bytecode_v1::full_attach::tests::project_conflict_and_type_error ... ok
+test query_bytecode_v1::full_attach::tests::within_type_error_on_absent ... ok
+test query_bytecode_v1::ir_attach::tests::attach_ir_profile_constant ... ok
+test query_bytecode_v1::ir_attach::tests::empty_pipeline_is_identity ... ok
+test query_bytecode_v1::full_attach::tests::refuse_within_depth_overflow ... ok
+test query_bytecode_v1::ir_order::tests::compare_rows_key_only ... ok
+test query_bytecode_v1::full_attach::tests::compile_and_attach_nested_where ... ok
+test query_bytecode_v1::ir_order::tests::order_ir_profile_constant ... ok
+test query_bytecode_v1::ir_page::tests::coverage_plan_incomplete_honored ... ok
+test query_bytecode_v1::ir_page::tests::finish_coverage_fails_closed ... ok
+test query_bytecode_v1::ir_page::tests::page_ir_profile_constant ... ok
+test query_bytecode_v1::ir_page::tests::resolve_page_size_clamps ... ok
+test query_bytecode_v1::ir_order::tests::key_from_sort_tuple_trailing ... ok
+test query_bytecode_v1::ir_page::tests::rows_needed_respects_remaining ... ok
+test query_bytecode_v1::ir_project::tests::identity_when_no_project ... ok
+test query_bytecode_v1::ir_project::tests::absent_paths_omitted ... ok
+test query_bytecode_v1::ir_project::tests::project_ir_profile_constant ... ok
+test query_bytecode_v1::ir_project::tests::single_and_multi_segment_paths ... ok
+test query_bytecode_v1::ir_order::tests::after_c20_keeps_b30_and_d40 ... ok
+test query_bytecode_v1::isa::tests::isa_profile_constant ... ok
+test query_bytecode_v1::isa::tests::full_pipeline_encode_decode_roundtrip ... ok
+test query_bytecode_v1::isa::tests::core_encode_decode_roundtrip ... ok
+test query_bytecode_v1::isa::tests::non_canonical_rejected_by_decode_isa_canonical ... ok
+test query_bytecode_v1::isa::tests::reserved_top_level_flags_rejected ... ok
+test query_bytecode_v1::kernel::tests::kernel_profile_constant ... ok
+test query_bytecode_v1::kernel::tests::param_eq ... ok
+test query_bytecode_v1::kernel::tests::ne_absent_is_false ... ok
+test query_bytecode_v1::kernel::tests::eq_absent_null_and_value ... ok
+test query_bytecode_v1::kernel::tests::present_missing_isnull ... ok
+test query_bytecode_v1::tests::bytecode_profile_constant ... ok
+test query_bytecode_v1::tests::core_page_owned_by_bytecode_module ... ok
+test query_bytecode_v1::kernel::tests::starts_with_and_contains ... ok
+test query_bytecode_v1::tests::corrupted_isa_refuses_execute ... ok
+test query_bytecode_v1::tests::execute_empty_host_one_page ... ok
+test query_bytecode_v1::isa::tests::execute_from_isa_empty_host ... ok
+test query_bytecode_v1::tests::execute_decoded_core_is_shared_core_entry ... ok
+test query_bytecode_v1::tests::execute_bytecode_uses_isa_not_sidecar_plan ... ok
+test query_bytecode_v1::tests::lower_core_stamps_profile ... ok
+test query_bytecode_v1::vm::tests::core_and_full_coverage_named ... ok
+test query_bytecode_v1::vm::tests::vm_profile_constant ... ok
+test query_bytecode_v1::vm::tests::opcodes_are_unique_and_roundtrip ... ok
+test query_bytecode_v1::vm_exec::tests::lower_core_shape ... ok
+test query_bytecode_v1::vm_exec::tests::lower_full_emits_enrich_and_within_end ... ok
+
+test result: ok. 56 passed; 0 failed; 0 ignored; 0 measured; 92 filtered out; finished in 0.01s
+
+warning: function `resolve_path_value` is never used
+   --> crates/residiuum-sdk/src/filter.rs:960:15
+    |
+960 | pub(crate) fn resolve_path_value<'a>(doc: &'a JsonValue, path: &str) -> Option<&'a JsonValue> {
+    |               ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `compare_field` is never used
+    --> crates/residiuum-sdk/src/filter.rs:1132:15
+     |
+1132 | pub(crate) fn compare_field(
+     |               ^^^^^^^^^^^^^
+
+warning: function `execute_plan` is never used
+  --> crates/residiuum-sdk/src/query_bytecode_v1/core_page.rs:90:15
+   |
+90 | pub(crate) fn execute_plan<S: DocScan>(
+   |               ^^^^^^^^^^^^
+
+warning: function `run_core_page` is never used
+   --> crates/residiuum-sdk/src/query_bytecode_v1/core_phases.rs:587:15
+    |
+587 | pub(crate) fn run_core_page<S: DocScan>(
+    |               ^^^^^^^^^^^^^
+
+warning: struct `CompiledAttachIr` is never constructed
+  --> crates/residiuum-sdk/src/query_bytecode_v1/ir_attach.rs:28:19
+   |
+28 | pub(crate) struct CompiledAttachIr {
+   |                   ^^^^^^^^^^^^^^^^
+
+warning: associated items `lower` and `run` are never used
+  --> crates/residiuum-sdk/src/query_bytecode_v1/ir_attach.rs:39:12
+   |
+37 | impl CompiledAttachIr {
+   | --------------------- associated items in this implementation
+38 |     /// Lower decoded ISA full section.
+39 |     pub fn lower(
+   |            ^^^^^
+...
+51 |     pub fn run<H: HostCapabilities>(
+   |            ^^^
+
+warning: function `run_attach_pipeline` is never used
+  --> crates/residiuum-sdk/src/query_bytecode_v1/ir_attach.rs:70:15
+   |
+70 | pub(crate) fn run_attach_pipeline<H: HostCapabilities>(
+   |               ^^^^^^^^^^^^^^^^^^^
+
+warning: struct `CompiledOrderIr` is never constructed
+  --> crates/residiuum-sdk/src/query_bytecode_v1/ir_order.rs:20:19
+   |
+20 | pub(crate) struct CompiledOrderIr {
+   |                   ^^^^^^^^^^^^^^^
+
+warning: associated items `lower`, `terms`, `compare_rows`, `build_sort_tuple`, and `retain_after_sort_tuple` are never used
+  --> crates/residiuum-sdk/src/query_bytecode_v1/ir_order.rs:28:12
+   |
+26 | impl CompiledOrderIr {
+   | -------------------- associated items in this implementation
+27 |     /// Lower plan order list.
+28 |     pub fn lower(order: &[OrderTerm]) -> Self {
+   |            ^^^^^
+...
+36 |     pub fn terms(&self) -> &[OrderTerm] {
+   |            ^^^^^
+...
+41 |     pub(crate) fn compare_rows(
+   |                   ^^^^^^^^^^^^
+...
+52 |     pub fn build_sort_tuple(&self, key: &str, doc: &JsonValue) -> JsonValue {
+   |            ^^^^^^^^^^^^^^^^
+...
+57 |     pub(crate) fn retain_after_sort_tuple(
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `CompiledPageIr` is never constructed
+  --> crates/residiuum-sdk/src/query_bytecode_v1/ir_page.rs:27:19
+   |
+27 | pub(crate) struct CompiledPageIr {
+   |                   ^^^^^^^^^^^^^^
+
+warning: associated function `lower` is never used
+  --> crates/residiuum-sdk/src/query_bytecode_v1/ir_page.rs:38:12
+   |
+36 | impl CompiledPageIr {
+   | ------------------- associated function in this implementation
+37 |     /// Lower plan page/coverage fields.
+38 |     pub fn lower(page_size: u32, coverage: CoveragePolicy) -> Self {
+   |            ^^^^^
+
+warning: struct `CompiledProjectIr` is never constructed
+  --> crates/residiuum-sdk/src/query_bytecode_v1/ir_project.rs:19:19
+   |
+19 | pub(crate) struct CompiledProjectIr {
+   |                   ^^^^^^^^^^^^^^^^^
+
+warning: associated items `lower`, `apply`, and `paths` are never used
+  --> crates/residiuum-sdk/src/query_bytecode_v1/ir_project.rs:28:12
+   |
+26 | impl CompiledProjectIr {
+   | ---------------------- associated items in this implementation
+27 |     /// Lower plan project list (or identity).
+28 |     pub fn lower(project: Option<&Vec<Path>>) -> Self {
+   |            ^^^^^
+...
+36 |     pub fn apply(&self, doc: &JsonValue) -> Result<JsonValue, Error> {
+   |            ^^^^^
+...
+41 |     pub fn paths(&self) -> Option<&[Path]> {
+   |            ^^^^^
+
+warning: method `to_instructions` is never used
+  --> crates/residiuum-sdk/src/query_bytecode_v1/vm_exec.rs:79:12
+   |
+77 | impl VmProgram {
+   | -------------- method in this implementation
+78 |     /// Flatten to opcode+raw-imm instructions (diagnostics / evidence).
+79 |     pub fn to_instructions(&self) -> Vec<Instruction> {
+   |            ^^^^^^^^^^^^^^^
+
+warning: constant `BUILD_CHECKPOINT_EVERY` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:33:7
+   |
+33 | const BUILD_CHECKPOINT_EVERY: usize = 32;
+   |       ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `BUILD_PAGE_SIZE` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:35:7
+   |
+35 | const BUILD_PAGE_SIZE: usize = 64;
+   |       ^^^^^^^^^^^^^^^
+
+warning: constant `FP_INDEX_BUILD_AFTER_PLAN` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:37:11
+   |
+37 | pub const FP_INDEX_BUILD_AFTER_PLAN: &str = "index.build.after_plan";
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `FP_INDEX_BUILD_MID` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:39:11
+   |
+39 | pub const FP_INDEX_BUILD_MID: &str = "index.build.mid";
+   |           ^^^^^^^^^^^^^^^^^^
+
+warning: constant `FP_INDEX_BUILD_BEFORE_READY` is never used
+  --> crates/residiuum-sdk/src/indexes.rs:41:11
+   |
+41 | pub const FP_INDEX_BUILD_BEFORE_READY: &str = "index.build.before_ready";
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check_result_bytes` is never used
+   --> crates/residiuum-sdk/src/resource.rs:200:8
+    |
+200 | pub fn check_result_bytes(
+    |        ^^^^^^^^^^^^^^^^^^
+
+warning: `residiuum-sdk` (lib) generated 20 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/app6_field_order_multipage.rs (target/debug/deps/app6_field_order_multipage-c7bc9ee404072246)
+
+running 3 tests
+test multipage_key_order_still_streams ... ok
+test multipage_field_order_rql_and_builder_agree ... ok
+test multipage_field_order_desc_matches_oracle ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.78s
+
+     Running tests/app6_page_executor.rs (target/debug/deps/app6_page_executor-6895116cbdf29a17)
+
+running 4 tests
+test rql_page_size_and_continuation ... ok
+test rql_equality_filter_matches_scan_oracle ... ok
+test explain_rql_returns_plan_hash ... ok
+test rql_budget_documents_resource_limit ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.95s
+
+     Running tests/rql_full_isa_execute.rs (target/debug/deps/rql_full_isa_execute-46b5532a9a76a005)
+
+running 2 tests
+test corrupted_full_isa_refuses_execute ... ok
+test execute_full_isa_enrich_within_project_nonempty ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.07s
+

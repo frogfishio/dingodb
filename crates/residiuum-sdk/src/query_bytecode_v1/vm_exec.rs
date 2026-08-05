@@ -1,11 +1,12 @@
-//! Query VM dispatch (RQL-VM1/VM2) — one instruction loop for Core + Full.
+//! Query VM dispatch (RQL-VM1/VM2/VM3) — one instruction loop for Core + Full.
 //!
 //! Profile: **`residiuum-query-vm-v1`** (see [`super::vm`]).
 //! Normative: [QUERY_VM_V1.md](../../../../../doc/todo/rql/QUERY_VM_V1.md)
 //!
 //! Product execute enters here after ISA decode + lower. Core pipeline opcodes
-//! call [`super::core_phases::CoreFrame`] phase helpers (**RQL-VM2**).
-//! `run_core_page` still fuses Scan→Project materialize (honest residual).
+//! call [`super::core_phases::CoreFrame`] phase helpers (**RQL-VM2/VM3**).
+//! Scan/Filter/Order/Page/ProjectPaths own real bodies; key-stream Scan may
+//! apply `where` early for APP-6 page early-stop (honest residual).
 //! Full attach opcodes dispatch one step at a time via existing attach helpers.
 //!
 //! Decision 0 remains OPEN; **RQL-C1 must not be accepted.**
@@ -222,8 +223,8 @@ pub(crate) fn lower_full(
 
 /// Run a Core-only VM program (no Enrich / Within / …).
 ///
-/// RQL-VM2: each Core opcode calls a [`CoreFrame`] phase helper. IndexEq performs
-/// the host index probe; ProjectPaths completes the page via `run_core_page`.
+/// RQL-VM2/VM3: each Core opcode calls a [`CoreFrame`] phase helper.
+/// IndexEq probes; Scan loads; Filter/Order/Page transform; ProjectPaths finishes.
 pub(crate) fn run_vm_core<S: DocScan>(
     scan: &mut S,
     prog: &VmProgram,
@@ -279,7 +280,7 @@ pub(crate) fn run_vm_core<S: DocScan>(
                 let f = frame.as_mut().ok_or_else(|| {
                     Error::QueryInvalid("run_vm: Scan before BindCollection".into())
                 })?;
-                f.scan()?;
+                f.scan(scan)?;
                 pc += 1;
             }
             OpCode::Filter => {

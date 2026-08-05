@@ -1,13 +1,13 @@
 # Query IR residual — what is still not a finished bytecode machine
 
-Status: **2026-08-05 · RQL-P1c**  
+Status: **2026-08-05 · RQL-VM3**  
 Authority: [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) · Decision 0 **OPEN**  
 **RQL-C1 must not be accepted.** Principal rejected D0 closure — see [QUERY_VM_V1.md](./QUERY_VM_V1.md).
 
-Named IR phases remain **Rust IR residual**. Query VM **dispatch** (VM1) +
-**CoreFrame phases** (VM2) + collection-qualified host (P1b) + **frontend funnel
-arch-tested onto one loop (P1c)** exist, but `run_core_page` still fuses
-Scan→Project materialize for APP-6 equivalence. Not Decision 0 closed.
+Named IR phases remain **Rust IR residual**. Query VM dispatch + CoreFrame
+opcode-owned materialize (VM3) + frontend funnel (P1c) exist. Honest residual:
+key-stream Scan may apply `where` early (`filtered_during_scan`) for APP-6
+page early-stop. Not Decision 0 closed.
 
 ---
 
@@ -23,10 +23,10 @@ Scan→Project materialize for APP-6 equivalence. Not Decision 0 closed.
 | Enrich / within / brace helpers | `ir_attach.rs` / `full_attach.rs` | **Named IR (IR4)** — called from VM attach ops |
 | Query VM opcodes | `vm.rs` | **Vocabulary frozen (VM0)** |
 | Query VM dispatch | `vm_exec.rs` | **Dispatch loop (VM1)** |
-| Core opcode phases | `core_phases.rs` `CoreFrame` | **VM2** — IndexEq real; Scan→Project via `run_core_page` |
-| Scan/index materialize | `core_phases.rs` `run_core_page` | **Fused Scan→Project** residual |
+| Core opcode phases | `core_phases.rs` `CoreFrame` | **VM2+VM3** — working bag per opcode |
 | Host scan / index / get | `HostCapabilities` by `CollectionId` | **P1b labor closed** |
 | Product frontends → one loop | SDK rql/builder/view + op 118 + Full | **P1c labor closed** |
+| Key-stream Filter vs Scan | `filtered_during_scan` | **Honest residual** |
 
 Detail: [QUERY_IR_PROJECT_V1.md](./QUERY_IR_PROJECT_V1.md) ·
 [QUERY_IR_ORDER_V1.md](./QUERY_IR_ORDER_V1.md) ·
@@ -39,10 +39,10 @@ Detail: [QUERY_IR_PROJECT_V1.md](./QUERY_IR_PROJECT_V1.md) ·
 
 - IR1–IR4 ≠ Decision 0 closed
 - Named IR ≠ finished opcode-granular machine
-- VM1 / P1b / VM2 / P1c ≠ Decision 0 closed / C1
-- `run_core_page` fused materialize ≠ fully split opcode bodies
+- VM1 / P1b / VM2 / VM3 / P1c ≠ Decision 0 closed / C1
+- Key-stream Filter-during-Scan ≠ fully separate Filter body
 - **RQL-C1 must not be accepted**
-- NEXT labor = optional further materialize split — **not** principal C1
+- NEXT labor = optional key-stream Filter separation — **not** principal C1
 
 ---
 
@@ -56,3 +56,4 @@ Detail: [QUERY_IR_PROJECT_V1.md](./QUERY_IR_PROJECT_V1.md) ·
 - `doc/todo/rql/evidence/rql_p1b_host_by_id.log`
 - `doc/todo/rql/evidence/rql_vm2_core_phases.log`
 - `doc/todo/rql/evidence/rql_p1c_frontend_dispatch.log`
+- `doc/todo/rql/evidence/rql_vm3_materialize_split.log`

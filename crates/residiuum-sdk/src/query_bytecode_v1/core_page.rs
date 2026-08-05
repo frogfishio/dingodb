@@ -105,7 +105,7 @@ pub(crate) fn execute_plan<S: DocScan>(
         source_budget,
     )?;
     frame.index_eq(scan)?;
-    frame.scan()?;
+    frame.scan(scan)?;
     frame.filter()?;
     frame.order()?;
     frame.page()?;

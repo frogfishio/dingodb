@@ -199,16 +199,35 @@ rg -n 'fn run_vm_core' -A 80 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'in
   || fail "run_vm_core must call CoreFrame::index_eq (RQL-VM2)"
 rg -n 'fn run_vm_core' -A 120 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'project_paths' \
   || fail "run_vm_core must call CoreFrame::project_paths (RQL-VM2)"
+rg -n 'fn run_vm_core' -A 120 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'f\.scan\(scan\)' \
+  || fail "run_vm_core must call CoreFrame::scan(scan) (RQL-VM3)"
 if rg -n 'fn run_vm_core' -A 120 "$SDK_SRC/query_bytecode_v1/vm_exec.rs" | rg -q 'execute_plan\('; then
   fail "run_vm_core must not call execute_plan (RQL-VM2 demotion)"
 fi
 rg -n 'fn execute_plan' -A 25 "$SDK_SRC/query_bytecode_v1/core_page.rs" | rg -q 'CoreFrame' \
   || fail "execute_plan must be thin CoreFrame wrapper (RQL-VM2)"
 
+# RQL-VM3: opcode-owned materialize bodies (not gates + fused run_core_page).
+rg -n 'pub fn scan' -A 25 "$CORE_PHASES" | rg -q 'list_keys|scan_key_stream|scan_index|scan_full' \
+  || fail "CoreFrame::scan must load host keys/docs (RQL-VM3)"
+rg -n 'pub fn filter' -A 25 "$CORE_PHASES" | rg -q 'eval_doc|filtered_during_scan' \
+  || fail "CoreFrame::filter must apply where (RQL-VM3)"
+rg -n 'pub fn order' -A 20 "$CORE_PHASES" | rg -q 'compare_rows' \
+  || fail "CoreFrame::order must call compare_rows (RQL-VM3)"
+rg -n 'pub fn page' -A 30 "$CORE_PHASES" | rg -q 'retain_after_sort_tuple|truncate' \
+  || fail "CoreFrame::page must page/resume (RQL-VM3)"
+rg -n 'pub fn project_paths' -A 40 "$CORE_PHASES" | rg -q 'apply_project_paths' \
+  || fail "CoreFrame::project_paths must project (RQL-VM3)"
+# run_core_page demoted to CoreFrame orchestrator (not fused body).
+rg -n 'fn run_core_page' -A 35 "$CORE_PHASES" | rg -q 'frame\.scan|CoreFrame::begin|frame\.project_paths' \
+  || fail "run_core_page must orchestrate CoreFrame (RQL-VM3)"
+
 rg -qi 'VM2 labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark VM2 labor closed"
-rg -qi 'P1c' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
-  || fail "SoT NEXT residual must name P1c after VM2"
+rg -qi 'VM3 labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must mark VM3 labor closed"
+rg -qi 'P1c labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must mark P1c labor closed"
 
 # RQL-P1c: every product frontend enters the same Query VM dispatch.
 APP="$SDK_SRC/app_v1.rs"
@@ -269,8 +288,8 @@ fi
 
 rg -qi 'P1c labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark P1c labor closed"
-rg -qi 'run_core_page' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
-  || fail "SoT must keep run_core_page residual after P1c"
+rg -qi 'key-stream|filtered_during_scan|early-stop' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
+  || fail "SoT must name key-stream Filter-during-Scan honesty after VM3"
 
 hits="$(
   rg -n --glob '*.rs' '\.eval\(' "$SDK_SRC/query_bytecode_v1" \
@@ -330,4 +349,4 @@ rg -q 'QUERY_IR_RESIDUAL' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
 rg -qi 'P1b labor closed' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark P1b labor closed"
 
-echo "check_query_runtime_architecture: OK (X5+IR+D0R+P0b+VM0+VM1+P1b+VM2+P1c; Decision 0 OPEN; C1 forbidden; run_core_page residual)"
+echo "check_query_runtime_architecture: OK (X5+IR+D0R+P0b+VM0–VM3+P1b+P1c; Decision 0 OPEN; C1 forbidden; key-stream residual)"

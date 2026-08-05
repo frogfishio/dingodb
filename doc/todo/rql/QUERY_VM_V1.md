@@ -1,14 +1,15 @@
 # Query VM v1 — instruction set + dispatch
 
-Status: **VM0–VM2 labor closed 2026-08-05** · board RQL-VM2 `0a6ac31a`  
+Status: **VM0–VM3 + P1c labor closed 2026-08-05** · board RQL-VM3 `dc38466a`  
 Profile id: **`residiuum-query-vm-v1`** · version byte **`1`**  
 Runtime: `query_bytecode_v1/vm.rs` (opcodes) · `vm_exec.rs` (dispatch) · `core_phases.rs` (`CoreFrame`)  
 Companion: [QUERY_ISA_V1.md](./QUERY_ISA_V1.md) · [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)
 
-Opcode vocabulary (**RQL-VM0**), one dispatch machine (**RQL-VM1**), and Core
-opcode → `CoreFrame` phases (**RQL-VM2**). Does **not** close Decision 0 /
-accept RQL-C1. Honest residual: `run_core_page` still fuses Scan→Project
-materialize for APP-6 equivalence.
+Opcode vocabulary (**RQL-VM0**), one dispatch machine (**RQL-VM1**), Core
+opcode → `CoreFrame` phases (**RQL-VM2**), and opcode-owned materialize
+(**RQL-VM3**). Does **not** close Decision 0 / accept RQL-C1. Honest residual:
+key-stream Scan may apply `where` early (`filtered_during_scan`) for APP-6
+page early-stop.
 
 ---
 
@@ -25,8 +26,9 @@ All syntax → compiler intermediates → canonical Query ISA / QVM program
 Today (`residiuum-query-isa-v1` / `RQB1`) remains a durable **AST carrier**.
 Product execute lowers decoded plans into a QVM program and runs
 `run_vm_core` / `run_vm_attach`. Core opcodes call `CoreFrame` phase helpers
-(**RQL-VM2**); `execute_plan` is a thin wrapper only. Host Full attach uses
-collection-qualified `HostCapabilities` (**RQL-P1b**).
+with a working bag (**RQL-VM3**); `execute_plan` / `run_core_page` are thin
+orchestrators only. Host Full attach uses collection-qualified
+`HostCapabilities` (**RQL-P1b**).
 
 ---
 
@@ -43,7 +45,7 @@ collection-qualified `HostCapabilities` (**RQL-P1b**).
 Rules:
 
 1. One dispatch loop interprets opcodes (Core via `run_vm_core`; Full attach via `run_vm_attach`).
-2. `RqlPlanV1` / IR structs remain **compiler intermediates**; product entry is ISA → lower → VM. `run_core_page` fused materialize is an honest residual after VM2.
+2. `RqlPlanV1` / IR structs remain **compiler intermediates**; product entry is ISA → lower → VM. Key-stream Filter-during-Scan is an honest residual after VM3.
 3. Every collection operand is an immutable `CollectionId` (name is diagnostic).
 4. Unknown opcode bytes and reserved immediates **refuse**.
 
@@ -102,11 +104,11 @@ until a later slice expands nested ops onto the flat stream.
 
 ## Relationship to `residiuum-query-isa-v1`
 
-| Artifact | Role now (after VM2) | Residual |
+| Artifact | Role now (after VM3) | Residual |
 |---|---|---|
 | `RQB1` ISA bytes | Durable AST carrier + execute authority; lower → QVM | Compile input / exchange |
-| `OpCode` / `VmProgram` / `CoreFrame` | **Dispatched** product path | Further materialize split optional |
-| `execute_plan` | Thin `CoreFrame` wrapper (crate-private) | Prefer VM entry only |
+| `OpCode` / `VmProgram` / `CoreFrame` | **Dispatched** product path with working bag | Key-stream Filter-during-Scan |
+| `execute_plan` / `run_core_page` | Thin `CoreFrame` orchestrators (crate-private) | Prefer VM entry only |
 | Attach helpers | Called from Full attach opcode bodies | Expand nested Within later |
 
 In-memory typed `VmProgram` is the machine form; a durable QVM wire encoding
@@ -116,10 +118,10 @@ may ship later (magic/version distinct from `RQB1`).
 
 ## Non-claims
 
-- VM2 / P1c ≠ Decision 0 complete / C1
-- VM2 ≠ fully split Scan→Project bodies (`run_core_page` residual)
+- VM3 / P1c ≠ Decision 0 complete / C1
+- Key-stream Scan may still apply `where` early (`filtered_during_scan`)
 - **RQL-C1 must not be accepted**
-- NEXT labor = optional further materialize split (`run_core_page`)
+- NEXT labor = optional key-stream Filter separation
 - Named IR phases ≠ finished Query VM alone
 
 ---
@@ -130,3 +132,4 @@ may ship later (magic/version distinct from `RQB1`).
 - `doc/todo/rql/evidence/rql_vm1_dispatch.log`
 - `doc/todo/rql/evidence/rql_vm2_core_phases.log`
 - `doc/todo/rql/evidence/rql_p1c_frontend_dispatch.log`
+- `doc/todo/rql/evidence/rql_vm3_materialize_split.log`
