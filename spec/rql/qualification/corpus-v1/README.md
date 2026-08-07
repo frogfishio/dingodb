@@ -21,7 +21,7 @@ Equivalence laws: [`doc/todo/rql/RQL_Q0_RESULT_EQUIVALENCE.md`](../../../../doc/
 | `corpus-case-v1.schema.json` | Per-case record contract (programme §4.2) |
 | `fixtures/case.accepted.min.json` | Minimum complete case (validator positive control) |
 | `fixtures/case.rejected.incomplete.json` | Incomplete case (validator negative control) |
-| `generators/` | Seeded fixture generator specs (commerce + messaging in Q1.2) |
+| `generators/` | Seeded fixture generator specs (all five domains as of Q1.3) |
 
 ## Record contract (every case)
 
@@ -48,8 +48,8 @@ Measured as: count of cases that list each family tag (overlap allowed).
 | `group_aggregate` | 15 |
 | `budget_coverage_damage_refusal` | 10 |
 
-`floor_policy.enforce_floors` is **`false`** during Q1.1–Q1.3 scaffolding.
-Q1.4 / package exit turns enforcement **on**.
+`floor_policy.enforce_floors` is **`false`** until Q1.4 / package exit (tag counts
+already meet floors after Q1.3 bulk; enforcement still off).
 
 ## Amendment
 
@@ -67,10 +67,13 @@ bash scripts/verify-rql-q1-corpus.sh
 Exit 0 means structural schema + fixture self-tests pass. It does **not** mean
 floors are met or Q1 is accepted.
 
-## Generators (Q1.2+)
+## Generators (Q1.2–Q1.3)
 
 See [`generators/README.md`](./generators/README.md). Materialise:
 
 ```sh
 python3 tools/rql_q1/materialise_fixture.py --generator commerce.orders_v1 --seed 1
+python3 tools/rql_q1/materialise_fixture.py --generator directory.entries_v1 --seed 20
+python3 tools/rql_q1/materialise_fixture.py --generator telemetry.events_v1 --seed 30
+python3 tools/rql_q1/materialise_fixture.py --generator project_management.tasks_v1 --seed 40
 ```

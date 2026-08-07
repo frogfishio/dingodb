@@ -1,6 +1,6 @@
 # RQL-Q1 — Practical query corpus (human report)
 
-Status: **Q1.2 Commerce + Messaging landed** (2026-08-07) · package **not accepted**  
+Status: **Q1.3 Directory + Telemetry + Project management landed** (2026-08-07) · package **not accepted**  
 Package: RQL-Q1 · Feature `019fda4c-11fd-7102-bd55-10a347802144`  
 Authority: [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §4  
 Machine corpus: [`spec/rql/qualification/corpus-v1/`](../../../spec/rql/qualification/corpus-v1/)
@@ -20,10 +20,10 @@ Not another multi-document Q0-style freeze family.
 |---|---|
 | Format | `residiuum-rql-q1-corpus-v1` |
 | Profile | `rql-gate1-practical-corpus-v1` |
-| Corpus version | **`rql-q1-corpus-v0.2.0`** (was v0.1.0 scaffold) |
+| Corpus version | **`rql-q1-corpus-v0.3.0`** (was v0.2.0 after Q1.2) |
 | Equivalence profile | `rql-q0-result-equivalence-v1` |
 | Q0 freeze tip (authority) | `e1f5c670a99dc54da477c531c83bca4985199a42` |
-| Live cases | **54** (commerce 33 + messaging 21); status `draft` |
+| Live cases | **143** (all five domains); status `draft` |
 | Generators | [`generators/`](../../../spec/rql/qualification/corpus-v1/generators/) + `tools/rql_q1/materialise_fixture.py` |
 
 ## 3. Case record contract
@@ -53,17 +53,17 @@ Intention + expected result are **authority**. RQL / Mongo / CBL are implementat
 
 Floor measurement = **count of cases listing each `family_tags` entry** (overlap OK).
 
-| Family tag | Floor | Count after Q1.2 |
+| Family tag | Floor | Count after Q1.3 |
 |---|---:|---:|
-| `selection_key_eq_range_compound` | 20 | **20** (OK) |
-| `predicate_missing_null_type_nested_array` | 20 | 10 (below; Q1.3 fill) |
-| `projection_computed_conditional` | 15 | 5 (below) |
-| `order_topk_cursor` | 15 | 10 (below) |
-| `enrichment_cardinality` | 15 | 5 (below) |
-| `group_aggregate` | 15 | 6 (below) |
-| `budget_coverage_damage_refusal` | 10 | 5 (below) |
+| `selection_key_eq_range_compound` | 20 | **47** (OK) |
+| `predicate_missing_null_type_nested_array` | 20 | **28** (OK) |
+| `projection_computed_conditional` | 15 | **15** (OK) |
+| `order_topk_cursor` | 15 | **22** (OK) |
+| `enrichment_cardinality` | 15 | **15** (OK) |
+| `group_aggregate` | 15 | **16** (OK) |
+| `budget_coverage_damage_refusal` | 10 | **11** (OK) |
 
-`floor_policy.enforce_floors` remains **false** until Q1.4 / package exit.
+`floor_policy.enforce_floors` remains **false** until Q1.4 / package exit (counts already meet floors; enforcement is a separate Q1.4 step with comparator review).
 
 ## 5. Amendment process (principal-reviewed)
 
@@ -98,7 +98,7 @@ requires a **versioned, principal-reviewed** amendment. Typos in notes alone may
 
 - Post-hoc exclusion of a diverging cell after measurement (equivalence anti-escape).
 - Silent edit of a frozen `case_id` without log + version bump.
-- Claiming floors met while `enforce_floors` is false, or while cases remain `scaffold`/`draft` only.
+- Claiming floors met while `enforce_floors` is false, or while cases remain `scaffold`/`draft` only — **tag counts** may meet floors (this report); package floor **claim** waits for Q1.4 enforce + principal.
 - Treating APP-5 / full-v1 surface corpora as this Tier-A corpus.
 
 ## 6. Task plan
@@ -106,25 +106,28 @@ requires a **versioned, principal-reviewed** amendment. Typos in notes alone may
 | Task | State (labor) | Deliverable |
 |---|---|---|
 | Q1.1 schema + versioning + amendment | `in_review` | Scaffold |
-| Q1.2 Commerce + Messaging | **this delivery** → `in_review` | 54 draft cases + generators |
-| Q1.3 Directory + Telemetry + Project | `todo` | remaining domains + floor fill |
+| Q1.2 Commerce + Messaging | `in_review` | 54 draft cases + generators |
+| Q1.3 Directory + Telemetry + Project | **this delivery** → `in_review` | five domains + floor tag fill |
 | Q1.4 floors + comparator review | `todo` | enforce floors; equivalence review |
 
-## 7. Q1.2 delivery notes
-
-### Domains
+## 7. Domain bulk (Q1.2–Q1.3)
 
 | Domain | Cases | Collections (generators) |
 |---|---:|---|
 | Commerce | 33 | orders, products, customers, line_items, inventory |
 | Messaging | 21 | conversations, messages, participants |
+| Directory | 27 | entries, categories, locations |
+| Telemetry | 29 | devices, events, metrics |
+| Project management | 33 | projects, tasks, revisions, memberships |
+| **Total** | **143** | |
 
 ### Dogfood honesty
 
-No in-tree Residiuum dogfood datasets for commerce/messaging were found (2026-08-07).
-All Q1.2 cases use `dogfood.origin = invented_honest_label` with shapes aligned to programme
-§4.1 and the existing app-core `orders` dialect. Real dogfood can replace generators under
-a versioned amendment (archive + new case ids if meanings change).
+No in-tree Residiuum dogfood datasets for the five domains were found (2026-08-07).
+All cases use `dogfood.origin = invented_honest_label` with shapes aligned to programme
+§4.1. Real dogfood can replace generators under a versioned amendment (archive + new
+case ids if meanings change). Programme “≥2 domains dogfood-derived” remains residual
+until real datasets exist.
 
 ### Expected results
 
@@ -140,7 +143,9 @@ Documented under `spec/rql/qualification/corpus-v1/generators/`.
 Executable materialiser:
 
 ```sh
-python3 tools/rql_q1/materialise_fixture.py --generator commerce.orders_v1 --seed 1 --params '{"n_orders":32}'
+python3 tools/rql_q1/materialise_fixture.py --generator directory.entries_v1 --seed 20 --params '{"n_entries":40}'
+python3 tools/rql_q1/materialise_fixture.py --generator telemetry.events_v1 --seed 30 --params '{"n_events":128}'
+python3 tools/rql_q1/materialise_fixture.py --generator project_management.tasks_v1 --seed 40 --params '{"n_tasks":80}'
 ```
 
 Same seed ⇒ identical JSON (determinism smoke checked in labor).
@@ -152,13 +157,11 @@ bash scripts/verify-rql-q1-corpus.sh
 ```
 
 Expected: exit 0; live cases validate; floors reported with `enforce_floors=false`;
-selection floor met (20/20); others below until Q1.3 bulk.
+all family tags at or above floor counts after Q1.3.
 
 ## 9. Residual
 
-- Q1.3 Directory + Telemetry + Project management cases (raise floors toward package exit).
-- Target total ~100–150 cases across five domains.
+- Q1.4: turn on `enforce_floors` + Mongo/CBL comparator semantic review + Tier B/C tags.
 - Dogfood promotion when real datasets exist (≥2 domains programme law).
 - Freeze canonical QVM hashes (many RQL `pending` until Q2).
-- Turn on `enforce_floors` + comparator review (Q1.4).
 - Principal package accept (scoreboard) — not labor `done`.

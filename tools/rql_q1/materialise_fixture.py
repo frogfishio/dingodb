@@ -223,6 +223,255 @@ def gen_messaging_participants(seed: int, params: dict) -> dict:
     return {"participants": out}
 
 
+
+def gen_directory_entries(seed: int, params: dict) -> dict:
+    n = int(params.get("n_entries", 40))
+    n_cats = int(params.get("n_categories", 8))
+    n_locs = int(params.get("n_locations", 12))
+    kinds = params.get("kinds", ["person", "org"])
+    rng = SplitMix64(seed)
+    out = []
+    for i in range(n):
+        doc: dict[str, Any] = {
+            "_key": f"e-{i:04d}",
+            "name": f"Entry {i}",
+            "kind": kinds[i % len(kinds)],
+            "category_id": f"cat-{(i % n_cats):04d}",
+            "active": i % 6 != 0,
+            "discovered_at": iso_from_base("2024-03-01T00:00:00Z", i * 30),
+        }
+        if i % 5 != 0:
+            doc["location_id"] = f"loc-{(i % n_locs):04d}"
+        # email: null every 4th; missing every 11th; else present
+        if i % 11 == 0:
+            pass
+        elif i % 4 == 0:
+            doc["email"] = None
+        else:
+            doc["email"] = f"entry{i}@dir.example.test"
+        if i % 7 == 0:
+            doc["tags"] = []
+        elif i % 9 == 0:
+            doc["tags"] = ["vip", "vip"]
+        else:
+            doc["tags"] = ["dir", kinds[i % len(kinds)]]
+        if i % 8 != 0:
+            doc["attrs"] = {"region": rng.pick(["us", "eu", "apac"]), "score": i % 100}
+        out.append(doc)
+    return {"entries": out}
+
+
+def gen_directory_categories(seed: int, params: dict) -> dict:
+    n = int(params.get("n_categories", 8))
+    parents = params.get("parent_slugs", ["people", "orgs", "places"])
+    out = []
+    for i in range(n):
+        out.append(
+            {
+                "_key": f"cat-{i:04d}",
+                "slug": f"cat-slug-{i}",
+                "title": f"Category {i}",
+                "parent": parents[i % len(parents)],
+                "depth": i % 3,
+            }
+        )
+    return {"categories": out}
+
+
+def gen_directory_locations(seed: int, params: dict) -> dict:
+    n = int(params.get("n_locations", 12))
+    regions = params.get("regions", ["us", "eu", "apac"])
+    out = []
+    for i in range(n):
+        out.append(
+            {
+                "_key": f"loc-{i:04d}",
+                "city": f"City{i}",
+                "region": regions[i % len(regions)],
+                "country": regions[i % len(regions)].upper(),
+                "lat": -90 + (i * 7) % 180,
+                "lon": -180 + (i * 13) % 360,
+            }
+        )
+    return {"locations": out}
+
+
+def gen_telemetry_devices(seed: int, params: dict) -> dict:
+    n = int(params.get("n_devices", 24))
+    types = params.get("types", ["sensor", "gateway", "actuator"])
+    sites = params.get("sites", ["plant-a", "plant-b", "field"])
+    statuses = params.get("statuses", ["online", "offline", "degraded"])
+    out = []
+    for i in range(n):
+        doc: dict[str, Any] = {
+            "_key": f"d-{i:04d}",
+            "type": types[i % len(types)],
+            "site": sites[i % len(sites)],
+            "status": statuses[i % len(statuses)],
+            "last_seen": iso_from_base("2024-08-01T00:00:00Z", i * 15),
+            "firmware": f"1.{i % 5}.{i % 10}",
+        }
+        if i % 5 == 0:
+            doc["labels"] = []
+        else:
+            doc["labels"] = ["edge", sites[i % len(sites)]]
+        if i % 7 == 0:
+            doc["retired_at"] = None
+        elif i % 11 == 0:
+            pass  # omit retired_at
+        out.append(doc)
+    return {"devices": out}
+
+
+def gen_telemetry_events(seed: int, params: dict) -> dict:
+    n = int(params.get("n_events", 128))
+    n_dev = int(params.get("n_devices", 24))
+    sevs = params.get("severities", ["info", "warn", "error", "critical"])
+    rng = SplitMix64(seed)
+    out = []
+    for i in range(n):
+        doc: dict[str, Any] = {
+            "_key": f"ev-{i:04d}",
+            "device_id": f"d-{(i % n_dev):04d}",
+            "ts": iso_from_base("2024-08-01T00:00:00Z", i),
+            "severity": sevs[i % len(sevs)],
+            "metric": rng.pick(["temp_c", "humidity", "voltage", "rpm"]),
+            "value": (rng.next_u32() % 1000) / 10.0,
+        }
+        if i % 9 == 0:
+            doc["value"] = "NaN"  # wrong type
+        if i % 6 == 0:
+            doc["payload"] = None
+        elif i % 8 == 0:
+            pass  # missing payload
+        else:
+            doc["payload"] = {"raw": i, "unit": "u"}
+        if i % 10 == 0:
+            doc["tags"] = []
+        else:
+            doc["tags"] = [doc["metric"], sevs[i % len(sevs)]]
+        out.append(doc)
+    return {"events": out}
+
+
+def gen_telemetry_metrics(seed: int, params: dict) -> dict:
+    n = int(params.get("n_metrics", 64))
+    n_dev = int(params.get("n_devices", 24))
+    names = params.get("metric_names", ["temp_c", "humidity", "voltage"])
+    out = []
+    for i in range(n):
+        out.append(
+            {
+                "_key": f"mt-{i:04d}",
+                "device_id": f"d-{(i % n_dev):04d}",
+                "metric_name": names[i % len(names)],
+                "value": float(i % 100),
+                "recorded_at": iso_from_base("2024-08-01T00:00:00Z", i * 5),
+            }
+        )
+    return {"metrics": out}
+
+
+def gen_pm_projects(seed: int, params: dict) -> dict:
+    n = int(params.get("n_projects", 20))
+    statuses = params.get("statuses", ["active", "on_hold", "done", "archived"])
+    owners = params.get("owners", [f"u-{i:04d}" for i in range(8)])
+    out = []
+    for i in range(n):
+        doc: dict[str, Any] = {
+            "_key": f"prj-{i:04d}",
+            "title": f"Project {i}",
+            "status": statuses[i % len(statuses)],
+            "owner_id": owners[i % len(owners)],
+            "created_at": iso_from_base("2024-02-01T00:00:00Z", i * 120),
+            "priority": 1 + (i % 5),
+        }
+        if i % 4 == 0:
+            doc["description"] = None
+        elif i % 7 == 0:
+            pass
+        else:
+            doc["description"] = f"Desc {i}"
+        if i % 5 != 0:
+            doc["labels"] = ["pm", statuses[i % len(statuses)]]
+        else:
+            doc["labels"] = []
+        out.append(doc)
+    return {"projects": out}
+
+
+def gen_pm_tasks(seed: int, params: dict) -> dict:
+    n = int(params.get("n_tasks", 80))
+    n_prj = int(params.get("n_projects", 20))
+    n_users = int(params.get("n_users", 8))
+    statuses = params.get("statuses", ["todo", "doing", "in_review", "done"])
+    out = []
+    for i in range(n):
+        doc: dict[str, Any] = {
+            "_key": f"tsk-{i:04d}",
+            "project_id": f"prj-{(i % n_prj):04d}",
+            "title": f"Task {i}",
+            "status": statuses[i % len(statuses)],
+            "assignee_id": f"u-{(i % n_users):04d}",
+            "updated_at": iso_from_base("2024-02-01T00:00:00Z", i * 10),
+            "estimate_points": 1 + (i % 8),
+        }
+        if i % 6 == 0:
+            doc["due_at"] = None
+        elif i % 9 == 0:
+            pass
+        else:
+            doc["due_at"] = iso_from_base("2024-03-01T00:00:00Z", i * 20)
+        if i % 11 == 0:
+            doc["blocked_by"] = []
+        else:
+            doc["blocked_by"] = [f"tsk-{(i - 1) % n:04d}"] if i > 0 and i % 3 == 0 else []
+        out.append(doc)
+    return {"tasks": out}
+
+
+def gen_pm_revisions(seed: int, params: dict) -> dict:
+    n = int(params.get("n_revisions", 48))
+    n_prj = int(params.get("n_projects", 20))
+    n_users = int(params.get("n_users", 8))
+    out = []
+    for i in range(n):
+        out.append(
+            {
+                "_key": f"rev-{i:04d}",
+                "project_id": f"prj-{(i % n_prj):04d}",
+                "rev_no": (i // n_prj) + 1,
+                "author_id": f"u-{(i % n_users):04d}",
+                "summary": f"Revision {i}",
+                "committed_at": iso_from_base("2024-02-15T00:00:00Z", i * 30),
+                "bytes": 100 + i * 17,
+            }
+        )
+    return {"revisions": out}
+
+
+def gen_pm_memberships(seed: int, params: dict) -> dict:
+    n_prj = int(params.get("n_projects", 20))
+    n_users = int(params.get("n_users", 8))
+    roles = params.get("roles", ["owner", "editor", "viewer"])
+    out = []
+    for p in range(n_prj):
+        count = 2 + (p % 3)
+        for j in range(count):
+            u = (p + j) % n_users
+            out.append(
+                {
+                    "_key": f"mb-prj-{p:04d}-u-{u:04d}",
+                    "project_id": f"prj-{p:04d}",
+                    "user_id": f"u-{u:04d}",
+                    "role": roles[0] if j == 0 else roles[1 + (j % (len(roles) - 1))],
+                    "joined_at": iso_from_base("2024-02-01T00:00:00Z", p * 60 + j),
+                }
+            )
+    return {"memberships": out}
+
+
+
 GENERATORS = {
     "commerce.orders_v1": gen_commerce_orders,
     "commerce.products_v1": gen_commerce_products,
@@ -232,6 +481,16 @@ GENERATORS = {
     "messaging.conversations_v1": gen_messaging_conversations,
     "messaging.messages_v1": gen_messaging_messages,
     "messaging.participants_v1": gen_messaging_participants,
+    "directory.entries_v1": gen_directory_entries,
+    "directory.categories_v1": gen_directory_categories,
+    "directory.locations_v1": gen_directory_locations,
+    "telemetry.devices_v1": gen_telemetry_devices,
+    "telemetry.events_v1": gen_telemetry_events,
+    "telemetry.metrics_v1": gen_telemetry_metrics,
+    "project_management.projects_v1": gen_pm_projects,
+    "project_management.tasks_v1": gen_pm_tasks,
+    "project_management.revisions_v1": gen_pm_revisions,
+    "project_management.memberships_v1": gen_pm_memberships,
 }
 
 

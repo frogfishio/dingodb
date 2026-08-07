@@ -1,7 +1,7 @@
 {
   "format": "residiuum-rql-q1-corpus-v1",
   "profile": "rql-gate1-practical-corpus-v1",
-  "corpus_version": "rql-q1-corpus-v0.2.0",
+  "corpus_version": "rql-q1-corpus-v0.3.0",
   "authority": {
     "programme": "doc/todo/rql/RQL_QUERY_QUALIFICATION_PROGRAM.md",
     "section": "4",
@@ -98,6 +98,105 @@
         "messaging.messages.consistency_available",
         "messaging.messages.sender_param",
         "messaging.conversations.project_title_kind"
+      ],
+      "case_ids_changed": [],
+      "case_ids_archived": []
+    },
+    {
+      "corpus_version": "rql-q1-corpus-v0.3.0",
+      "date": "2026-08-07",
+      "summary": "Q1.3 Directory + Telemetry + Project management: seeded generators + Tier-A intention cases (draft). Dogfood: invented_honest_label. All \u00a74.3 family floors met by tag count (still unenforced until Q1.4).",
+      "principal_disposition": "pending",
+      "case_ids_added": [
+        "directory.entries.eq_kind_person",
+        "directory.entries.key_get",
+        "directory.entries.eq_category",
+        "directory.entries.compound_category_location",
+        "directory.entries.range_discovered",
+        "directory.entries.active_only",
+        "directory.entries.missing_location",
+        "directory.entries.null_email",
+        "directory.entries.missing_email",
+        "directory.entries.missing_attrs",
+        "directory.entries.tags_empty",
+        "directory.entries.tags_contains_vip",
+        "directory.entries.project_name_kind",
+        "directory.entries.project_nested_attrs_region",
+        "directory.entries.project_computed_kind_label",
+        "directory.entries.order_name_asc",
+        "directory.entries.topk_recent_discovered",
+        "directory.entries.page_first",
+        "directory.entries.page_resume",
+        "directory.entries.enrich_category_exactly_one",
+        "directory.entries.enrich_location_optional",
+        "directory.entries.group_by_category_count",
+        "directory.entries.group_by_kind_count",
+        "directory.entries.budget_documents",
+        "directory.locations.eq_region_us",
+        "directory.categories.eq_parent_people",
+        "telemetry.devices.eq_site_plant_a",
+        "telemetry.devices.eq_status_online",
+        "telemetry.devices.compound_type_site",
+        "telemetry.devices.key_get",
+        "telemetry.events.eq_device",
+        "telemetry.events.range_ts",
+        "telemetry.events.severity_in",
+        "telemetry.events.null_payload",
+        "telemetry.events.missing_payload",
+        "telemetry.events.wrong_type_value",
+        "telemetry.events.tags_empty",
+        "telemetry.devices.missing_retired_at",
+        "telemetry.devices.null_retired_at",
+        "telemetry.events.project_device_severity_ts",
+        "telemetry.events.project_computed_sev_band",
+        "telemetry.metrics.project_value_rounded_band",
+        "telemetry.events.recent_topk",
+        "telemetry.events.device_history_page",
+        "telemetry.events.device_history_resume",
+        "telemetry.events.enrich_device_exactly_one",
+        "telemetry.devices.enrich_events_many",
+        "telemetry.metrics.enrich_device_optional",
+        "telemetry.events.group_by_device_count",
+        "telemetry.events.group_severity_count",
+        "telemetry.metrics.agg_avg_by_name",
+        "telemetry.metrics.agg_min_max_value",
+        "telemetry.events.budget_result_bytes",
+        "telemetry.events.coverage_incomplete",
+        "telemetry.events.consistency_available",
+        "project_management.projects.eq_status_active",
+        "project_management.projects.eq_owner",
+        "project_management.projects.compound_owner_status",
+        "project_management.projects.range_priority",
+        "project_management.tasks.eq_status_doing",
+        "project_management.tasks.eq_project",
+        "project_management.tasks.eq_assignee",
+        "project_management.projects.null_description",
+        "project_management.projects.missing_description",
+        "project_management.tasks.null_due_at",
+        "project_management.tasks.missing_due_at",
+        "project_management.tasks.blocked_by_empty",
+        "project_management.projects.labels_empty",
+        "project_management.projects.project_title_status",
+        "project_management.tasks.project_snippet",
+        "project_management.tasks.project_computed_overdue_flag",
+        "project_management.revisions.order_committed_desc",
+        "project_management.revisions.topk_recent_for_project",
+        "project_management.tasks.page_first_by_updated",
+        "project_management.tasks.page_resume_by_updated",
+        "project_management.tasks.enrich_project_exactly_one",
+        "project_management.projects.enrich_tasks_many",
+        "project_management.projects.enrich_memberships_many",
+        "project_management.memberships.enrich_project_optional",
+        "project_management.tasks.group_status_count",
+        "project_management.tasks.group_by_assignee_count",
+        "project_management.tasks.group_by_project_sum_points",
+        "project_management.projects.group_by_owner_count",
+        "project_management.memberships.eq_role_owner",
+        "project_management.memberships.eq_user",
+        "project_management.tasks.budget_documents",
+        "project_management.projects.refuse_offset_discard",
+        "directory.locations.project_city_region",
+        "project_management.revisions.enrich_project_optional"
       ],
       "case_ids_changed": [],
       "case_ids_archived": []
@@ -4236,6 +4335,6636 @@
           "applies": false
         }
       }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "entries(kind)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "All entries where kind == \"person\"."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "directory.entries.eq_kind_person",
+      "domain": "directory",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Return all directory entries of kind person.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries where kind = \"person\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "kind": "person"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries WHERE kind = 'person'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "point",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "singleton"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Singleton entry with _key == e-0007 or empty."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-KEY"
+      ],
+      "case_id": "directory.entries.key_get",
+      "domain": "directory",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Fetch directory entry e-0007 by key.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries where _key = \"e-0007\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "_id": "e-0007"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries WHERE META().id = 'e-0007'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "entries(category_id)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Entries with category_id == \"cat-0002\"."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "directory.entries.eq_category",
+      "domain": "directory",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "List entries in category cat-0002.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries where category_id = \"cat-0002\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "category_id": "cat-0002"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries WHERE category_id = 'cat-0002'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "entries(category_id,location_id)"
+        ]
+      },
+      "selectivity_class": "very_low",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "category_id==cat-0001 AND location_id==loc-0003."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-COMPOUND"
+      ],
+      "case_id": "directory.entries.compound_category_location",
+      "domain": "directory",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Entries in category cat-0001 at location loc-0003.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries where category_id = \"cat-0001\" and location_id = \"loc-0003\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "category_id": "cat-0001",
+              "location_id": "loc-0003"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries WHERE category_id = 'cat-0001' AND location_id = 'loc-0003'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "entries(discovered_at)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "discovered_at > 2024-03-01T00:00:00Z+300m (fixture clock encoding)."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-RANGE"
+      ],
+      "case_id": "directory.entries.range_discovered",
+      "domain": "directory",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Entries discovered after base+300m logical clock.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries where discovered_at > \"2024-03-01T00:00:00Z+300m\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "discovered_at": {
+                "$gt": "2024-03-01T00:00:00Z+300m"
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries WHERE discovered_at > '2024-03-01T00:00:00Z+300m'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "active == true."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "directory.entries.active_only",
+      "domain": "directory",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Return active directory entries only.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries where active = true"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "active": true
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries WHERE active = true"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "missing"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "missing(location_id)."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-MISSING"
+      ],
+      "case_id": "directory.entries.missing_location",
+      "domain": "directory",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Entries with no location_id field (scoped listing without location).",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries where missing(location_id)"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "location_id": {
+                "$exists": false
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries WHERE location_id IS MISSING"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "null"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "email IS null (present key, null value)."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-NULL"
+      ],
+      "case_id": "directory.entries.null_email",
+      "domain": "directory",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Entries where email is explicitly null.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries where email is null"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "email": null
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries WHERE email IS NULL"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "missing"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "missing(email)."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-MISSING"
+      ],
+      "case_id": "directory.entries.missing_email",
+      "domain": "directory",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Entries that omit the email field entirely.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries where missing(email)"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "email": {
+                "$exists": false
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries WHERE email IS MISSING"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "missing",
+            "nested"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "missing(attrs)."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-MISSING",
+        "TA-PRED-NESTED"
+      ],
+      "case_id": "directory.entries.missing_attrs",
+      "domain": "directory",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Entries missing nested attrs object.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries where missing(attrs)"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "attrs": {
+                "$exists": false
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries WHERE attrs IS MISSING"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "array"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "tags is empty array."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-ARRAY"
+      ],
+      "case_id": "directory.entries.tags_empty",
+      "domain": "directory",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Entries with empty tags array.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries where tags = []"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "tags": []
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries WHERE ARRAY_LENGTH(tags) = 0"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "array"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "tags contains \"vip\" (bag membership)."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-ARRAY"
+      ],
+      "case_id": "directory.entries.tags_contains_vip",
+      "domain": "directory",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Entries whose tags array contains vip.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries where tags contains \"vip\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "tags": "vip"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries WHERE ANY t IN tags SATISFIES t = 'vip' END"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "For active entries, only _key, name, kind fields in result documents."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PROJ-FLAT"
+      ],
+      "case_id": "directory.entries.project_name_kind",
+      "domain": "directory",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "plain_english_intent": "Project name and kind for active entries.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries where active = true project _key, name, kind"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "active": true
+            },
+            "projection": {
+              "_id": 1,
+              "name": 1,
+              "kind": 1
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, name, kind FROM entries WHERE active = true"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "nested"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Project _key and attrs.region; missing attrs => null/omit per equivalence profile."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PROJ-NESTED"
+      ],
+      "case_id": "directory.entries.project_nested_attrs_region",
+      "domain": "directory",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "plain_english_intent": "Project nested attrs.region for entries that have attrs.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries where not missing(attrs) project _key, attrs.region"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "attrs": {
+                "$exists": true
+              }
+            },
+            "projection": {
+              "_id": 1,
+              "attrs.region": 1
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, attrs.region FROM entries WHERE attrs IS NOT MISSING"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "kind_label = \"Person\" if kind==person else \"Org\"; optimiser-independent."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PROJ-COMPUTED"
+      ],
+      "case_id": "directory.entries.project_computed_kind_label",
+      "domain": "directory",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "plain_english_intent": "Conditional projection of kind_label from kind.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from entries project _key, kind_label = if kind = \"person\" then \"Person\" else \"Org\""
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$project": {
+                "_id": 1,
+                "kind_label": {
+                  "$cond": [
+                    {
+                      "$eq": [
+                        "$kind",
+                        "person"
+                      ]
+                    },
+                    "Person",
+                    "Org"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, CASE WHEN kind = 'person' THEN 'Person' ELSE 'Org' END AS kind_label FROM entries"
+        }
+      },
+      "notes": "Q0 computed projection residual; intention frozen for Q2."
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "entries(name)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Total order name asc, _key asc."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-ORDER"
+      ],
+      "case_id": "directory.entries.order_name_asc",
+      "domain": "directory",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "plain_english_intent": "All entries ordered by name ascending with key tie-break.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries order by name asc, _key asc"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "sort": {
+              "name": 1,
+              "_id": 1
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries ORDER BY name ASC, META().id ASC"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Top 10 by discovered_at desc, _key asc."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-TOPK"
+      ],
+      "case_id": "directory.entries.topk_recent_discovered",
+      "domain": "directory",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "plain_english_intent": "Top 10 most recently discovered entries.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries order by discovered_at desc, _key asc limit 10"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "sort": {
+              "discovered_at": -1,
+              "_id": 1
+            },
+            "limit": 10
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries ORDER BY discovered_at DESC, META().id ASC LIMIT 10"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": true,
+          "page_size": 8,
+          "kinds": [
+            "first_page"
+          ]
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Rows 0..7 of name asc,_key asc; continuation encodes last sort key."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "case_id": "directory.entries.page_first",
+      "domain": "directory",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "plain_english_intent": "First page of entries by name, page size 8.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries order by name asc, _key asc page size 8"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "sort": {
+              "name": 1,
+              "_id": 1
+            },
+            "limit": 8
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries ORDER BY name ASC, META().id ASC LIMIT 8"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": true,
+          "page_size": 8,
+          "kinds": [
+            "resume_after",
+            "deep_page"
+          ]
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Rows 8..15 of same order; pages concatenate; no offset discard."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "case_id": "directory.entries.page_resume",
+      "domain": "directory",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "plain_english_intent": "Resume directory listing after first page (size 8).",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries order by name asc, _key asc page size 8 after $cursor"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "sort": {
+              "name": 1,
+              "_id": 1
+            },
+            "limit": 8
+          },
+          "notes": "resume via min bound on sort keys"
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries WHERE (name, META().id) > ($last_name, $last_id) ORDER BY name ASC, META().id ASC LIMIT 8",
+          "notes": "tuple compare sketch"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [
+          "categories(_key)"
+        ],
+        "optional": [
+          "entries(category_id)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Join entries.category_id = categories._key; exactly_one cardinality; missing category is failure/refusal per Q0 enrich residual."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-ENRICH-1"
+      ],
+      "case_id": "directory.entries.enrich_category_exactly_one",
+      "domain": "directory",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "plain_english_intent": "Enrich each entry with its category document (exactly one).",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from entries enrich cat from categories on entries.category_id = categories._key exactly_one"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$lookup": {
+                "from": "categories",
+                "localField": "category_id",
+                "foreignField": "_id",
+                "as": "cat"
+              }
+            },
+            {
+              "$unwind": "$cat"
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT e.*, c FROM entries AS e JOIN categories AS c ON e.category_id = META(c).id"
+        }
+      },
+      "notes": "Q0 partial enrich; intention frozen for Q2."
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "locations(_key)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Left enrich location; missing location_id or location yields null location field, not drop."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-ENRICH-OPT"
+      ],
+      "case_id": "directory.entries.enrich_location_optional",
+      "domain": "directory",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "plain_english_intent": "Optionally enrich entry with location when location_id present.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from entries enrich loc from locations on entries.location_id = locations._key optional"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$lookup": {
+                "from": "locations",
+                "localField": "location_id",
+                "foreignField": "_id",
+                "as": "loc"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$loc",
+                "preserveNullAndEmptyArrays": true
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT e.*, l FROM entries e LEFT JOIN locations l ON e.location_id = META(l).id"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "set"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "One row per distinct category_id with count(*); optimiser-independent."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "directory.entries.group_by_category_count",
+      "domain": "directory",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "plain_english_intent": "Count entries per category.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from entries group by category_id project category_id, count() as entry_count"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$group": {
+                "_id": "$category_id",
+                "entry_count": {
+                  "$sum": 1
+                }
+              }
+            },
+            {
+              "$project": {
+                "category_id": "$_id",
+                "entry_count": 1,
+                "_id": 0
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT category_id, COUNT(*) AS entry_count FROM entries GROUP BY category_id"
+        }
+      },
+      "notes": "Q0 blocker aggregates; intention retained."
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "set"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "count(*) grouped by kind."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "directory.entries.group_by_kind_count",
+      "domain": "directory",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "plain_english_intent": "Count entries by kind (person/org).",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from entries group by kind project kind, count() as n"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$group": {
+                "_id": "$kind",
+                "n": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT kind, COUNT(*) AS n FROM entries GROUP BY kind"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "predeclared_native_diff",
+        "code": "Q0-BUDGET-NATIVE",
+        "reason": "Budget+coverage Residiuum-native; Mongo/CBL limit is non-equivalent."
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "At most 12 documents examined/returned per budget semantics; incomplete coverage when n>12."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-BUDGET"
+      ],
+      "case_id": "directory.entries.budget_documents",
+      "domain": "directory",
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "plain_english_intent": "Scan entries with document budget 12.",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 20,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from entries budget { documents: 12, bytes: 1048576, result_bytes: 65536 }"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "limit": 12
+          },
+          "notes": "Mongo limit \u2260 Residiuum budget coverage"
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries LIMIT 12",
+          "notes": "CBL lacks budget/coverage"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "locations(region)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "region == \"us\"."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "directory.locations.eq_region_us",
+      "domain": "directory",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Locations in region us (discovery filter).",
+      "fixture": {
+        "generator_id": "directory.locations_v1",
+        "seed": 20,
+        "params": {
+          "n_locations": 12
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from locations where region = \"us\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "region": "us"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM locations WHERE region = 'us'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "parent == \"people\"."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "directory.categories.eq_parent_people",
+      "domain": "directory",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Categories under parent people.",
+      "fixture": {
+        "generator_id": "directory.categories_v1",
+        "seed": 20,
+        "params": {
+          "n_categories": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from categories where parent = \"people\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "parent": "people"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM categories WHERE parent = 'people'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "devices(site)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "site == \"plant-a\"."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "telemetry.devices.eq_site_plant_a",
+      "domain": "telemetry",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Devices at site plant-a.",
+      "fixture": {
+        "generator_id": "telemetry.devices_v1",
+        "seed": 30,
+        "params": {
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from devices where site = \"plant-a\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "site": "plant-a"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM devices WHERE site = 'plant-a'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "status == \"online\"."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "telemetry.devices.eq_status_online",
+      "domain": "telemetry",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Online devices only.",
+      "fixture": {
+        "generator_id": "telemetry.devices_v1",
+        "seed": 30,
+        "params": {
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from devices where status = \"online\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "status": "online"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM devices WHERE status = 'online'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "devices(type,site)"
+        ]
+      },
+      "selectivity_class": "very_low",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "type==sensor AND site==plant-b."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-COMPOUND"
+      ],
+      "case_id": "telemetry.devices.compound_type_site",
+      "domain": "telemetry",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Sensor devices at plant-b.",
+      "fixture": {
+        "generator_id": "telemetry.devices_v1",
+        "seed": 30,
+        "params": {
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from devices where type = \"sensor\" and site = \"plant-b\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "type": "sensor",
+              "site": "plant-b"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM devices WHERE type = 'sensor' AND site = 'plant-b'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "point",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "singleton"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Singleton d-0003."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-KEY"
+      ],
+      "case_id": "telemetry.devices.key_get",
+      "domain": "telemetry",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Get device d-0003 by key.",
+      "fixture": {
+        "generator_id": "telemetry.devices_v1",
+        "seed": 30,
+        "params": {
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from devices where _key = \"d-0003\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "_id": "d-0003"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM devices WHERE META().id = 'd-0003'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "events(device_id)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "device_id == \"d-0005\"."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "telemetry.events.eq_device",
+      "domain": "telemetry",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "All events for device d-0005.",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from events where device_id = \"d-0005\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "device_id": "d-0005"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM events WHERE device_id = 'd-0005'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "events(ts)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "ts > base+60m AND ts <= base+120m."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-RANGE"
+      ],
+      "case_id": "telemetry.events.range_ts",
+      "domain": "telemetry",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Events in a recent time range (logical fixture clock).",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from events where ts > \"2024-08-01T00:00:00Z+60m\" and ts <= \"2024-08-01T00:00:00Z+120m\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "ts": {
+                "$gt": "2024-08-01T00:00:00Z+60m",
+                "$lte": "2024-08-01T00:00:00Z+120m"
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM events WHERE ts > '2024-08-01T00:00:00Z+60m' AND ts <= '2024-08-01T00:00:00Z+120m'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "severity in {\"error\",\"critical\"}."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-IN"
+      ],
+      "case_id": "telemetry.events.severity_in",
+      "domain": "telemetry",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Events with severity error or critical.",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from events where severity in [\"error\", \"critical\"]"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "severity": {
+                "$in": [
+                  "error",
+                  "critical"
+                ]
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM events WHERE severity IN ['error', 'critical']"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "null"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "payload is null."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-NULL"
+      ],
+      "case_id": "telemetry.events.null_payload",
+      "domain": "telemetry",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Events with null payload.",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from events where payload is null"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "payload": null
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM events WHERE payload IS NULL"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "missing"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "missing(payload)."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-MISSING"
+      ],
+      "case_id": "telemetry.events.missing_payload",
+      "domain": "telemetry",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Events missing payload field.",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from events where missing(payload)"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "payload": {
+                "$exists": false
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM events WHERE payload IS MISSING"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "wrong_type"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "typeof(value) is string (fixture sets \"NaN\" every 9th)."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-TYPE"
+      ],
+      "case_id": "telemetry.events.wrong_type_value",
+      "domain": "telemetry",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Events where value is wrong type (string NaN).",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from events where value = \"NaN\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "value": "NaN"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM events WHERE value = 'NaN'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "array"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "tags = []."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-ARRAY"
+      ],
+      "case_id": "telemetry.events.tags_empty",
+      "domain": "telemetry",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Events with empty tags array.",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from events where tags = []"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "tags": []
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM events WHERE ARRAY_LENGTH(tags) = 0"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "missing"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "missing(retired_at)."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-MISSING"
+      ],
+      "case_id": "telemetry.devices.missing_retired_at",
+      "domain": "telemetry",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Devices that omit retired_at (still live inventory).",
+      "fixture": {
+        "generator_id": "telemetry.devices_v1",
+        "seed": 30,
+        "params": {
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from devices where missing(retired_at)"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "retired_at": {
+                "$exists": false
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM devices WHERE retired_at IS MISSING"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "null"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "retired_at is null."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-NULL"
+      ],
+      "case_id": "telemetry.devices.null_retired_at",
+      "domain": "telemetry",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Devices with retired_at explicitly null.",
+      "fixture": {
+        "generator_id": "telemetry.devices_v1",
+        "seed": 30,
+        "params": {
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from devices where retired_at is null"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "retired_at": null
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM devices WHERE retired_at IS NULL"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Filtered critical; project listed fields only."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PROJ-FLAT"
+      ],
+      "case_id": "telemetry.events.project_device_severity_ts",
+      "domain": "telemetry",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "plain_english_intent": "Project device_id, severity, ts for critical events.",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from events where severity = \"critical\" project _key, device_id, severity, ts"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "severity": "critical"
+            },
+            "projection": {
+              "_id": 1,
+              "device_id": 1,
+              "severity": 1,
+              "ts": 1
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, device_id, severity, ts FROM events WHERE severity = 'critical'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "sev_band = high if severity in {error,critical} else low."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PROJ-COMPUTED"
+      ],
+      "case_id": "telemetry.events.project_computed_sev_band",
+      "domain": "telemetry",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "plain_english_intent": "Conditional severity band high vs low.",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from events project _key, sev_band = if severity in [\"error\",\"critical\"] then \"high\" else \"low\""
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$project": {
+                "_id": 1,
+                "sev_band": {
+                  "$cond": [
+                    {
+                      "$in": [
+                        "$severity",
+                        [
+                          "error",
+                          "critical"
+                        ]
+                      ]
+                    },
+                    "high",
+                    "low"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, CASE WHEN severity IN ['error','critical'] THEN 'high' ELSE 'low' END AS sev_band FROM events"
+        }
+      },
+      "notes": "Computed projection residual Q2."
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "value_band low if value<33 else mid if value<66 else high."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PROJ-COMPUTED"
+      ],
+      "case_id": "telemetry.metrics.project_value_rounded_band",
+      "domain": "telemetry",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "plain_english_intent": "Project metric value band low/mid/high by thresholds.",
+      "fixture": {
+        "generator_id": "telemetry.metrics_v1",
+        "seed": 30,
+        "params": {
+          "n_metrics": 64,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from metrics project _key, value_band = if value < 33 then \"low\" else if value < 66 then \"mid\" else \"high\""
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$project": {
+                "_id": 1,
+                "value_band": {
+                  "$switch": {
+                    "branches": [
+                      {
+                        "case": {
+                          "$lt": [
+                            "$value",
+                            33
+                          ]
+                        },
+                        "then": "low"
+                      },
+                      {
+                        "case": {
+                          "$lt": [
+                            "$value",
+                            66
+                          ]
+                        },
+                        "then": "mid"
+                      }
+                    ],
+                    "default": "high"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, CASE WHEN value < 33 THEN 'low' WHEN value < 66 THEN 'mid' ELSE 'high' END AS value_band FROM metrics"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Top 15 by ts desc, _key asc."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-TOPK"
+      ],
+      "case_id": "telemetry.events.recent_topk",
+      "domain": "telemetry",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "plain_english_intent": "Most recent 15 telemetry events.",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from events order by ts desc, _key asc limit 15"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "sort": {
+              "ts": -1,
+              "_id": 1
+            },
+            "limit": 15
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM events ORDER BY ts DESC, META().id ASC LIMIT 15"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": true,
+          "page_size": 8,
+          "kinds": [
+            "first_page"
+          ]
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "device_id==d-0001; first 8 by ts desc,_key asc."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-CURSOR",
+        "TA-SEL-EQ"
+      ],
+      "case_id": "telemetry.events.device_history_page",
+      "domain": "telemetry",
+      "family_tags": [
+        "order_topk_cursor",
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "First page of events for device d-0001 ordered by ts.",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from events where device_id = \"d-0001\" order by ts desc, _key asc page size 8"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "device_id": "d-0001"
+            },
+            "sort": {
+              "ts": -1,
+              "_id": 1
+            },
+            "limit": 8
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM events WHERE device_id = 'd-0001' ORDER BY ts DESC, META().id ASC LIMIT 8"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": true,
+          "page_size": 8,
+          "kinds": [
+            "resume_after"
+          ]
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Next 8 after cursor under same filter/order."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "case_id": "telemetry.events.device_history_resume",
+      "domain": "telemetry",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "plain_english_intent": "Resume device d-0001 event history after first page.",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from events where device_id = \"d-0001\" order by ts desc, _key asc page size 8 after $cursor"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "device_id": "d-0001"
+            },
+            "sort": {
+              "ts": -1,
+              "_id": 1
+            },
+            "limit": 8
+          },
+          "notes": "resume bound"
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM events WHERE device_id = 'd-0001' AND (ts, META().id) < ($last_ts, $last_id) ORDER BY ts DESC, META().id ASC LIMIT 8",
+          "notes": "tuple sketch"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [
+          "devices(_key)"
+        ],
+        "optional": [
+          "events(device_id)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Join events.device_id = devices._key; exactly_one."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-ENRICH-1"
+      ],
+      "case_id": "telemetry.events.enrich_device_exactly_one",
+      "domain": "telemetry",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "plain_english_intent": "Enrich each event with its device document (exactly one).",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from events enrich dev from devices on events.device_id = devices._key exactly_one"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$lookup": {
+                "from": "devices",
+                "localField": "device_id",
+                "foreignField": "_id",
+                "as": "dev"
+              }
+            },
+            {
+              "$unwind": "$dev"
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT e.*, d FROM events AS e JOIN devices AS d ON e.device_id = META(d).id"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "For each device, attach array of events where device_id matches; empty ok."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-ENRICH-MANY"
+      ],
+      "case_id": "telemetry.devices.enrich_events_many",
+      "domain": "telemetry",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "plain_english_intent": "Attach many events per device (1:N enrich).",
+      "fixture": {
+        "generator_id": "telemetry.devices_v1",
+        "seed": 30,
+        "params": {
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from devices enrich evs from events on devices._key = events.device_id many"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$lookup": {
+                "from": "events",
+                "localField": "_id",
+                "foreignField": "device_id",
+                "as": "evs"
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT d.*, (SELECT RAW e FROM events e WHERE e.device_id = META(d).id) AS evs FROM devices d"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Left enrich device; missing device => null field."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-ENRICH-OPT"
+      ],
+      "case_id": "telemetry.metrics.enrich_device_optional",
+      "domain": "telemetry",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "plain_english_intent": "Optionally enrich metric rows with device.",
+      "fixture": {
+        "generator_id": "telemetry.metrics_v1",
+        "seed": 30,
+        "params": {
+          "n_metrics": 64,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from metrics enrich dev from devices on metrics.device_id = devices._key optional"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$lookup": {
+                "from": "devices",
+                "localField": "device_id",
+                "foreignField": "_id",
+                "as": "dev"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$dev",
+                "preserveNullAndEmptyArrays": true
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT m.*, d FROM metrics m LEFT JOIN devices d ON m.device_id = META(d).id"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "set"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "count(*) group by device_id."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "telemetry.events.group_by_device_count",
+      "domain": "telemetry",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "plain_english_intent": "Count events per device.",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from events group by device_id project device_id, count() as event_count"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$group": {
+                "_id": "$device_id",
+                "event_count": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT device_id, COUNT(*) AS event_count FROM events GROUP BY device_id"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "set"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "count(*) group by severity."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "telemetry.events.group_severity_count",
+      "domain": "telemetry",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "plain_english_intent": "Count events by severity.",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from events group by severity project severity, count() as n"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$group": {
+                "_id": "$severity",
+                "n": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT severity, COUNT(*) AS n FROM events GROUP BY severity"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "set"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "avg(value) group by metric_name; numeric values only."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-AVG"
+      ],
+      "case_id": "telemetry.metrics.agg_avg_by_name",
+      "domain": "telemetry",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "plain_english_intent": "Average metric value per metric_name.",
+      "fixture": {
+        "generator_id": "telemetry.metrics_v1",
+        "seed": 30,
+        "params": {
+          "n_metrics": 64,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from metrics group by metric_name project metric_name, avg(value) as avg_value"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$group": {
+                "_id": "$metric_name",
+                "avg_value": {
+                  "$avg": "$value"
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT metric_name, AVG(value) AS avg_value FROM metrics GROUP BY metric_name"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "singleton"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Single row min(value), max(value) over all metrics."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-AGG-MIN",
+        "TA-AGG-MAX"
+      ],
+      "case_id": "telemetry.metrics.agg_min_max_value",
+      "domain": "telemetry",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "plain_english_intent": "Global min and max of metric values.",
+      "fixture": {
+        "generator_id": "telemetry.metrics_v1",
+        "seed": 30,
+        "params": {
+          "n_metrics": 64,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from metrics project min(value) as min_v, max(value) as max_v"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$group": {
+                "_id": null,
+                "min_v": {
+                  "$min": "$value"
+                },
+                "max_v": {
+                  "$max": "$value"
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT MIN(value) AS min_v, MAX(value) AS max_v FROM metrics"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "predeclared_native_diff",
+        "code": "Q0-BUDGET-NATIVE",
+        "reason": "Budget is Residiuum-native."
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Respect result_bytes budget; partial + incomplete coverage when exhausted."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-BUDGET"
+      ],
+      "case_id": "telemetry.events.budget_result_bytes",
+      "domain": "telemetry",
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "plain_english_intent": "Scan events with tight result_bytes budget.",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from events budget { documents: 100000, bytes: 1048576, result_bytes: 4096 }"
+        },
+        "mongo": {
+          "status": "lane_local_only",
+          "notes": "No result_bytes budget",
+          "refusal_code": "Q0-BUDGET-NATIVE"
+        },
+        "cbl": {
+          "status": "lane_local_only",
+          "notes": "No result_bytes budget",
+          "refusal_code": "Q0-BUDGET-NATIVE"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "predeclared_native_diff",
+        "code": "Q0-COVERAGE-NATIVE",
+        "reason": "Coverage is Residiuum-native."
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "broad",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Partial results + incomplete coverage flag; no false completeness."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-COVERAGE"
+      ],
+      "case_id": "telemetry.events.coverage_incomplete",
+      "domain": "telemetry",
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "plain_english_intent": "Query events allowing incomplete coverage under damage/budget.",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from events coverage incomplete"
+        },
+        "mongo": {
+          "status": "deliberate_exclusion",
+          "notes": "No coverage channel",
+          "refusal_code": "Q0-COVERAGE-NATIVE"
+        },
+        "cbl": {
+          "status": "deliberate_exclusion",
+          "notes": "No coverage channel",
+          "refusal_code": "Q0-COVERAGE-NATIVE"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "predeclared_native_diff",
+        "code": "Q0-CONSISTENCY-MODE",
+        "reason": "Consistency mode labels Residiuum-native."
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "broad",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Query declares consistency available; validity under that mode."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-CONSISTENCY"
+      ],
+      "case_id": "telemetry.events.consistency_available",
+      "domain": "telemetry",
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "plain_english_intent": "Events query under consistency available mode.",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 30,
+        "params": {
+          "n_events": 128,
+          "n_devices": 24
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from events consistency available"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {}
+          },
+          "notes": "readConcern local ~ Available approx"
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM events",
+          "notes": "embedded local read"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "projects(status)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "status == \"active\"."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "project_management.projects.eq_status_active",
+      "domain": "project_management",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "List projects with status active.",
+      "fixture": {
+        "generator_id": "project_management.projects_v1",
+        "seed": 40,
+        "params": {
+          "n_projects": 20
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from projects where status = \"active\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "status": "active"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM projects WHERE status = 'active'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "projects(owner_id)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "owner_id == \"u-0002\"."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "project_management.projects.eq_owner",
+      "domain": "project_management",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Projects owned by user u-0002.",
+      "fixture": {
+        "generator_id": "project_management.projects_v1",
+        "seed": 40,
+        "params": {
+          "n_projects": 20
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from projects where owner_id = \"u-0002\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "owner_id": "u-0002"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM projects WHERE owner_id = 'u-0002'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "projects(owner_id,status)"
+        ]
+      },
+      "selectivity_class": "very_low",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "owner_id==u-0001 AND status==active."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-COMPOUND"
+      ],
+      "case_id": "project_management.projects.compound_owner_status",
+      "domain": "project_management",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Active projects owned by u-0001.",
+      "fixture": {
+        "generator_id": "project_management.projects_v1",
+        "seed": 40,
+        "params": {
+          "n_projects": 20
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from projects where owner_id = \"u-0001\" and status = \"active\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "owner_id": "u-0001",
+              "status": "active"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM projects WHERE owner_id = 'u-0001' AND status = 'active'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "projects(priority)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "priority >= 3."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-RANGE"
+      ],
+      "case_id": "project_management.projects.range_priority",
+      "domain": "project_management",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Projects with priority >= 3.",
+      "fixture": {
+        "generator_id": "project_management.projects_v1",
+        "seed": 40,
+        "params": {
+          "n_projects": 20
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from projects where priority >= 3"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "priority": {
+                "$gte": 3
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM projects WHERE priority >= 3"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "status == \"doing\"."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "project_management.tasks.eq_status_doing",
+      "domain": "project_management",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Tasks currently in doing status.",
+      "fixture": {
+        "generator_id": "project_management.tasks_v1",
+        "seed": 40,
+        "params": {
+          "n_tasks": 80,
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from tasks where status = \"doing\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "status": "doing"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM tasks WHERE status = 'doing'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "tasks(project_id)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "project_id == \"prj-0004\"."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "project_management.tasks.eq_project",
+      "domain": "project_management",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "All tasks for project prj-0004.",
+      "fixture": {
+        "generator_id": "project_management.tasks_v1",
+        "seed": 40,
+        "params": {
+          "n_tasks": 80,
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from tasks where project_id = \"prj-0004\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "project_id": "prj-0004"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM tasks WHERE project_id = 'prj-0004'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "tasks(assignee_id)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "assignee_id == \"u-0003\"."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "project_management.tasks.eq_assignee",
+      "domain": "project_management",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Tasks assigned to u-0003.",
+      "fixture": {
+        "generator_id": "project_management.tasks_v1",
+        "seed": 40,
+        "params": {
+          "n_tasks": 80,
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from tasks where assignee_id = \"u-0003\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "assignee_id": "u-0003"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM tasks WHERE assignee_id = 'u-0003'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "null"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "description is null."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-NULL"
+      ],
+      "case_id": "project_management.projects.null_description",
+      "domain": "project_management",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Projects with null description.",
+      "fixture": {
+        "generator_id": "project_management.projects_v1",
+        "seed": 40,
+        "params": {
+          "n_projects": 20
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from projects where description is null"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "description": null
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM projects WHERE description IS NULL"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "missing"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "missing(description)."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-MISSING"
+      ],
+      "case_id": "project_management.projects.missing_description",
+      "domain": "project_management",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Projects that omit description field.",
+      "fixture": {
+        "generator_id": "project_management.projects_v1",
+        "seed": 40,
+        "params": {
+          "n_projects": 20
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from projects where missing(description)"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "description": {
+                "$exists": false
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM projects WHERE description IS MISSING"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "null"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "due_at is null."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-NULL"
+      ],
+      "case_id": "project_management.tasks.null_due_at",
+      "domain": "project_management",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Tasks with due_at null (no due date set).",
+      "fixture": {
+        "generator_id": "project_management.tasks_v1",
+        "seed": 40,
+        "params": {
+          "n_tasks": 80,
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from tasks where due_at is null"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "due_at": null
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM tasks WHERE due_at IS NULL"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "missing"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "missing(due_at)."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-MISSING"
+      ],
+      "case_id": "project_management.tasks.missing_due_at",
+      "domain": "project_management",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Tasks missing due_at field.",
+      "fixture": {
+        "generator_id": "project_management.tasks_v1",
+        "seed": 40,
+        "params": {
+          "n_tasks": 80,
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from tasks where missing(due_at)"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "due_at": {
+                "$exists": false
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM tasks WHERE due_at IS MISSING"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "array"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "blocked_by = []."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-ARRAY"
+      ],
+      "case_id": "project_management.tasks.blocked_by_empty",
+      "domain": "project_management",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Tasks with empty blocked_by array (unblocked).",
+      "fixture": {
+        "generator_id": "project_management.tasks_v1",
+        "seed": 40,
+        "params": {
+          "n_tasks": 80,
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from tasks where blocked_by = []"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "blocked_by": []
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM tasks WHERE ARRAY_LENGTH(blocked_by) = 0"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "array"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "labels = []."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PRED-ARRAY"
+      ],
+      "case_id": "project_management.projects.labels_empty",
+      "domain": "project_management",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "plain_english_intent": "Projects with empty labels.",
+      "fixture": {
+        "generator_id": "project_management.projects_v1",
+        "seed": 40,
+        "params": {
+          "n_projects": 20
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from projects where labels = []"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "labels": []
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM projects WHERE ARRAY_LENGTH(labels) = 0"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "status != archived; project _key, title, status."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PROJ-FLAT"
+      ],
+      "case_id": "project_management.projects.project_title_status",
+      "domain": "project_management",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "plain_english_intent": "Project title and status for non-archived projects.",
+      "fixture": {
+        "generator_id": "project_management.projects_v1",
+        "seed": 40,
+        "params": {
+          "n_projects": 20
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from projects where status != \"archived\" project _key, title, status"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "status": {
+                "$ne": "archived"
+              }
+            },
+            "projection": {
+              "_id": 1,
+              "title": 1,
+              "status": 1
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, title, status FROM projects WHERE status != 'archived'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Filter project; project listed fields."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PROJ-FLAT"
+      ],
+      "case_id": "project_management.tasks.project_snippet",
+      "domain": "project_management",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "plain_english_intent": "Project task key, title, status, assignee for project prj-0000.",
+      "fixture": {
+        "generator_id": "project_management.tasks_v1",
+        "seed": 40,
+        "params": {
+          "n_tasks": 80,
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from tasks where project_id = \"prj-0000\" project _key, title, status, assignee_id"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "project_id": "prj-0000"
+            },
+            "projection": {
+              "_id": 1,
+              "title": 1,
+              "status": 1,
+              "assignee_id": 1
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, title, status, assignee_id FROM tasks WHERE project_id = 'prj-0000'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "null",
+            "missing"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "overdue = true if due_at present and due_at < cutoff \"2024-03-01T00:00:00Z+100m\"; null/missing due => false or null per Q2 freeze."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-PROJ-COMPUTED"
+      ],
+      "case_id": "project_management.tasks.project_computed_overdue_flag",
+      "domain": "project_management",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "plain_english_intent": "Conditional overdue flag from due_at vs fixed cutoff.",
+      "fixture": {
+        "generator_id": "project_management.tasks_v1",
+        "seed": 40,
+        "params": {
+          "n_tasks": 80,
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from tasks project _key, overdue = if due_at < \"2024-03-01T00:00:00Z+100m\" then true else false"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$project": {
+                "_id": 1,
+                "overdue": {
+                  "$cond": [
+                    {
+                      "$lt": [
+                        "$due_at",
+                        "2024-03-01T00:00:00Z+100m"
+                      ]
+                    },
+                    true,
+                    false
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, CASE WHEN due_at < '2024-03-01T00:00:00Z+100m' THEN true ELSE false END AS overdue FROM tasks"
+        }
+      },
+      "notes": "Computed + null/missing due residual for Q2."
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "revisions(committed_at)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "committed_at desc, _key asc."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-ORDER"
+      ],
+      "case_id": "project_management.revisions.order_committed_desc",
+      "domain": "project_management",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "plain_english_intent": "Revisions ordered by committed_at descending.",
+      "fixture": {
+        "generator_id": "project_management.revisions_v1",
+        "seed": 40,
+        "params": {
+          "n_revisions": 48,
+          "n_projects": 20
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from revisions order by committed_at desc, _key asc"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "sort": {
+              "committed_at": -1,
+              "_id": 1
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM revisions ORDER BY committed_at DESC, META().id ASC"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "project_id==prj-0002; top 5 by committed_at desc."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-TOPK",
+        "TA-SEL-EQ"
+      ],
+      "case_id": "project_management.revisions.topk_recent_for_project",
+      "domain": "project_management",
+      "family_tags": [
+        "order_topk_cursor",
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Top 5 most recent revisions for project prj-0002.",
+      "fixture": {
+        "generator_id": "project_management.revisions_v1",
+        "seed": 40,
+        "params": {
+          "n_revisions": 48,
+          "n_projects": 20
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from revisions where project_id = \"prj-0002\" order by committed_at desc, _key asc limit 5"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "project_id": "prj-0002"
+            },
+            "sort": {
+              "committed_at": -1,
+              "_id": 1
+            },
+            "limit": 5
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM revisions WHERE project_id = 'prj-0002' ORDER BY committed_at DESC, META().id ASC LIMIT 5"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": true,
+          "page_size": 10,
+          "kinds": [
+            "first_page"
+          ]
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Rows 0..9 of updated_at desc,_key asc."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "case_id": "project_management.tasks.page_first_by_updated",
+      "domain": "project_management",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "plain_english_intent": "First page of tasks by updated_at desc, page size 10.",
+      "fixture": {
+        "generator_id": "project_management.tasks_v1",
+        "seed": 40,
+        "params": {
+          "n_tasks": 80,
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from tasks order by updated_at desc, _key asc page size 10"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "sort": {
+              "updated_at": -1,
+              "_id": 1
+            },
+            "limit": 10
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM tasks ORDER BY updated_at DESC, META().id ASC LIMIT 10"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": true,
+          "page_size": 10,
+          "kinds": [
+            "resume_after"
+          ]
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Next page size 10; concatenate equals unpaged; no offset."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "case_id": "project_management.tasks.page_resume_by_updated",
+      "domain": "project_management",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "plain_english_intent": "Resume tasks listing after first page under updated_at order.",
+      "fixture": {
+        "generator_id": "project_management.tasks_v1",
+        "seed": 40,
+        "params": {
+          "n_tasks": 80,
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from tasks order by updated_at desc, _key asc page size 10 after $cursor"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "sort": {
+              "updated_at": -1,
+              "_id": 1
+            },
+            "limit": 10
+          },
+          "notes": "resume bound"
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM tasks WHERE (updated_at, META().id) < ($last_u, $last_id) ORDER BY updated_at DESC, META().id ASC LIMIT 10",
+          "notes": "tuple sketch"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [
+          "projects(_key)"
+        ],
+        "optional": [
+          "tasks(project_id)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Join tasks.project_id = projects._key; exactly_one."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-ENRICH-1"
+      ],
+      "case_id": "project_management.tasks.enrich_project_exactly_one",
+      "domain": "project_management",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "plain_english_intent": "Enrich each task with its project (exactly one).",
+      "fixture": {
+        "generator_id": "project_management.tasks_v1",
+        "seed": 40,
+        "params": {
+          "n_tasks": 80,
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from tasks enrich prj from projects on tasks.project_id = projects._key exactly_one"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$lookup": {
+                "from": "projects",
+                "localField": "project_id",
+                "foreignField": "_id",
+                "as": "prj"
+              }
+            },
+            {
+              "$unwind": "$prj"
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT t.*, p FROM tasks AS t JOIN projects AS p ON t.project_id = META(p).id"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "For each project, array of tasks where project_id matches; empty ok."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-ENRICH-MANY"
+      ],
+      "case_id": "project_management.projects.enrich_tasks_many",
+      "domain": "project_management",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "plain_english_intent": "Attach many tasks per project.",
+      "fixture": {
+        "generator_id": "project_management.projects_v1",
+        "seed": 40,
+        "params": {
+          "n_projects": 20
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from projects enrich tsks from tasks on projects._key = tasks.project_id many"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$lookup": {
+                "from": "tasks",
+                "localField": "_id",
+                "foreignField": "project_id",
+                "as": "tsks"
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT p.*, (SELECT RAW t FROM tasks t WHERE t.project_id = META(p).id) AS tsks FROM projects p"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "For each project, array of memberships; empty ok."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-ENRICH-MANY"
+      ],
+      "case_id": "project_management.projects.enrich_memberships_many",
+      "domain": "project_management",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "plain_english_intent": "Attach memberships (cross-owner reporting surface) per project.",
+      "fixture": {
+        "generator_id": "project_management.projects_v1",
+        "seed": 40,
+        "params": {
+          "n_projects": 20
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from projects enrich mbs from memberships on projects._key = memberships.project_id many"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$lookup": {
+                "from": "memberships",
+                "localField": "_id",
+                "foreignField": "project_id",
+                "as": "mbs"
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT p.*, (SELECT RAW m FROM memberships m WHERE m.project_id = META(p).id) AS mbs FROM projects p"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Left enrich project; missing => null."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-ENRICH-OPT"
+      ],
+      "case_id": "project_management.memberships.enrich_project_optional",
+      "domain": "project_management",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "plain_english_intent": "Optionally enrich membership with project document.",
+      "fixture": {
+        "generator_id": "project_management.memberships_v1",
+        "seed": 40,
+        "params": {
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from memberships enrich prj from projects on memberships.project_id = projects._key optional"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$lookup": {
+                "from": "projects",
+                "localField": "project_id",
+                "foreignField": "_id",
+                "as": "prj"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$prj",
+                "preserveNullAndEmptyArrays": true
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT m.*, p FROM memberships m LEFT JOIN projects p ON m.project_id = META(p).id"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "set"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "count(*) group by status."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "project_management.tasks.group_status_count",
+      "domain": "project_management",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "plain_english_intent": "Count tasks by status (board-style reporting).",
+      "fixture": {
+        "generator_id": "project_management.tasks_v1",
+        "seed": 40,
+        "params": {
+          "n_tasks": 80,
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from tasks group by status project status, count() as n"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$group": {
+                "_id": "$status",
+                "n": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT status, COUNT(*) AS n FROM tasks GROUP BY status"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "set"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "count(*) group by assignee_id."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "project_management.tasks.group_by_assignee_count",
+      "domain": "project_management",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "plain_english_intent": "Count tasks per assignee (cross-owner workload).",
+      "fixture": {
+        "generator_id": "project_management.tasks_v1",
+        "seed": 40,
+        "params": {
+          "n_tasks": 80,
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from tasks group by assignee_id project assignee_id, count() as task_count"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$group": {
+                "_id": "$assignee_id",
+                "task_count": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT assignee_id, COUNT(*) AS task_count FROM tasks GROUP BY assignee_id"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "set"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "sum(estimate_points) group by project_id."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-SUM"
+      ],
+      "case_id": "project_management.tasks.group_by_project_sum_points",
+      "domain": "project_management",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "plain_english_intent": "Sum estimate_points per project.",
+      "fixture": {
+        "generator_id": "project_management.tasks_v1",
+        "seed": 40,
+        "params": {
+          "n_tasks": 80,
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from tasks group by project_id project project_id, sum(estimate_points) as total_points"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$group": {
+                "_id": "$project_id",
+                "total_points": {
+                  "$sum": "$estimate_points"
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT project_id, SUM(estimate_points) AS total_points FROM tasks GROUP BY project_id"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "set"
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "count(*) group by owner_id."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "project_management.projects.group_by_owner_count",
+      "domain": "project_management",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "plain_english_intent": "Count projects per owner (cross-owner portfolio).",
+      "fixture": {
+        "generator_id": "project_management.projects_v1",
+        "seed": 40,
+        "params": {
+          "n_projects": 20
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from projects group by owner_id project owner_id, count() as project_count"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$group": {
+                "_id": "$owner_id",
+                "project_count": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT owner_id, COUNT(*) AS project_count FROM projects GROUP BY owner_id"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "memberships(role)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "role == \"owner\"."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "project_management.memberships.eq_role_owner",
+      "domain": "project_management",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "Membership rows with role owner.",
+      "fixture": {
+        "generator_id": "project_management.memberships_v1",
+        "seed": 40,
+        "params": {
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from memberships where role = \"owner\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "role": "owner"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM memberships WHERE role = 'owner'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "memberships(user_id)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "user_id == \"u-0001\"."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "project_management.memberships.eq_user",
+      "domain": "project_management",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "plain_english_intent": "All project memberships for user u-0001.",
+      "fixture": {
+        "generator_id": "project_management.memberships_v1",
+        "seed": 40,
+        "params": {
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from memberships where user_id = \"u-0001\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "user_id": "u-0001"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM memberships WHERE user_id = 'u-0001'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "predeclared_native_diff",
+        "code": "Q0-BUDGET-NATIVE",
+        "reason": "Budget Residiuum-native."
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Budget 20 documents; incomplete coverage when n_tasks>20."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-BUDGET"
+      ],
+      "case_id": "project_management.tasks.budget_documents",
+      "domain": "project_management",
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "plain_english_intent": "Scan tasks with document budget 20.",
+      "fixture": {
+        "generator_id": "project_management.tasks_v1",
+        "seed": 40,
+        "params": {
+          "n_tasks": 80,
+          "n_projects": 20,
+          "n_users": 8
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from tasks budget { documents: 20, bytes: 1048576, result_bytes: 65536 }"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "limit": 20
+          },
+          "notes": "limit \u2260 budget"
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM tasks LIMIT 20",
+          "notes": "no budget"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "exclusion_or_refusal": {
+        "kind": "stable_refusal",
+        "code": "rql_offset_discard_unsupported",
+        "reason": "Programme forbids offset discard for Tier A cursor semantics."
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "not_applicable",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": true,
+          "kinds": [
+            "resume_after"
+          ]
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "refusal_unordered",
+        "multiplicity": "empty_ok"
+      },
+      "expected": {
+        "kind": "stable_refusal",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Stable refusal: offset/skip discard not admitted; use cursor after."
+      },
+      "tier": "A",
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "case_id": "project_management.projects.refuse_offset_discard",
+      "domain": "project_management",
+      "family_tags": [
+        "budget_coverage_damage_refusal",
+        "order_topk_cursor"
+      ],
+      "plain_english_intent": "Refuse OFFSET discard pagination on projects (cursor required).",
+      "fixture": {
+        "generator_id": "project_management.projects_v1",
+        "seed": 40,
+        "params": {
+          "n_projects": 20
+        }
+      },
+      "implementations": {
+        "rql": {
+          "status": "stable_refusal",
+          "refusal_code": "rql_offset_discard_unsupported",
+          "source": "from projects order by created_at desc offset 5 limit 5"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "sort": {
+              "created_at": -1
+            },
+            "skip": 5,
+            "limit": 5
+          },
+          "notes": "Mongo can skip; not Residiuum-equivalent product path"
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM projects ORDER BY created_at DESC OFFSET 5 LIMIT 5",
+          "notes": "CBL OFFSET not Residiuum path"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "For locations in region eu, project _key, city, region, country only."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "directory.locations.project_city_region",
+      "tier": "A",
+      "domain": "directory",
+      "family_tags": [
+        "projection_computed_conditional",
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-PROJ-FLAT",
+        "TA-SEL-EQ"
+      ],
+      "plain_english_intent": "Project city and region fields for locations in eu.",
+      "fixture": {
+        "generator_id": "directory.locations_v1",
+        "seed": 20,
+        "params": {
+          "n_locations": 12
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from locations where region = \"eu\" project _key, city, region, country"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "region": "eu"
+            },
+            "projection": {
+              "_id": 1,
+              "city": 1,
+              "region": 1,
+              "country": 1
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, city, region, country FROM locations WHERE region = 'eu'"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "locations(region)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "For each revision, left enrich author as optional synthetic user key only via memberships/projects surface is out of scope; enrich project exactly optional on project_id."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "project_management.revisions.enrich_project_optional",
+      "tier": "A",
+      "domain": "project_management",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "capability_ids": [
+        "TA-ENRICH-OPT"
+      ],
+      "plain_english_intent": "Optionally enrich each revision with its project document.",
+      "fixture": {
+        "generator_id": "project_management.revisions_v1",
+        "seed": 40,
+        "params": {
+          "n_revisions": 48,
+          "n_projects": 20
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from revisions enrich prj from projects on revisions.project_id = projects._key optional"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$lookup": {
+                "from": "projects",
+                "localField": "project_id",
+                "foreignField": "_id",
+                "as": "prj"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$prj",
+                "preserveNullAndEmptyArrays": true
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT r.*, p FROM revisions r LEFT JOIN projects p ON r.project_id = META(p).id"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "projects(_key)"
+        ]
+      },
+      "selectivity_class": "high",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "notes": "Q0 enrich residual; intention frozen for Q2."
     }
   ]
 }
