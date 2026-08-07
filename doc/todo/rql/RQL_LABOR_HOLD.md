@@ -12,10 +12,10 @@ Amendment Feature: `019fdac4-1408-7321-8edc-a09851c9e656` (Q0.A0–Q0.A9)
 ## Verdict
 
 ```text
-Q0 package accept        = NOT YET (principal will not accept until amendments land)
-Admitted Gate-1 labor    = Q0.A1–Q0.A9 amendment todos only
+Q0 package accept        = NOT YET (amendments A1–A9 labor complete; principal §5)
+Admitted Gate-1 labor    = none on Q1; amendment labor finished for re-review
 Q1 corpus implementation = FORBIDDEN until post-amendment Q0 ACCEPT (§5)
-Decision 0 / RQL-C1      = OPEN / FORBIDDEN (A7 may reclassify micro-op purity only)
+Decision 0 / RQL-C1      = OPEN / FORBIDDEN (micro-op purity not D0 close bar — Q0.A7)
 ```
 
 Principal review (2026-08-07): QVM convergence is substantially good; focused tests

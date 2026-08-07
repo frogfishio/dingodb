@@ -452,7 +452,7 @@ does Atomics become the active critical-path programme.
 
 | Package | State | Principal exit decision |
 |---|---|---|
-| RQL-Q0 Target freeze | `active` (principal review: amend before accept) | Tier and comparator profile accepted |
+| RQL-Q0 Target freeze | `labor_complete` (amendments A1–A9; principal §5 pending) | Tier and comparator profile accepted |
 | RQL-Q1 Practical corpus | `backlog` | Immutable corpus accepted |
 | RQL-Q2 Capability closure | `backlog` | Tier A 100%; one QVM runtime |
 | RQL-Q3 Semantic qualification | `backlog` | Oracle/equivalence/damage green |

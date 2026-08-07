@@ -8,8 +8,12 @@ Authority: hard invariant below · [RQL_D0_RESIDUAL_INVENTORY.md](./RQL_D0_RESID
 Tree baseline for companion inventory: git `ef4e825` (post D0.1 land)
 
 **This document does not close Decision 0.** Labor marks criteria
-`labor_closed` / `open` / `principal_only`. Only principal may flip Decision 0
-or accept RQL-C1.
+`labor_closed` / `open` / `principal_only` / `out_of_scope_for_D0_close`.
+Only principal may flip Decision 0 or accept RQL-C1.
+
+**Q0.A7 (2026-08-07, principal review finding #7):** The Decision 0 close test is
+*all product frontends → canonical QVM → one `run_vm`*, not rewriting every
+opcode body as a pure stack micro-op. Criterion **A9** no longer blocks D0 close.
 
 ---
 
@@ -57,9 +61,9 @@ These answer: *is there one product semantic executor?*
 | A6 | Host is collection-qualified scan/index/get only (`HostCapabilities`) | **labor_closed** | P1b; trait in `query_bytecode_v1/mod.rs`; `evidence/rql_p0b_private_api.log` / `rql_p1b_host_by_id.log` |
 | A7 | Raw SDA only via explicit SDA APIs | **labor_closed** | `Collection::sda`; dialect `sda`; custom dialects portable-only |
 | A8 | Architecture gate green (Decision 0 honesty + C1 forbid text) | **labor_closed** | `bash scripts/check_query_runtime_architecture.sh` → OK |
-| A9 | Opcode **bodies** are pure stack micro-ops (no large Rust phase interpreters) | **open** | D0.1 §1 — IR residual: `core_phases`, `ir_*`, `kernel` SDA eval, Full attach helpers |
+| A9 | Opcode **bodies** are pure stack micro-ops (no large Rust phase interpreters) | **out_of_scope_for_D0_close** (Q0.A7) | Principal review: Rust phase helpers inside QVM opcodes are normal; **not** a second executor. IR residual = optional tech-debt. Close test = one product QVM path (A1–A8), not micro-op purity. See D0.1 §1 |
 | A10 | Full language on same **wire** as Core (op 118) | **open** | Full refused on Core wire (RQL-F2); local `execute_rql_full` only until dedicated wire |
-| A11 | Portable dialect path uses durable Heap `CollectionId` / `HeapId` (not name-derived) | **open** | D0.1 §2.3 — synthetic ids on `Collection::find_portable_with` |
+| A11 | Portable dialect path uses durable host identity (not free name-only synthetic) | **labor_closed** (store-scoped, Q0.A6) | DX: `store_id` + name; Heap catalog ids remain `CollectionClient`. Residual: not Heap-catalog UUID on flat Collection |
 | A12 | Principal accepts residual inventory + this checklist | **principal_only** | D0.1 + this file; board Feature `019fda4c-a6f2-…` |
 | A13 | Principal Decision 0 close / RQL-C1 | **principal_only** | **Do not mark closed in docs without principal** |
 
@@ -71,8 +75,10 @@ Labor must not pick these. For principal use only:
 2. **Accept D0 residual as *documented* intermediate** — still not C1; explicitly allow Q2
    work while IR residual remains, with scoreboard honesty that "one runtime" means
    one `run_vm` + QVM authority, not pure stack purity. Requires dated principal note.
-3. **Close Decision 0 / accept C1** — only if A1–A8 hold *and* principal judges A9–A11
-   residual acceptable or closed. Record profile, exclusions, evidence digest.
+3. **Close Decision 0 / accept C1** — only if A1–A8 hold *and* principal accepts
+   residual inventory (A12). **A9 pure micro-op purity is not required** (Q0.A7).
+   A10 Full-wire remains programme Q2-BLOCK-FULL-WIRE honesty, not a D0 micro-op bar.
+   Record profile, exclusions, evidence digest.
 
 ---
 
@@ -124,7 +130,7 @@ claim its one-runtime exit."*
 |---|---|---|
 | Sole production authority = QVM + `run_vm` | A1–A8 | **labor_closed** (architecture) |
 | No second product executor | A3–A5, A7 | **labor_closed** |
-| Principal honesty that residual IR is accepted or closed | A9, A12–A13 | **open / principal_only** |
+| Principal honesty that residual IR is documented tech-debt (not second executor) | A12–A13; A9 = out_of_scope_for_D0_close (Q0.A7) | **principal_only** for close |
 | Frontend → identical canonical QVM (SQL/builder/RQL) | Q2.3 + corpus | **open** (Q2 backlog; D0 residual Feature blocks exit claim) |
 | Tier A 100% expressible | Q1 corpus + Q2 implement | **open** (**out_of_scope_for_D0** capability) |
 
@@ -144,7 +150,7 @@ Kanban Feature (blocks Q2 exit claim): `019fda4c-a6f2-7932-a9d7-6e04400fd3df`
 2. **Full ≠ Core wire** — Full local QVM path; op 118 Core only / Full refuse.
 3. **Dialect identity** — name-derived ids on comfort `Collection` dialect path.
 4. **Prior principal rejects** — VM1, P1c, prior D0/C1 closure claims stay rejected.
-5. **Q0 principal accept open** — Q0.1–Q0.7 labor cards board `done` but accept pack **§5 blank**; blocks Q1 promotion (board `done` ≠ package ACCEPT).
+5. **Q0 principal accept open** — amendment package Q0.A1–Q0.A9 in flight; accept pack re-issue (A9) then §5; blocks Q1 until post-amendment ACCEPT.
 6. **No Tier-A Q1 corpus yet** — separate from D0; required for Q2/Q3/Gate-1.
 
 ---

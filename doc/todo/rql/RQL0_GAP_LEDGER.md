@@ -18,8 +18,9 @@ remain on the scoreboard; Kanban owns labor workflow only.
 
 The qualification programme owns RQL-Q0 through RQL-Q7. This ledger remains
 the implementation inventory and historical convergence sequence; where its
-older `RQL-Q1` naming conflicts with the qualification programme, the
-qualification programme wins.
+older **`RQL-PERF-1`** naming (historically mis-labeled `RQL-Q1` in this ledger)
+conflicts with the qualification programme's **RQL-Q1 Practical corpus** package —
+the qualification programme wins. See §5 package row rename (Q0.A8).
 
 **Law:** refuse new RQL syntax until its semantics and execution owner are named
 in this ledger (or an amended RQL_SPEC section referenced here).
@@ -184,7 +185,7 @@ is forbidden.
 | **RQL-I1** | Index pushdown for enrich match keys | RQL-F2 decision, Core index path | **labor closed** — port inventory; do not grow on frozen façade |
 | **RQL-S1** | SQL+ → enrich/`within` emit (JOIN class) | **RQL-X1** minimum | Emit into logical plan → shared bytecode only |
 | **RQL-D1** | `at rank` / access policies | DDA specs + **RQL-X1** | Spec-first; only after DIRECT_ACCESS + bytecode owner frozen |
-| **RQL-Q1** | Query perf / read qualification campaign | RQL-C1 + shared runtime | CRITICAL_PATH §4.4 evidence law |
+| **RQL-PERF-1** *(was mis-labeled RQL-Q1)* | Query perf / read qualification campaign | RQL-C1 + shared runtime | CRITICAL_PATH §4.4; **≠** programme RQL-Q1 corpus |
 
 **Explicitly not next:** parallel semantic executors, Studio/UI, search
 dialects, APB-8 aggregates syntax, store perf as RQL substitutes, Embedded

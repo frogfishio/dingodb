@@ -7,16 +7,18 @@ Sources: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-07 (**RQL-Q0** not accepted yet — principal review requires
-amendments). Amendment Feature `019fdac4-1408-7321-8edc-a09851c9e656` schedules
-Q0.A1–Q0.A9 in `todo`. Pack: [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md).
+Updated: 2026-08-07 (**RQL-Q0** amendments A1–A9 labor complete — principal
+package accept pending on re-issued pack). Pack:
+[RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md) · index
+[RQL_Q0_DOC_INDEX.md](../../todo/rql/RQL_Q0_DOC_INDEX.md).
 **Decision 0 OPEN**; RQL-C1 **forbidden**
-([RQL_D0_CLOSE_READINESS.md](../../todo/rql/RQL_D0_CLOSE_READINESS.md)).
-Q1 corpus **blocked** until post-amendment Q0 accept. CRITICAL_PATH RQL→Atomics→Cluster.
+([RQL_D0_CLOSE_READINESS.md](../../todo/rql/RQL_D0_CLOSE_READINESS.md); A9 micro-op
+purity not required for D0 close — Q0.A7).
+Q1 corpus **blocked** until §5 ACCEPT. CRITICAL_PATH RQL→Atomics→Cluster.
 Prior: RQL-I1/0/F1/F2; P0 packaging 0.2.2; CSE-3 ~21–23K SoT.
 **ETQ-2 paused.** **AWO paused.**
-Labor hold: [RQL_LABOR_HOLD.md](../../todo/rql/RQL_LABOR_HOLD.md) — admit **Q0
-amendment** todos only; Q1 still forbidden until post-amendment §5 ACCEPT.
+Labor hold: [RQL_LABOR_HOLD.md](../../todo/rql/RQL_LABOR_HOLD.md) — Q1 still
+forbidden until principal fills re-issued accept pack §5.
 
 **How to read program order:** open [CRITICAL_PATH.md](../../../CRITICAL_PATH.md)
 then [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
@@ -135,7 +137,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APP-6 | active | 2026-08-02 | APP-3, APP-5, HAR-4 | **T1–T3**: cursor + page executor + multipage field-order; APB-7 T10 product ring binds params; `app6_page_executor` **4/4**; `app6_field_order_multipage` **3/3** | HAR-4 remote op 118; Heap-confined cursor secrets residual; **no product query / APB-7 package accept** | query execution |
 | APP-7 | active | 2026-08-02 | APP-6, HAR-4 | **T6**: op **118** `rql_query` **active** in heap+baseline ops; server dispatch + `RemoteHeap::rql_query` + façade remote `rql` wire path; dual pack remote green; gates `har4_query_remote_gate` **7/7** | package accept residual; plan-only args residual | remote query |
 | APP-8 | not_started | — | APP-1…APP-7 | — | release evidence pack | application journey |
-| RQL-Q0 | active | 2026-08-07 | principal review: accept deferred pending Q0.A1–Q0.A9 | first freeze pack landed; Feature `019fdac4-1408-7321-8edc-a09851c9e656` schedules P0 pins/equivalence, P1 matrix/RQB1/ids/Full-wire, P2 D0 micro-op + doc consolidate, A9 re-issue accept pack; hold [RQL_LABOR_HOLD.md](../../todo/rql/RQL_LABOR_HOLD.md) | **not** package accept until post-amendment §5; Q1 still blocked | Gate-1 target/profile freeze |
+| RQL-Q0 | blocked | 2026-08-07 | principal §5 on re-issued [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md) | amendments A1–A9 labor complete (pins, equivalence, matrix, Full-wire, RQB1, durable dialect ids, D0 micro-op, doc index); freeze pack ready for re-review | **not** package accept until §5; Q1 still blocked | Gate-1 target/profile freeze |
 | RQL-Q1 | blocked | — | RQL-Q0 principal accept | cards Q1.1–Q1.4 titled `[BLOCKED:Q0]` (stage still `todo`; host forbids demote); **do not claim** | corpus schema/fixtures forbidden until Q0 ACCEPT | practical query corpus |
 | RQL-Q2 | not_started | — | RQL-Q1 accept; Decision-0 honesty for one-runtime *exit claim* | — | Tier A gaps not closed as Gate-1 programme package | capability closure |
 | RQL-Q3 | not_started | — | RQL-Q2 family expressibility | — | independent oracle / differential matrix absent as programme package | semantic qualification |
@@ -208,89 +210,19 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 6. **Pre-stage** open backlog as `todo` (no next-pull invented only in docs)
 7. Prefer host board tools; do not invent boards under `.koderra/`
 
-### Critical-path Gate-1 (2026-08-07 — amendment package)
+### Critical-path Gate-1 (2026-08-07 — amendments labor complete)
 
 | Priority | Action / card | Stage | Note |
 |---:|---|---|---|
-| **1** | **Q0.A1** [P0] Comparator pins + full config | `in_review` | Mongo **8.2.12** + driver 3.8.0; CBL **4.1.0** + full config (env manifest) |
-| **2** | **Q0.A2** [P0] Tighten equivalence laws | `in_review` | §2 str/int/mn/agg/arr/cur laws; ban post-hoc type_incomparable |
-| **3** | **Q0.A3** [P1] Expand capability matrix | `in_review` | DISTINCT/IN/string/array/arith/date/COUNT DISTINCT/collation/pipeline rows |
-| **3b** | **Q0.A4** [P1] Full-over-wire Q2 blocker | `in_review` | Q2-BLOCK-FULL-WIRE; lane S Full not competitive |
-| **3c** | **Q0.A5** [P1] RQB1 public quarantine | `in_review` | QVM-only public SDK; RQB1 pub(crate) |
-| **3d** | **Q0.A6** [P1] Durable dialect host ids | `in_review` | store_id-scoped; not name-only |
-| **4** | **Q0.A7–A8** [P2] D0 micro-op policy + doc consolidate | `todo` | After or parallel P1 docs |
-| **5** | **Q0.A9** Re-issue accept pack | `todo` | After A1–A8; then principal §5 |
-| — | Q0.1–Q0.8 first freeze labor | board `done` / `in_review` | **≠** package accept |
+| **1** | **Principal:** re-review [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md) **§5** | human | Only §5 ACCEPT unlocks Q1 |
+| — | Q0.A1–Q0.A9 amendment labor | `in_review` | Pins, equiv, matrix, Full-wire, RQB1, ids, D0 micro-op, docs, re-issue |
+| — | Normative freeze set | ready | [RQL_Q0_DOC_INDEX.md](../../todo/rql/RQL_Q0_DOC_INDEX.md) |
 | — | Q1.1–Q1.4 corpus cards | `todo` `[BLOCKED:Q0]` | **Do not claim** until post-amendment ACCEPT |
-| later | Q2…Q7 Features | `backlog` | After Q1; Full-wire is Q2 blocker (A4) |
+| later | Q2…Q7 | `backlog` | Q2-BLOCK-FULL-WIRE until Full on wire |
 
-Admitted Gate-1 labor = **Q0 amendment todos only**. Q1 remains forbidden.
-Feature: `019fdac4-1408-7321-8edc-a09851c9e656`.
+Admitted Gate-1 implementer labor on corpus = **none** until §5 ACCEPT.
+Amendment labor complete for principal re-review.
 
-**Pull order (Application Core product path — board SoT; 2026-08-02 complete pre-stage):**
-
-| Priority | Board card | Stage | Note |
-|---:|---|---|---|
-| 1 | **APP-7 / T6** op 118 `48b8f01b` | `in_review` | wire active + dispatch + façade; dual pack remote green; **not** package accept |
-| — | **HAR-4 T2** default + legacy flag `98f6e855` | `in_review` | product default qualified; legacy opt-in; no package accept |
-| — | **HAR-4 T3** config auth path `0ee0812c` | `in_review` | config keys + co-host refuse + report labels |
-| — | **HAR-4 T4** connect_heap tutorials `b4eda326` | `in_review` | public READMEs lead with product path; token appendix; no package accept |
-| — | **HAR-4 dep** query remote `7872d5fa` | `in_review` | inventory + gate locks; not package accept |
-| — | **APB-6 T3** view residual `be072203` | `in_review` | retention + PinCapability + multipage accounting |
-| — | **APB-7 T11** multipage oracle matrix `f6633005` | `in_review` | 6/6 multipage vs list_keys+get; residual product dual-remote |
-| — | **APB-7 T10** product cursor secrets `b11912fe` | `in_review` | product ring + parameter_hash; tests 4/4 |
-| — | **APB-7 T9** coverage grade `99e32b76` | `in_review` | CoverageIncomplete fail-closed; evidence fields; tests 4/4 |
-| — | **APB-7 T8** deadline+cancel `5bd3fe3b` | `in_review` | deadline + CancelToken; tests 4/4 |
-| — | **APP-6 T3** field-order multipage `c7cd3cca` | `in_review` | last_sort_tuple resume; tests 3/3 |
-| — | **APB-7 T5** ReadView-bound `6c7601a5` | `in_review` | labor done; not SI / no package accept |
-| — | **APB-7 T7** dual-pack + accept checklist `9e19bd5f` | `in_review` | suite + checklist; collection-plane dual green; **not** package accept |
-| — | **RQL what’s left** `45e5a4fb` | `in_review` | [RQL_WHAT_IS_LEFT.md](../../todo/rql/RQL_WHAT_IS_LEFT.md) — next **human** Q0 §5 then D0; labor hold active; **not** C1 |
-| — | **RQL-0** gap ledger `190a97bd` | `in_review` | [RQL0_GAP_LEDGER.md](../../todo/rql/RQL0_GAP_LEDGER.md); CRITICAL_PATH §4.6; **not** Gate-1 accept |
-| — | **RQL-F1** full explain `cb09fb45` | `in_review` | `explain_rql_full` + `rql_full_explain` 3/3; no new syntax |
-| — | **RQL-F2** op-118 full-language refuse `f7fbd632` | `in_review` | `refuse_full_language_on_core_wire` on remote rql/explain; parity residual |
-| — | **RQL-I1** enrich index pushdown `dc4ee028` | `in_review` | root enrich eq-index + scan differential; `rql_full_enrich_index` 2/2; within-nested residual |
-| — | **RQL PATH T0** map `32d30efe` | `in_review` | [PATH_TO_FULL_RQL.md](../../todo/rql/PATH_TO_FULL_RQL.md); post-0.2.2 query de-risk |
-| — | **RQL PATH T1** Core baseline `0a5c700a` | `in_review` | Phase 1 labor: expanded corpus + execute oracle + residual checklist; **not** package accept |
-| — | **RQL PATH T2** expressiveness corpus `b4ebdaf9` | `in_review` | sql+ emit/refuse scaffold + Core gotchas; joins pending Phase 3 |
-| — | **RQL-v1 full language** `89a80e77` | `in_review` | Phase 3 kickoff: `rql-full-v1` enrich compile+attach; within residual |
-| — | **RQL PATH T3.2** many+façade `51c260a8` | `in_review` | `expect many` + `execute_rql_full`; within/where residual |
-| — | **RQL PATH T3.6** nested within `4d9104f7` | `in_review` | ordered pipeline: nested `within` + enrich-after-within; `at rank` residual |
-| — | **RQL PATH T3.7** nested where `b58eb37f` | `in_review` | `where` filter steps inside `within`; root post-enrich where residual |
-| — | **RQL PATH T3.8** root where `997b3632` | `in_review` | post-attach root `where` (page-then-attach); `at rank` residual |
-| — | **RQL PATH T3.9** nested project `2a92a46e` | `in_review` | brace `project { … }` after pipeline; `at rank`/index residual |
-| — | **RQL PATH T3.10** corpus+residual `4994c4bd` | `in_review` | `rql_full_v1_corpus_v1.json` + [PHASE3_SURFACE_RESIDUAL.md](../../todo/rql/PHASE3_SURFACE_RESIDUAL.md); not accept |
-| — | **BASELINE-PLAN T1** journey plan `e6d68a31` | `in_review` | post-query path to APB-12 / baseline-v1; [BASELINE_V1_JOURNEY_PLAN.md](../../todo/application-baseline/BASELINE_V1_JOURNEY_PLAN.md); **not** code pull |
-| — | **APB-2 T5** store Key Atomic CAS `d08e4633` | `in_review` | embedded CAS labor; no package accept |
-| — | **APB-2 T6** residual checklist `1b8a52b7` | `in_review` | honesty map; **never** self-mark package accept |
-| — | **APB-2 T7** remote wire CAS `e11fdb0c` | `in_review` | heap if_version/if_absent + façade remote; dual pack green |
-| — | **APB-2 T8** concurrent CAS `2a28fea4` | `in_review` | multi-thread lost-update one-wins; residual multi-process |
-| — | **APB-2 T9** crash/retry matrix `5ffd205b` | `todo` | **pre-staged** R3; pull this next for APB-2 exit labor |
-| — | **APB-2 T10** multi-process remote concurrent `32ff87be` | `todo` | **pre-staged** after T8 multi-process residual |
-
-**Process honesty (2026-08-02):** T1–T3 were often **JIT-created at package start** (scoreboard compass + create-on-pull). That is half-winging. Fix: **pre-stage** remaining sequence as `todo` before code turns; pull only existing cards.
-
-**Process honesty (later same day, APB-2):** After pre-staged **T5/T6** pulls, **T7/T8** were again **create-on-pull** from residual checklist markdown (not pre-staged `todo`). Course-correct: pre-stage **T9 crash/retry (R3)** `5ffd205b` + **T10 multi-process remote concurrent** as `todo`; next keep-going pulls existing cards only.
-
-Program order (packages; Kanban cards bind labor under them):
-
-1. **CSQ-12 = accept** (2026-08-01): A2 independently verifies (`residiuum-verify-core-storage.sh`,
-   `a2_pass=true`, missing=0). A3 residuals remain (platform / 72h soak / full mutation %) —
-   not A2 blockers.
-2. **FAS-0…FAS-4 = accept** (2026-08-01, MVP foundation closed). Principal steer: **past FAS stage** —
-   do not pull FAS-5… as the active product lane; more FAS later when re-opened. FAS-6…FAS-8 still travel
-   with Atomics/cluster when those packages admit formal work.
-3. **Query spine** (principal §0.8): **APP-4/APP-5 = accept**; **APP-6 active** (T1/T2 in_review);
-   **APB-6 active** (T1 scaffold + **T2** embedded segment pin; no accept / no snapshot claim);
-   **APB-7 active** (**T0–T5 + T7–T11** in_review; **T6** op 118 still `todo`/blocked — no product query / no package accept);
-   **APB-1 active** (G1–G6 dual matrix); **HAR-4 active** (inventory only); next pull **APP-7/T6** when HAR-4 admits, or **HAR-4 T2** default HeapKey (board SoT).
-   Non-query APB may lag (APB-2 T5/T6 already `todo` on board).
-4. **HAR-0…HAR-3** identity/keys in parallel as deps require; full HAR-4…7 still for M1 exit.
-5. **Pure risk prep:** RRE-0 oracle; ATM-0 after HAR-2 — **no** M3/M4 product claims from prep.
-6. **PQH principal accept** remains measurement hygiene (labor largely `in_review`).
-7. Finish remaining **APB/HAR** for M1 exit → **M2**.
-
-Do **not** mark any HAR or APP package `accept` from precursor tests alone.
-A2 claim language is admitted only with the CSQ-12 evidence bundle above; A3 is not claimed.
 
 ## M0-2 exit checklist
 

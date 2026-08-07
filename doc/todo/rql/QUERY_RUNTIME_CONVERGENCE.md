@@ -97,3 +97,10 @@ proceeds.
 - Phase 3 attach labor remains useful **evidence / port inventory**, not a
   second product runtime.
 - `in_review` ≠ architecture frozen ≠ package accept.
+
+## Q0.A7 — micro-op purity (2026-08-07)
+
+Principal review: Decision 0 does **not** require rewriting opcode bodies as pure
+stack micro-ops. One product semantic path (canonical QVM + one `run_vm`) is the
+close bar. IR residual modules remain documented tech-debt (see
+[RQL_D0_RESIDUAL_INVENTORY.md](./RQL_D0_RESIDUAL_INVENTORY.md)).

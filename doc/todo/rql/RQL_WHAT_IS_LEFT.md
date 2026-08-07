@@ -33,7 +33,8 @@ convergence claims stay rejected.
 
 ```text
 Verdict     = Decision 0 OPEN; RQL-C1 must NOT be accepted
-NEXT        = Q0 package accept pending; labor hold active (RQL_LABOR_HOLD.md)
+NEXT        = Q0 amendments A1–A9 then principal §5; Q1 still blocked
+D0 close bar= A1–A8 product QVM path (A9 micro-op purity NOT required — Q0.A7)
 ```
 
 ---
@@ -62,7 +63,7 @@ Raw SDA → explicitly raw SDA APIs only (dialect `sda` / Collection::sda)
 - Custom `QueryDialect` is portable-only; raw SDA is explicit surface only
 - Filter is sole where authority (`IndexEq` is force_scan only)
 - Cursor identity = `qvm_hash` of complete canonical QVM bytes (not wire plan_hash)
-- Full product path: compile → `encode_qvm` → `execute_full_qvm_with` (RQB1 legacy import only)
+- Full product path: compile → `encode_qvm` → `execute_full_qvm_with` (RQB1 crate-private quarantine, Q0.A5)
 - Canonical decode: `encode(decode(bytes)) == bytes`
 - Public QVM API is byte-oriented (`validate_qvm` / `qvm_hash`); `encode`/`decode` crate-private
 - `run_attach_pipeline` deleted; dead Compiled*Ir wrappers removed
@@ -80,8 +81,8 @@ Raw SDA → explicitly raw SDA APIs only (dialect `sda` / Collection::sda)
 | **DQ1** | Dialects sql/json/mongo → portable → QVM | **labor closed** |
 | **WIRE1** | Public QVM1 wire (store/hash/execute) | **labor closed** |
 | **DEL1** | Delete obsolete private executors | **labor closed** (gate forbids) |
-| **D0.1** | Residual IR honesty inventory | **labor closed** → board `done` (Decision 0 still OPEN) |
-| **D0.2** | Principal close readiness checklist | **labor closed** → board `done` (Decision 0 still OPEN) |
+| **D0.1** | Residual IR honesty inventory | **labor closed** → board `done` (IR = tech-debt; Q0.A7) |
+| **D0.2** | Principal close readiness checklist | **labor closed**; A9 out_of_scope_for_D0_close (Q0.A7) |
 | **C1** | Principal only — **never** before invariant holds | |
 
 ---

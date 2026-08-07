@@ -14,6 +14,21 @@ convergence is accepted.
 
 ---
 
+
+### Q0.A7 amendment (principal review, 2026-08-07)
+
+**Pure stack micro-op rewrite is not required for Decision 0 close.**
+Rust phase helpers (`core_phases`, `ir_*`, Full attach) behind one `run_vm`
+are **implementation detail / optional tech-debt**, not a second product
+executor. The hard close test remains:
+
+```text
+all product frontends → canonical QVM → one run_vm → HostCapabilities
+```
+
+IR residual inventory below remains for honesty; it must not be treated as
+a mandatory purity campaign before principal D0 disposition.
+
 ## FORBIDDEN claims (restate — do not weaken)
 
 | Claim | Status |
