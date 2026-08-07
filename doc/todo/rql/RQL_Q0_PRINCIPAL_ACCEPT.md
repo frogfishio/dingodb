@@ -5,7 +5,7 @@ Package: RQL-Q0 Target and profile freeze
 Board Features: first freeze `019fda4b-d981-7980-a283-549a7312f2a9` · amendment `019fdac4-1408-7321-8edc-a09851c9e656`  
 Authority: [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §3 exit · §11  
 Labor re-issue date: 2026-08-07 (Q0.A9 + **Q0.A10** closeout)  
-Tree baseline at re-issue: git `PENDING_COMMIT` · VERSION **0.2.2** · **requires `git_dirty=false`**
+Tree baseline at re-issue: git `fd3c8b1db8da456c6293220f92c87daaa259dc7c` (A10 content) · VERSION **0.2.2** · accept on clean tip including this pack note · **git_dirty=false**
 
 **This file does not accept Q0.** Only the principal fills §5.  
 **Q1 corpus labor must not start until §5 records ACCEPT.**  

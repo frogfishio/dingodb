@@ -7,7 +7,7 @@ Sources: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-07 (**RQL-Q0** amendments A1–A9 labor complete — principal
+Updated: 2026-08-07 (**RQL-Q0** amendments A1–A10 closeout labor complete — principal
 package accept pending on re-issued pack). Pack:
 [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md) · index
 [RQL_Q0_DOC_INDEX.md](../../todo/rql/RQL_Q0_DOC_INDEX.md).
