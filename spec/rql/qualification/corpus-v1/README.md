@@ -68,6 +68,18 @@ Exit 0 means structural schema + fixture self-tests pass, floors are met under
 `enforce_floors=true`, and predeclared_native_diff cases are not competitive on
 Mongo/CBL. It does **not** mean Q1 package accept or Gate-1 pass.
 
+## Q2.1 capability audit (compile + product execute)
+
+Machine gap report (Tier A only): [`q2_1_capability_audit.json`](./q2_1_capability_audit.json)  
+Human report: [`doc/todo/rql/RQL_Q2_1_CAPABILITY_AUDIT.md`](../../../../doc/todo/rql/RQL_Q2_1_CAPABILITY_AUDIT.md)
+
+```sh
+cargo test -p residiuum-sdk --test rql_q2_capability_audit -- --nocapture
+```
+
+Rewrites the gap report. Exit 0 = audit completed (every Tier-A case classified) —
+**not** 100% expressible and **not** Gate-1.
+
 ## Tiers (Q1.4)
 
 - **A** — Gate-1 mandatory intentions (may be `deferred_q2` until Q2 expressibility).

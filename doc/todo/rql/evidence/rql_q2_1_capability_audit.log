@@ -1,0 +1,24 @@
+RQL-Q2.1 capability audit (2026-08-07)
+======================================
+command: cargo test -p residiuum-sdk --test rql_q2_capability_audit -- --nocapture
+result: ok (exit 0) — audit completed, not package accept
+corpus: rql-q1-corpus-v0.4.0
+git:    96b526fdb3ed55959db77abd5ee41b0d02f45dc1
+summary:
+  tier_a_cases=147
+  compile_ok=96
+  execute_ok / product_expressible=91
+  expected_refusal_ok=2
+  gap_case_count=54
+  failure_classes: semantic=31 syntax=23 expected_refusal=2
+machine: spec/rql/qualification/corpus-v1/q2_1_capability_audit.json
+human:   doc/todo/rql/RQL_Q2_1_CAPABILITY_AUDIT.md
+recommended_package_order:
+  1. pkg_group_aggregate (16)
+  2. pkg_enrich_corpus_dialect (15)
+  3. pkg_array_predicate_surface (7)
+  4. pkg_budget_partial_coverage (5)
+  5. pkg_computed_conditional_project (5)
+  6. pkg_cursor_after_clause (5)
+  7. pkg_enrich_semantics (1)
+non_claims: not Q3 correctness; not Gate-1; Decision 0 still OPEN

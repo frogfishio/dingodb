@@ -30,6 +30,13 @@ Strategy (not freeze exit): [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUA
 **Law:** do not grow a parallel Q0 essay series. Amendments edit the four freeze
 files + accept pack; process notes stay thin.
 
+## Q2.1 capability audit (after Q1 corpus ready)
+
+Machine gap report: [`spec/rql/qualification/corpus-v1/q2_1_capability_audit.json`](../../../spec/rql/qualification/corpus-v1/q2_1_capability_audit.json)  
+Human: [RQL_Q2_1_CAPABILITY_AUDIT.md](./RQL_Q2_1_CAPABILITY_AUDIT.md)  
+Harness: `cargo test -p residiuum-sdk --test rql_q2_capability_audit`  
+**Not** Q2 package accept; Decision 0 still OPEN.
+
 ## Q1 delivery shape (after Q0 ACCEPT)
 
 Programme package **RQL-Q1 Practical corpus** is:

@@ -1,0 +1,4479 @@
+{
+  "authority": {
+    "non_claims": [
+      "Not Q3 oracle equivalence",
+      "Not Gate-1 pass",
+      "Not RQL-C1 / Decision-0 close",
+      "Execute success means product path returned a page; not result-correctness accept"
+    ],
+    "product_paths": [
+      "compile_rql_full",
+      "execute_rql_full (QVM1)"
+    ],
+    "programme": "doc/todo/rql/RQL_QUERY_QUALIFICATION_PROGRAM.md §5",
+    "task": "Q2.1 Corpus compile/execute capability audit"
+  },
+  "cases": [
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "commerce.orders.eq_status_paid",
+      "compile": {
+        "base_source": "from orders where status = \"paid\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 8,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders where status = \"paid\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-KEY"
+      ],
+      "case_id": "commerce.orders.key_get",
+      "compile": {
+        "base_source": "from orders where _key = \"o-0007\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 0,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders where _key = \"o-0007\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-RANGE"
+      ],
+      "case_id": "commerce.orders.range_amount",
+      "compile": {
+        "base_source": "from orders where amount >= 100 and amount < 500",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 11,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders where amount >= 100 and amount < 500",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-COMPOUND"
+      ],
+      "case_id": "commerce.orders.compound_region_status",
+      "compile": {
+        "base_source": "from orders where region = \"us\" and status = \"open\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 2,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders where region = \"us\" and status = \"open\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "commerce.orders.in_regions",
+      "compile": {
+        "base_source": "from orders where region in [\"us\", \"eu\"]",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 32,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders where region in [\"us\", \"eu\"]",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "commerce.orders.neq_cancelled",
+      "compile": {
+        "base_source": "from orders where status != \"cancelled\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 24,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders where status != \"cancelled\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "commerce.products.eq_category_widget",
+      "compile": {
+        "base_source": "from products where category = \"widget\" and active = true",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 12,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from products where category = \"widget\" and active = true",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-RANGE"
+      ],
+      "case_id": "commerce.inventory.range_qty",
+      "compile": {
+        "base_source": "from inventory where warehouse = \"w1\" and qty_on_hand >= 100",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 35,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from inventory where warehouse = \"w1\" and qty_on_hand >= 100",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-MISSING"
+      ],
+      "case_id": "commerce.orders.missing_deleted_at",
+      "compile": {
+        "base_source": "from orders where missing(deleted_at)",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 29,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders where missing(deleted_at)",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-NULL"
+      ],
+      "case_id": "commerce.orders.null_notes",
+      "compile": {
+        "base_source": "from orders where notes is null",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 7,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders where notes is null",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-NESTED"
+      ],
+      "case_id": "commerce.orders.present_customer_id",
+      "compile": {
+        "base_source": "from orders where present(customer.id)",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 27,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders where present(customer.id)",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-ARRAY"
+      ],
+      "case_id": "commerce.orders.array_tags_empty",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected identifier near `[]`",
+        "status": "error"
+      },
+      "domain": "commerce",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "syntax",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": "pkg_array_predicate_surface",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from orders where tags = []",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-ARRAY"
+      ],
+      "case_id": "commerce.orders.array_tags_contains",
+      "compile": {
+        "base_source": "from orders where contains(tags, \"sku\")",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 25,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders where contains(tags, \"sku\")",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-MISSING",
+        "TA-PRED-NESTED"
+      ],
+      "case_id": "commerce.products.missing_attrs",
+      "compile": {
+        "base_source": "from products where missing(attrs)",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 6,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from products where missing(attrs)",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PROJ-FLAT"
+      ],
+      "case_id": "commerce.orders.project_id_status",
+      "compile": {
+        "base_source": "from orders where status = \"paid\" project _key, status",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 8,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "projection_computed_conditional",
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders where status = \"paid\" project _key, status",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PROJ-NESTED"
+      ],
+      "case_id": "commerce.orders.project_nested_customer",
+      "compile": {
+        "base_source": "from orders project _key, customer.id",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 32,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders project _key, customer.id",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PROJ-COMP",
+        "TA-PROJ-COND"
+      ],
+      "case_id": "commerce.orders.project_computed_amount_band",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `= if amount < 100 then \"`",
+        "status": "error"
+      },
+      "domain": "commerce",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "gap_package": "pkg_computed_conditional_project",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from orders project _key, amount_band = if amount < 100 then \"low\" else if amount < 500 then \"mid\" else \"high\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ORDER"
+      ],
+      "case_id": "commerce.orders.order_created_desc",
+      "compile": {
+        "base_source": "from orders order by created_at desc, _key asc nulls last",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 32,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders order by created_at desc, _key asc nulls last",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-TOPK"
+      ],
+      "case_id": "commerce.orders.topk_recent_10",
+      "compile": {
+        "base_source": "from orders order by created_at desc, _key asc limit 10",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 10,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders order by created_at desc, _key asc limit 10",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "case_id": "commerce.orders.page_first",
+      "compile": {
+        "base_source": "from orders order by created_at desc, _key asc page size 8",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 32,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders order by created_at desc, _key asc page size 8",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "case_id": "commerce.orders.page_resume",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: rql_feature_unavailable: after / continuation clause (APP-6)",
+        "status": "error"
+      },
+      "domain": "commerce",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "semantic",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "gap_package": "pkg_cursor_after_clause",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from orders order by created_at desc, _key asc page size 8 after $cursor",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ORDER"
+      ],
+      "case_id": "commerce.products.order_price_asc",
+      "compile": {
+        "base_source": "from products where active = true order by price_cents asc, sku asc",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 38,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "order_topk_cursor",
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from products where active = true order by price_cents asc, sku asc",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ENRICH-1"
+      ],
+      "case_id": "commerce.orders.enrich_customer_exactly_one",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected `using` near `from customers on custom`",
+        "status": "error"
+      },
+      "domain": "commerce",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "syntax",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "gap_package": "pkg_enrich_corpus_dialect",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from orders where present(customer.id) enrich customer from customers on customer.id = customers._key exactly_one",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ENRICH-MANY"
+      ],
+      "case_id": "commerce.orders.enrich_line_items_many",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected `using` near `from line_items on order`",
+        "status": "error"
+      },
+      "domain": "commerce",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "syntax",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "gap_package": "pkg_enrich_corpus_dialect",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from orders enrich items from line_items on orders._key = line_items.order_id many",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ENRICH-OPT"
+      ],
+      "case_id": "commerce.line_items.enrich_product_optional",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected `using` near `from products on line_it`",
+        "status": "error"
+      },
+      "domain": "commerce",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "syntax",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "gap_package": "pkg_enrich_corpus_dialect",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from line_items enrich product from products on line_items.product_id = products._key optional",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "commerce.orders.group_region_count",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `group by region project `",
+        "status": "error"
+      },
+      "domain": "commerce",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "gap_package": "pkg_group_aggregate",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from orders group by region project region, count() as order_count",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-SUM"
+      ],
+      "case_id": "commerce.orders.group_status_sum_amount",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `group by status project `",
+        "status": "error"
+      },
+      "domain": "commerce",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "gap_package": "pkg_group_aggregate",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from orders group by status project status, sum(amount) as total_amount",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-AGG-MIN",
+        "TA-AGG-MAX"
+      ],
+      "case_id": "commerce.orders.agg_min_max_amount",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `(amount) as min_amount, `",
+        "status": "error"
+      },
+      "domain": "commerce",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "gap_package": "pkg_group_aggregate",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from orders project min(amount) as min_amount, max(amount) as max_amount",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-AGG-AVG"
+      ],
+      "case_id": "commerce.orders.agg_avg_amount_paid",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `(amount) as avg_amount`",
+        "status": "error"
+      },
+      "domain": "commerce",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "group_aggregate",
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": "pkg_group_aggregate",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from orders where status = \"paid\" project avg(amount) as avg_amount",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-BUDGET"
+      ],
+      "case_id": "commerce.orders.budget_documents",
+      "compile": {
+        "base_source": "from orders budget { documents: 10, bytes: 1048576, result_bytes: 65536 }",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "message": "resource limit exceeded: query budget max_documents=10 exceeded",
+        "path": "execute_rql_full",
+        "status": "error"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "semantic",
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "gap_package": "pkg_budget_partial_coverage",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from orders budget { documents: 10, bytes: 1048576, result_bytes: 65536 }",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-COVERAGE"
+      ],
+      "case_id": "commerce.orders.coverage_incomplete",
+      "compile": {
+        "base_source": "from orders coverage incomplete",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 32,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders coverage incomplete",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "case_id": "commerce.orders.refuse_offset_discard",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `offset 8 limit 8`",
+        "status": "error"
+      },
+      "domain": "commerce",
+      "execute": {
+        "reason": "expected_refusal_at_compile",
+        "status": "skipped"
+      },
+      "expected_kind": "stable_refusal",
+      "failure_class": "expected_refusal",
+      "family_tags": [
+        "budget_coverage_damage_refusal",
+        "order_topk_cursor"
+      ],
+      "gap_package": "none_expected_refusal",
+      "notes": "stable refusal at compile (corpus refusal_code=Some(\"rql_offset_discard_unsupported\"))",
+      "product_expressible": false,
+      "rql_status": "stable_refusal",
+      "source": "from orders order by created_at desc offset 8 limit 8",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "commerce.customers.eq_tier_gold",
+      "compile": {
+        "base_source": "from customers where tier = \"gold\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 5,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from customers where tier = \"gold\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "messaging.messages.eq_conversation",
+      "compile": {
+        "base_source": "from messages where conversation_id = \"cv-0003\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "messaging",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 4,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from messages where conversation_id = \"cv-0003\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-NULL",
+        "TA-PRED-MISSING"
+      ],
+      "case_id": "messaging.messages.unread",
+      "compile": {
+        "base_source": "from messages where read_at is null or missing(read_at)",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "messaging",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 64,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array",
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from messages where read_at is null or missing(read_at)",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-NULL"
+      ],
+      "case_id": "messaging.messages.null_body",
+      "compile": {
+        "base_source": "from messages where body is null",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "messaging",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 14,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from messages where body is null",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-ARRAY"
+      ],
+      "case_id": "messaging.messages.has_attachments",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected identifier near `[]`",
+        "status": "error"
+      },
+      "domain": "messaging",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "syntax",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": "pkg_array_predicate_surface",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from messages where attachments != []",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-TOPK",
+        "TA-ORDER"
+      ],
+      "case_id": "messaging.messages.recent_topk",
+      "compile": {
+        "base_source": "from messages order by sent_at desc, _key asc limit 20",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "messaging",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 20,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from messages order by sent_at desc, _key asc limit 20",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-CURSOR",
+        "TA-ORDER"
+      ],
+      "case_id": "messaging.messages.conversation_history_page",
+      "compile": {
+        "base_source": "from messages where conversation_id = \"cv-0001\" order by sent_at asc, _key asc page size 16",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "messaging",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 4,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "order_topk_cursor",
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from messages where conversation_id = \"cv-0001\" order by sent_at asc, _key asc page size 16",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "case_id": "messaging.messages.conversation_history_resume",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: rql_feature_unavailable: after / continuation clause (APP-6)",
+        "status": "error"
+      },
+      "domain": "messaging",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "semantic",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "gap_package": "pkg_cursor_after_clause",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from messages where conversation_id = \"cv-0001\" order by sent_at asc, _key asc page size 16 after $cursor",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PROJ-FLAT"
+      ],
+      "case_id": "messaging.messages.project_snippet",
+      "compile": {
+        "base_source": "from messages where conversation_id = \"cv-0002\" project _key, sender_id, sent_at, body",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "messaging",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 4,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from messages where conversation_id = \"cv-0002\" project _key, sender_id, sent_at, body",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "messaging.conversations.eq_kind_direct",
+      "compile": {
+        "base_source": "from conversations where kind = \"direct\" and archived = false",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "messaging",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 5,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from conversations where kind = \"direct\" and archived = false",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ORDER",
+        "TA-TOPK"
+      ],
+      "case_id": "messaging.conversations.recent_activity_order",
+      "compile": {
+        "base_source": "from conversations order by last_message_at desc, _key asc limit 10",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "messaging",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 10,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from conversations order by last_message_at desc, _key asc limit 10",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "messaging.participants.eq_user",
+      "compile": {
+        "base_source": "from participants where user_id = \"u-0002\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "messaging",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 6,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from participants where user_id = \"u-0002\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "messaging.participants.owners_only",
+      "compile": {
+        "base_source": "from participants where role = \"owner\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "messaging",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 24,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from participants where role = \"owner\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "messaging.participants.muted",
+      "compile": {
+        "base_source": "from participants where muted = true",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "messaging",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 12,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from participants where muted = true",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ENRICH-1"
+      ],
+      "case_id": "messaging.messages.enrich_conversation_exactly_one",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected `using` near `from conversations on me`",
+        "status": "error"
+      },
+      "domain": "messaging",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "syntax",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "gap_package": "pkg_enrich_corpus_dialect",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from messages enrich conversation from conversations on messages.conversation_id = conversations._key exactly_one",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ENRICH-MANY"
+      ],
+      "case_id": "messaging.conversations.enrich_participants_many",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected `using` near `from participants on con`",
+        "status": "error"
+      },
+      "domain": "messaging",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "syntax",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "gap_package": "pkg_enrich_corpus_dialect",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from conversations enrich members from participants on conversations._key = participants.conversation_id many",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "messaging.messages.group_unread_by_conversation",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `group by conversation_id`",
+        "status": "error"
+      },
+      "domain": "messaging",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "group_aggregate",
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": "pkg_group_aggregate",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from messages where read_at is null or missing(read_at) group by conversation_id project conversation_id, count() as unread_count",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "messaging.messages.group_sender_count",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `group by sender_id proje`",
+        "status": "error"
+      },
+      "domain": "messaging",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "gap_package": "pkg_group_aggregate",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from messages group by sender_id project sender_id, count() as message_count",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-BUDGET"
+      ],
+      "case_id": "messaging.messages.budget_cancel_surface",
+      "compile": {
+        "base_source": "from messages budget { documents: 100000, bytes: 1048576, result_bytes: 4096 }",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "messaging",
+      "execute": {
+        "message": "resource limit exceeded: query budget max_result_bytes=4096 exceeded (result_bytes=4203)",
+        "path": "execute_rql_full",
+        "status": "error"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "semantic",
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "gap_package": "pkg_budget_partial_coverage",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from messages budget { documents: 100000, bytes: 1048576, result_bytes: 4096 }",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-CONSISTENCY"
+      ],
+      "case_id": "messaging.messages.consistency_available",
+      "compile": {
+        "base_source": "from messages consistency available",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "messaging",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 64,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from messages consistency available",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ",
+        "TA-PARAM"
+      ],
+      "case_id": "messaging.messages.sender_param",
+      "compile": {
+        "base_source": "from messages where sender_id = $sender",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "messaging",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 8,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from messages where sender_id = $sender",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PROJ-FLAT"
+      ],
+      "case_id": "messaging.conversations.project_title_kind",
+      "compile": {
+        "base_source": "from conversations where archived = false project _key, title, kind",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "messaging",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 21,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from conversations where archived = false project _key, title, kind",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "directory.entries.eq_kind_person",
+      "compile": {
+        "base_source": "from entries where kind = \"person\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 20,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries where kind = \"person\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-KEY"
+      ],
+      "case_id": "directory.entries.key_get",
+      "compile": {
+        "base_source": "from entries where _key = \"e-0007\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 0,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries where _key = \"e-0007\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "directory.entries.eq_category",
+      "compile": {
+        "base_source": "from entries where category_id = \"cat-0002\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 5,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries where category_id = \"cat-0002\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-COMPOUND"
+      ],
+      "case_id": "directory.entries.compound_category_location",
+      "compile": {
+        "base_source": "from entries where category_id = \"cat-0001\" and location_id = \"loc-0003\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 0,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries where category_id = \"cat-0001\" and location_id = \"loc-0003\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-RANGE"
+      ],
+      "case_id": "directory.entries.range_discovered",
+      "compile": {
+        "base_source": "from entries where discovered_at > \"2024-03-01T00:00:00Z+300m\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 26,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries where discovered_at > \"2024-03-01T00:00:00Z+300m\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "directory.entries.active_only",
+      "compile": {
+        "base_source": "from entries where active = true",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 33,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries where active = true",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-MISSING"
+      ],
+      "case_id": "directory.entries.missing_location",
+      "compile": {
+        "base_source": "from entries where missing(location_id)",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 8,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries where missing(location_id)",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-NULL"
+      ],
+      "case_id": "directory.entries.null_email",
+      "compile": {
+        "base_source": "from entries where email is null",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 9,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries where email is null",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-MISSING"
+      ],
+      "case_id": "directory.entries.missing_email",
+      "compile": {
+        "base_source": "from entries where missing(email)",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 4,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries where missing(email)",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-MISSING",
+        "TA-PRED-NESTED"
+      ],
+      "case_id": "directory.entries.missing_attrs",
+      "compile": {
+        "base_source": "from entries where missing(attrs)",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 5,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries where missing(attrs)",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-ARRAY"
+      ],
+      "case_id": "directory.entries.tags_empty",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected identifier near `[]`",
+        "status": "error"
+      },
+      "domain": "directory",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "syntax",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": "pkg_array_predicate_surface",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from entries where tags = []",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-ARRAY"
+      ],
+      "case_id": "directory.entries.tags_contains_vip",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected comparison after path `tags`",
+        "status": "error"
+      },
+      "domain": "directory",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "syntax",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": "pkg_array_predicate_surface",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from entries where tags contains \"vip\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PROJ-FLAT"
+      ],
+      "case_id": "directory.entries.project_name_kind",
+      "compile": {
+        "base_source": "from entries where active = true project _key, name, kind",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 33,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries where active = true project _key, name, kind",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PROJ-NESTED"
+      ],
+      "case_id": "directory.entries.project_nested_attrs_region",
+      "compile": {
+        "base_source": "from entries where not missing(attrs) project _key, attrs.region",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 35,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries where not missing(attrs) project _key, attrs.region",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PROJ-COMPUTED"
+      ],
+      "case_id": "directory.entries.project_computed_kind_label",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `= if kind = \"person\" the`",
+        "status": "error"
+      },
+      "domain": "directory",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "gap_package": "pkg_computed_conditional_project",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from entries project _key, kind_label = if kind = \"person\" then \"Person\" else \"Org\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ORDER"
+      ],
+      "case_id": "directory.entries.order_name_asc",
+      "compile": {
+        "base_source": "from entries order by name asc, _key asc",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 40,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries order by name asc, _key asc",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-TOPK"
+      ],
+      "case_id": "directory.entries.topk_recent_discovered",
+      "compile": {
+        "base_source": "from entries order by discovered_at desc, _key asc limit 10",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 10,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries order by discovered_at desc, _key asc limit 10",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "case_id": "directory.entries.page_first",
+      "compile": {
+        "base_source": "from entries order by name asc, _key asc page size 8",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 40,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries order by name asc, _key asc page size 8",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "case_id": "directory.entries.page_resume",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: rql_feature_unavailable: after / continuation clause (APP-6)",
+        "status": "error"
+      },
+      "domain": "directory",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "semantic",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "gap_package": "pkg_cursor_after_clause",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from entries order by name asc, _key asc page size 8 after $cursor",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ENRICH-1"
+      ],
+      "case_id": "directory.entries.enrich_category_exactly_one",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected `using` near `from categories on entri`",
+        "status": "error"
+      },
+      "domain": "directory",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "syntax",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "gap_package": "pkg_enrich_corpus_dialect",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from entries enrich cat from categories on entries.category_id = categories._key exactly_one",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ENRICH-OPT"
+      ],
+      "case_id": "directory.entries.enrich_location_optional",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected `using` near `from locations on entrie`",
+        "status": "error"
+      },
+      "domain": "directory",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "syntax",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "gap_package": "pkg_enrich_corpus_dialect",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from entries enrich loc from locations on entries.location_id = locations._key optional",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "directory.entries.group_by_category_count",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `group by category_id pro`",
+        "status": "error"
+      },
+      "domain": "directory",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "gap_package": "pkg_group_aggregate",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from entries group by category_id project category_id, count() as entry_count",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "directory.entries.group_by_kind_count",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `group by kind project ki`",
+        "status": "error"
+      },
+      "domain": "directory",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "gap_package": "pkg_group_aggregate",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from entries group by kind project kind, count() as n",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-BUDGET"
+      ],
+      "case_id": "directory.entries.budget_documents",
+      "compile": {
+        "base_source": "from entries budget { documents: 12, bytes: 1048576, result_bytes: 65536 }",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "message": "resource limit exceeded: query budget max_documents=12 exceeded",
+        "path": "execute_rql_full",
+        "status": "error"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "semantic",
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "gap_package": "pkg_budget_partial_coverage",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from entries budget { documents: 12, bytes: 1048576, result_bytes: 65536 }",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "directory.locations.eq_region_us",
+      "compile": {
+        "base_source": "from locations where region = \"us\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 4,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from locations where region = \"us\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "directory.categories.eq_parent_people",
+      "compile": {
+        "base_source": "from categories where parent = \"people\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 3,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from categories where parent = \"people\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "telemetry.devices.eq_site_plant_a",
+      "compile": {
+        "base_source": "from devices where site = \"plant-a\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 8,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from devices where site = \"plant-a\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "telemetry.devices.eq_status_online",
+      "compile": {
+        "base_source": "from devices where status = \"online\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 8,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from devices where status = \"online\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-COMPOUND"
+      ],
+      "case_id": "telemetry.devices.compound_type_site",
+      "compile": {
+        "base_source": "from devices where type = \"sensor\" and site = \"plant-b\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 0,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from devices where type = \"sensor\" and site = \"plant-b\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-KEY"
+      ],
+      "case_id": "telemetry.devices.key_get",
+      "compile": {
+        "base_source": "from devices where _key = \"d-0003\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 0,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from devices where _key = \"d-0003\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "telemetry.events.eq_device",
+      "compile": {
+        "base_source": "from events where device_id = \"d-0005\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 6,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from events where device_id = \"d-0005\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-RANGE"
+      ],
+      "case_id": "telemetry.events.range_ts",
+      "compile": {
+        "base_source": "from events where ts > \"2024-08-01T00:00:00Z+60m\" and ts <= \"2024-08-01T00:00:00Z+120m\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 0,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from events where ts > \"2024-08-01T00:00:00Z+60m\" and ts <= \"2024-08-01T00:00:00Z+120m\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-IN"
+      ],
+      "case_id": "telemetry.events.severity_in",
+      "compile": {
+        "base_source": "from events where severity in [\"error\", \"critical\"]",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 64,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from events where severity in [\"error\", \"critical\"]",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-NULL"
+      ],
+      "case_id": "telemetry.events.null_payload",
+      "compile": {
+        "base_source": "from events where payload is null",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 22,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from events where payload is null",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-MISSING"
+      ],
+      "case_id": "telemetry.events.missing_payload",
+      "compile": {
+        "base_source": "from events where missing(payload)",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 10,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from events where missing(payload)",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-TYPE"
+      ],
+      "case_id": "telemetry.events.wrong_type_value",
+      "compile": {
+        "base_source": "from events where value = \"NaN\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 15,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from events where value = \"NaN\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-ARRAY"
+      ],
+      "case_id": "telemetry.events.tags_empty",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected identifier near `[]`",
+        "status": "error"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "syntax",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": "pkg_array_predicate_surface",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from events where tags = []",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-MISSING"
+      ],
+      "case_id": "telemetry.devices.missing_retired_at",
+      "compile": {
+        "base_source": "from devices where missing(retired_at)",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 20,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from devices where missing(retired_at)",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-NULL"
+      ],
+      "case_id": "telemetry.devices.null_retired_at",
+      "compile": {
+        "base_source": "from devices where retired_at is null",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 4,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from devices where retired_at is null",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PROJ-FLAT"
+      ],
+      "case_id": "telemetry.events.project_device_severity_ts",
+      "compile": {
+        "base_source": "from events where severity = \"critical\" project _key, device_id, severity, ts",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 32,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from events where severity = \"critical\" project _key, device_id, severity, ts",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PROJ-COMPUTED"
+      ],
+      "case_id": "telemetry.events.project_computed_sev_band",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `= if severity in [\"error`",
+        "status": "error"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "gap_package": "pkg_computed_conditional_project",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from events project _key, sev_band = if severity in [\"error\",\"critical\"] then \"high\" else \"low\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PROJ-COMPUTED"
+      ],
+      "case_id": "telemetry.metrics.project_value_rounded_band",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `= if value < 33 then \"lo`",
+        "status": "error"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "gap_package": "pkg_computed_conditional_project",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from metrics project _key, value_band = if value < 33 then \"low\" else if value < 66 then \"mid\" else \"high\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-TOPK"
+      ],
+      "case_id": "telemetry.events.recent_topk",
+      "compile": {
+        "base_source": "from events order by ts desc, _key asc limit 15",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 15,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from events order by ts desc, _key asc limit 15",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-CURSOR",
+        "TA-SEL-EQ"
+      ],
+      "case_id": "telemetry.events.device_history_page",
+      "compile": {
+        "base_source": "from events where device_id = \"d-0001\" order by ts desc, _key asc page size 8",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 6,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "order_topk_cursor",
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from events where device_id = \"d-0001\" order by ts desc, _key asc page size 8",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "case_id": "telemetry.events.device_history_resume",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: rql_feature_unavailable: after / continuation clause (APP-6)",
+        "status": "error"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "semantic",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "gap_package": "pkg_cursor_after_clause",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from events where device_id = \"d-0001\" order by ts desc, _key asc page size 8 after $cursor",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ENRICH-1"
+      ],
+      "case_id": "telemetry.events.enrich_device_exactly_one",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected `using` near `from devices on events.d`",
+        "status": "error"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "syntax",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "gap_package": "pkg_enrich_corpus_dialect",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from events enrich dev from devices on events.device_id = devices._key exactly_one",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ENRICH-MANY"
+      ],
+      "case_id": "telemetry.devices.enrich_events_many",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected `using` near `from events on devices._`",
+        "status": "error"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "syntax",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "gap_package": "pkg_enrich_corpus_dialect",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from devices enrich evs from events on devices._key = events.device_id many",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ENRICH-OPT"
+      ],
+      "case_id": "telemetry.metrics.enrich_device_optional",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected `using` near `from devices on metrics.`",
+        "status": "error"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "syntax",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "gap_package": "pkg_enrich_corpus_dialect",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from metrics enrich dev from devices on metrics.device_id = devices._key optional",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "telemetry.events.group_by_device_count",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `group by device_id proje`",
+        "status": "error"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "gap_package": "pkg_group_aggregate",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from events group by device_id project device_id, count() as event_count",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "telemetry.events.group_severity_count",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `group by severity projec`",
+        "status": "error"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "gap_package": "pkg_group_aggregate",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from events group by severity project severity, count() as n",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-AVG"
+      ],
+      "case_id": "telemetry.metrics.agg_avg_by_name",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `group by metric_name pro`",
+        "status": "error"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "gap_package": "pkg_group_aggregate",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from metrics group by metric_name project metric_name, avg(value) as avg_value",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-AGG-MIN",
+        "TA-AGG-MAX"
+      ],
+      "case_id": "telemetry.metrics.agg_min_max_value",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `(value) as min_v, max(va`",
+        "status": "error"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "gap_package": "pkg_group_aggregate",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from metrics project min(value) as min_v, max(value) as max_v",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-BUDGET"
+      ],
+      "case_id": "telemetry.events.budget_result_bytes",
+      "compile": {
+        "base_source": "from events budget { documents: 100000, bytes: 1048576, result_bytes: 4096 }",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "message": "resource limit exceeded: query budget max_result_bytes=4096 exceeded (result_bytes=4173)",
+        "path": "execute_rql_full",
+        "status": "error"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "semantic",
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "gap_package": "pkg_budget_partial_coverage",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from events budget { documents: 100000, bytes: 1048576, result_bytes: 4096 }",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-COVERAGE"
+      ],
+      "case_id": "telemetry.events.coverage_incomplete",
+      "compile": {
+        "base_source": "from events coverage incomplete",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 64,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from events coverage incomplete",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-CONSISTENCY"
+      ],
+      "case_id": "telemetry.events.consistency_available",
+      "compile": {
+        "base_source": "from events consistency available",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 64,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from events consistency available",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "project_management.projects.eq_status_active",
+      "compile": {
+        "base_source": "from projects where status = \"active\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 5,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from projects where status = \"active\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "project_management.projects.eq_owner",
+      "compile": {
+        "base_source": "from projects where owner_id = \"u-0002\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 3,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from projects where owner_id = \"u-0002\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-COMPOUND"
+      ],
+      "case_id": "project_management.projects.compound_owner_status",
+      "compile": {
+        "base_source": "from projects where owner_id = \"u-0001\" and status = \"active\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 0,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from projects where owner_id = \"u-0001\" and status = \"active\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-RANGE"
+      ],
+      "case_id": "project_management.projects.range_priority",
+      "compile": {
+        "base_source": "from projects where priority >= 3",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 12,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from projects where priority >= 3",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "project_management.tasks.eq_status_doing",
+      "compile": {
+        "base_source": "from tasks where status = \"doing\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 20,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from tasks where status = \"doing\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "project_management.tasks.eq_project",
+      "compile": {
+        "base_source": "from tasks where project_id = \"prj-0004\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 4,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from tasks where project_id = \"prj-0004\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "project_management.tasks.eq_assignee",
+      "compile": {
+        "base_source": "from tasks where assignee_id = \"u-0003\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 10,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from tasks where assignee_id = \"u-0003\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-NULL"
+      ],
+      "case_id": "project_management.projects.null_description",
+      "compile": {
+        "base_source": "from projects where description is null",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 5,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from projects where description is null",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-MISSING"
+      ],
+      "case_id": "project_management.projects.missing_description",
+      "compile": {
+        "base_source": "from projects where missing(description)",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 2,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from projects where missing(description)",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-NULL"
+      ],
+      "case_id": "project_management.tasks.null_due_at",
+      "compile": {
+        "base_source": "from tasks where due_at is null",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 14,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from tasks where due_at is null",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-MISSING"
+      ],
+      "case_id": "project_management.tasks.missing_due_at",
+      "compile": {
+        "base_source": "from tasks where missing(due_at)",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 4,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from tasks where missing(due_at)",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-ARRAY"
+      ],
+      "case_id": "project_management.tasks.blocked_by_empty",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected identifier near `[]`",
+        "status": "error"
+      },
+      "domain": "project_management",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "syntax",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": "pkg_array_predicate_surface",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from tasks where blocked_by = []",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PRED-ARRAY"
+      ],
+      "case_id": "project_management.projects.labels_empty",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected identifier near `[]`",
+        "status": "error"
+      },
+      "domain": "project_management",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "syntax",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": "pkg_array_predicate_surface",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from projects where labels = []",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PROJ-FLAT"
+      ],
+      "case_id": "project_management.projects.project_title_status",
+      "compile": {
+        "base_source": "from projects where status != \"archived\" project _key, title, status",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 15,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from projects where status != \"archived\" project _key, title, status",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PROJ-FLAT"
+      ],
+      "case_id": "project_management.tasks.project_snippet",
+      "compile": {
+        "base_source": "from tasks where project_id = \"prj-0000\" project _key, title, status, assignee_id",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 4,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from tasks where project_id = \"prj-0000\" project _key, title, status, assignee_id",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PROJ-COMPUTED"
+      ],
+      "case_id": "project_management.tasks.project_computed_overdue_flag",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `= if due_at < \"2024-03-0`",
+        "status": "error"
+      },
+      "domain": "project_management",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "gap_package": "pkg_computed_conditional_project",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from tasks project _key, overdue = if due_at < \"2024-03-01T00:00:00Z+100m\" then true else false",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ORDER"
+      ],
+      "case_id": "project_management.revisions.order_committed_desc",
+      "compile": {
+        "base_source": "from revisions order by committed_at desc, _key asc",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 48,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from revisions order by committed_at desc, _key asc",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-TOPK",
+        "TA-SEL-EQ"
+      ],
+      "case_id": "project_management.revisions.topk_recent_for_project",
+      "compile": {
+        "base_source": "from revisions where project_id = \"prj-0002\" order by committed_at desc, _key asc limit 5",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 3,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "order_topk_cursor",
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from revisions where project_id = \"prj-0002\" order by committed_at desc, _key asc limit 5",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "case_id": "project_management.tasks.page_first_by_updated",
+      "compile": {
+        "base_source": "from tasks order by updated_at desc, _key asc page size 10",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 64,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from tasks order by updated_at desc, _key asc page size 10",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "case_id": "project_management.tasks.page_resume_by_updated",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: rql_feature_unavailable: after / continuation clause (APP-6)",
+        "status": "error"
+      },
+      "domain": "project_management",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "semantic",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "gap_package": "pkg_cursor_after_clause",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from tasks order by updated_at desc, _key asc page size 10 after $cursor",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ENRICH-1"
+      ],
+      "case_id": "project_management.tasks.enrich_project_exactly_one",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected `using` near `from projects on tasks.p`",
+        "status": "error"
+      },
+      "domain": "project_management",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "syntax",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "gap_package": "pkg_enrich_corpus_dialect",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from tasks enrich prj from projects on tasks.project_id = projects._key exactly_one",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ENRICH-MANY"
+      ],
+      "case_id": "project_management.projects.enrich_tasks_many",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected `using` near `from tasks on projects._`",
+        "status": "error"
+      },
+      "domain": "project_management",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "syntax",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "gap_package": "pkg_enrich_corpus_dialect",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from projects enrich tsks from tasks on projects._key = tasks.project_id many",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ENRICH-MANY"
+      ],
+      "case_id": "project_management.projects.enrich_memberships_many",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected `using` near `from memberships on proj`",
+        "status": "error"
+      },
+      "domain": "project_management",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "syntax",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "gap_package": "pkg_enrich_corpus_dialect",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from projects enrich mbs from memberships on projects._key = memberships.project_id many",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ENRICH-OPT"
+      ],
+      "case_id": "project_management.memberships.enrich_project_optional",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected `using` near `from projects on members`",
+        "status": "error"
+      },
+      "domain": "project_management",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "syntax",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "gap_package": "pkg_enrich_corpus_dialect",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from memberships enrich prj from projects on memberships.project_id = projects._key optional",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "project_management.tasks.group_status_count",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `group by status project `",
+        "status": "error"
+      },
+      "domain": "project_management",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "gap_package": "pkg_group_aggregate",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from tasks group by status project status, count() as n",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "project_management.tasks.group_by_assignee_count",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `group by assignee_id pro`",
+        "status": "error"
+      },
+      "domain": "project_management",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "gap_package": "pkg_group_aggregate",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from tasks group by assignee_id project assignee_id, count() as task_count",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-SUM"
+      ],
+      "case_id": "project_management.tasks.group_by_project_sum_points",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `group by project_id proj`",
+        "status": "error"
+      },
+      "domain": "project_management",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "gap_package": "pkg_group_aggregate",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from tasks group by project_id project project_id, sum(estimate_points) as total_points",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "case_id": "project_management.projects.group_by_owner_count",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `group by owner_id projec`",
+        "status": "error"
+      },
+      "domain": "project_management",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "semantic",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "gap_package": "pkg_group_aggregate",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from projects group by owner_id project owner_id, count() as project_count",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "project_management.memberships.eq_role_owner",
+      "compile": {
+        "base_source": "from memberships where role = \"owner\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 20,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from memberships where role = \"owner\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "case_id": "project_management.memberships.eq_user",
+      "compile": {
+        "base_source": "from memberships where user_id = \"u-0001\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 8,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from memberships where user_id = \"u-0001\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-BUDGET"
+      ],
+      "case_id": "project_management.tasks.budget_documents",
+      "compile": {
+        "base_source": "from tasks budget { documents: 20, bytes: 1048576, result_bytes: 65536 }",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "project_management",
+      "execute": {
+        "message": "resource limit exceeded: query budget max_documents=20 exceeded",
+        "path": "execute_rql_full",
+        "status": "error"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": "semantic",
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "gap_package": "pkg_budget_partial_coverage",
+      "product_expressible": false,
+      "rql_status": "source",
+      "source": "from tasks budget { documents: 20, bytes: 1048576, result_bytes: 65536 }",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "case_id": "project_management.projects.refuse_offset_discard",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: unexpected token near `offset 5 limit 5`",
+        "status": "error"
+      },
+      "domain": "project_management",
+      "execute": {
+        "reason": "expected_refusal_at_compile",
+        "status": "skipped"
+      },
+      "expected_kind": "stable_refusal",
+      "failure_class": "expected_refusal",
+      "family_tags": [
+        "budget_coverage_damage_refusal",
+        "order_topk_cursor"
+      ],
+      "gap_package": "none_expected_refusal",
+      "notes": "stable refusal at compile (corpus refusal_code=Some(\"rql_offset_discard_unsupported\"))",
+      "product_expressible": false,
+      "rql_status": "stable_refusal",
+      "source": "from projects order by created_at desc offset 5 limit 5",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-PROJ-FLAT",
+        "TA-SEL-EQ"
+      ],
+      "case_id": "directory.locations.project_city_region",
+      "compile": {
+        "base_source": "from locations where region = \"eu\" project _key, city, region, country",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 4,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "projection_computed_conditional",
+        "selection_key_eq_range_compound"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from locations where region = \"eu\" project _key, city, region, country",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-ENRICH-OPT"
+      ],
+      "case_id": "project_management.revisions.enrich_project_optional",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: expected `using` near `from projects on revisio`",
+        "status": "error"
+      },
+      "domain": "project_management",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "syntax",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "gap_package": "pkg_enrich_corpus_dialect",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from revisions enrich prj from projects on revisions.project_id = projects._key optional",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-EXPLAIN",
+        "TA-SEL-EQ"
+      ],
+      "case_id": "commerce.orders.explain_eq_status",
+      "compile": {
+        "base_source": "explain from orders where status = \"paid\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "commerce",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 8,
+        "status": "ok"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound",
+        "budget_coverage_damage_refusal"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "pending",
+      "source": "explain from orders where status = \"paid\"",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-WITHIN",
+        "TA-PRED-NESTED"
+      ],
+      "case_id": "messaging.messages.within_conversation_unread",
+      "compile": {
+        "error_code": "QueryInvalid",
+        "message": "invalid query: within: expected `{` after path",
+        "status": "error"
+      },
+      "domain": "messaging",
+      "execute": {
+        "reason": "compile_failed",
+        "status": "skipped"
+      },
+      "expected_kind": "deferred_q2",
+      "failure_class": "syntax",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array",
+        "enrichment_cardinality"
+      ],
+      "gap_package": "pkg_enrich_semantics",
+      "product_expressible": false,
+      "rql_status": "pending",
+      "source": "from conversations within messages where read = false project conversation_id, message_id",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-STR-PREFIX"
+      ],
+      "case_id": "directory.entries.str_prefix_display_name",
+      "compile": {
+        "base_source": "from entries where starts_with(display_name, \"Acme\")",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "directory",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 0,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "selection_key_eq_range_compound",
+        "predicate_missing_null_type_nested_array"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "pending",
+      "source": "from entries where starts_with(display_name, \"Acme\")",
+      "tier": "A"
+    },
+    {
+      "capability_ids": [
+        "TA-COVERAGE"
+      ],
+      "case_id": "telemetry.events.damage_coverage_incomplete",
+      "compile": {
+        "base_source": "from events coverage incomplete",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
+      },
+      "domain": "telemetry",
+      "execute": {
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 64,
+        "status": "ok"
+      },
+      "expected_kind": "oracle_rule",
+      "failure_class": null,
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from events coverage incomplete",
+      "tier": "A"
+    }
+  ],
+  "corpus_version": "rql-q1-corpus-v0.4.0",
+  "format": "residiuum-rql-q2-1-capability-audit-v1",
+  "generated_unix_s": 1786108588,
+  "git_sha": "96b526fdb3ed55959db77abd5ee41b0d02f45dc1",
+  "packages": [
+    {
+      "blocked_case_count": 16,
+      "case_ids": [
+        "commerce.orders.group_region_count",
+        "commerce.orders.group_status_sum_amount",
+        "commerce.orders.agg_min_max_amount",
+        "commerce.orders.agg_avg_amount_paid",
+        "messaging.messages.group_unread_by_conversation",
+        "messaging.messages.group_sender_count",
+        "directory.entries.group_by_category_count",
+        "directory.entries.group_by_kind_count",
+        "telemetry.events.group_by_device_count",
+        "telemetry.events.group_severity_count",
+        "telemetry.metrics.agg_avg_by_name",
+        "telemetry.metrics.agg_min_max_value",
+        "project_management.tasks.group_status_count",
+        "project_management.tasks.group_by_assignee_count",
+        "project_management.tasks.group_by_project_sum_points",
+        "project_management.projects.group_by_owner_count"
+      ],
+      "package_id": "pkg_group_aggregate"
+    },
+    {
+      "blocked_case_count": 15,
+      "case_ids": [
+        "commerce.orders.enrich_customer_exactly_one",
+        "commerce.orders.enrich_line_items_many",
+        "commerce.line_items.enrich_product_optional",
+        "messaging.messages.enrich_conversation_exactly_one",
+        "messaging.conversations.enrich_participants_many",
+        "directory.entries.enrich_category_exactly_one",
+        "directory.entries.enrich_location_optional",
+        "telemetry.events.enrich_device_exactly_one",
+        "telemetry.devices.enrich_events_many",
+        "telemetry.metrics.enrich_device_optional",
+        "project_management.tasks.enrich_project_exactly_one",
+        "project_management.projects.enrich_tasks_many",
+        "project_management.projects.enrich_memberships_many",
+        "project_management.memberships.enrich_project_optional",
+        "project_management.revisions.enrich_project_optional"
+      ],
+      "package_id": "pkg_enrich_corpus_dialect"
+    },
+    {
+      "blocked_case_count": 7,
+      "case_ids": [
+        "commerce.orders.array_tags_empty",
+        "messaging.messages.has_attachments",
+        "directory.entries.tags_empty",
+        "directory.entries.tags_contains_vip",
+        "telemetry.events.tags_empty",
+        "project_management.tasks.blocked_by_empty",
+        "project_management.projects.labels_empty"
+      ],
+      "package_id": "pkg_array_predicate_surface"
+    },
+    {
+      "blocked_case_count": 5,
+      "case_ids": [
+        "commerce.orders.budget_documents",
+        "messaging.messages.budget_cancel_surface",
+        "directory.entries.budget_documents",
+        "telemetry.events.budget_result_bytes",
+        "project_management.tasks.budget_documents"
+      ],
+      "package_id": "pkg_budget_partial_coverage"
+    },
+    {
+      "blocked_case_count": 5,
+      "case_ids": [
+        "commerce.orders.project_computed_amount_band",
+        "directory.entries.project_computed_kind_label",
+        "telemetry.events.project_computed_sev_band",
+        "telemetry.metrics.project_value_rounded_band",
+        "project_management.tasks.project_computed_overdue_flag"
+      ],
+      "package_id": "pkg_computed_conditional_project"
+    },
+    {
+      "blocked_case_count": 5,
+      "case_ids": [
+        "commerce.orders.page_resume",
+        "messaging.messages.conversation_history_resume",
+        "directory.entries.page_resume",
+        "telemetry.events.device_history_resume",
+        "project_management.tasks.page_resume_by_updated"
+      ],
+      "package_id": "pkg_cursor_after_clause"
+    },
+    {
+      "blocked_case_count": 1,
+      "case_ids": [
+        "messaging.messages.within_conversation_unread"
+      ],
+      "package_id": "pkg_enrich_semantics"
+    }
+  ],
+  "profile": "rql-gate1-practical-corpus-v1",
+  "recommended_implementation_package_order": [
+    "pkg_group_aggregate",
+    "pkg_enrich_corpus_dialect",
+    "pkg_array_predicate_surface",
+    "pkg_budget_partial_coverage",
+    "pkg_computed_conditional_project",
+    "pkg_cursor_after_clause",
+    "pkg_enrich_semantics"
+  ],
+  "summary": {
+    "compile_ok": 96,
+    "execute_ok": 91,
+    "expected_refusal_ok": 2,
+    "failure_class_counts": {
+      "expected_refusal": 2,
+      "semantic": 31,
+      "syntax": 23
+    },
+    "gap_case_count": 54,
+    "product_expressible": 91,
+    "tier_a_cases": 147
+  }
+}
