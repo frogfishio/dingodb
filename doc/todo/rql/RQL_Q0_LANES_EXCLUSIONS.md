@@ -111,16 +111,18 @@ They are **not** license to change result multisets, order, or coverage honesty.
 
 ## 5. Principal accept pack (Q0 bundle)
 
+**Canonical pack:** [RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md)
+
 When reviewing Q0, accept or amend **all** of:
 
 1. [RQL_Q0_ENV_MANIFEST.md](./RQL_Q0_ENV_MANIFEST.md) — pins + fingerprint
 2. [RQL_Q0_CAPABILITY_MATRIX.md](./RQL_Q0_CAPABILITY_MATRIX.md) — classes + blockers
 3. [RQL_Q0_RESULT_EQUIVALENCE.md](./RQL_Q0_RESULT_EQUIVALENCE.md) — equivalence
 4. This file — lanes + exclusions + refusal codes
+5. [RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md) — sign-off + scoreboard propose
 
-**Proposed scoreboard move after principal accept:** RQL-Q0 Target freeze
-`todo` → accepted package state on programme §11 and any NEXT_BUILD_STATUS row
-if added. **Do not** promote Q1 until that accept lands.
+**Proposed scoreboard move after principal accept:** see accept pack §4.
+**Do not** implement Q1 until principal fills accept pack §5.
 
 **Open principal decision (from matrix):** confirm aggregates + computed/conditional
 projection remain Tier A blockers (SPEC amend in Q2) rather than demotion to Tier C.

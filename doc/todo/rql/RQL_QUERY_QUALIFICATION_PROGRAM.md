@@ -1,6 +1,6 @@
 # RQL Query Qualification Programme
 
-Status: **principal-approved strategy; delivery plan accepted; Q0 freeze docs in_review (principal package accept pending)**
+Status: **principal-approved strategy; delivery plan accepted; Q0 freeze labor complete (principal package accept pending)**
 
 Effective: 2026-08-05
 
@@ -16,6 +16,7 @@ Q0 freeze artefacts (labor):
 - [RQL_Q0_CAPABILITY_MATRIX.md](./RQL_Q0_CAPABILITY_MATRIX.md)
 - [RQL_Q0_RESULT_EQUIVALENCE.md](./RQL_Q0_RESULT_EQUIVALENCE.md)
 - [RQL_Q0_LANES_EXCLUSIONS.md](./RQL_Q0_LANES_EXCLUSIONS.md)
+- [RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md) — **principal accept pack**
 
 Semantic specification: [RQL_SPEC.md](../../wip/query/RQL_SPEC.md)
 
@@ -451,7 +452,7 @@ does Atomics become the active critical-path programme.
 
 | Package | State | Principal exit decision |
 |---|---|---|
-| RQL-Q0 Target freeze | `todo` | Tier and comparator profile accepted |
+| RQL-Q0 Target freeze | `labor_complete` (principal accept pending) | Tier and comparator profile accepted |
 | RQL-Q1 Practical corpus | `backlog` | Immutable corpus accepted |
 | RQL-Q2 Capability closure | `backlog` | Tier A 100%; one QVM runtime |
 | RQL-Q3 Semantic qualification | `backlog` | Oracle/equivalence/damage green |
@@ -470,8 +471,8 @@ Product project: `019fda36-f8f4-7f40-9a9b-a86cfae1466e`
 | Package | Feature id | Task stage policy |
 |---|---|---|
 | Decision-0 residual (pre-Q2 honesty) | `019fda4c-a6f2-7932-a9d7-6e04400fd3df` | D0.1 inventory + D0.2 checklist labor `in_review`; **principal disposition required**; blocks Q2 one-runtime exit claim |
-| RQL-Q0 Target freeze | `019fda4b-d981-7980-a283-549a7312f2a9` | **todo** (Q0.1–Q0.4 admitted) |
-| RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | backlog until Q0 principal exit |
+| RQL-Q0 Target freeze | `019fda4b-d981-7980-a283-549a7312f2a9` | Q0.1–Q0.5 labor `in_review`; **principal package accept pending** |
+| RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | board tasks staged `todo` but **implementation blocked** until Q0 principal accept |
 | RQL-Q2 Capability closure | `019fda4c-1227-7c93-b7e6-292141ec7a78` | backlog; spawn gap packages after audit |
 | RQL-Q3 Semantic qualification | `019fda4c-5994-77e2-a2c9-aaa0c3097b29` | backlog |
 | RQL-Q4 Harness | `019fda4c-59bf-7320-a0cb-35f92c50fc45` | backlog (scaffold allowed; no competitive claims pre-Q3) |
@@ -479,8 +480,10 @@ Product project: `019fda36-f8f4-7f40-9a9b-a86cfae1466e`
 | RQL-Q6 Optimisation | `019fda4c-a695-7ff1-8fbf-f4d407b0ba87` | backlog; concrete opts only from Q5 queue |
 | RQL-Q7 Final / Gate-1 | `019fda4c-a6c4-7b40-b15a-f8190ca62d03` | backlog |
 
-**Q0 labor (2026-08-07):** Q0.1–Q0.4 freeze docs landed; board stage `in_review`.
-Principal package accept still required before Q1 promotion.
+**Q0 labor (2026-08-07):** Q0.1–Q0.4 freeze docs + Q0.5 principal accept pack
+([RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md)) landed; board
+`in_review`. **Principal package accept still required.** Do not implement Q1
+corpus until §5 of the accept pack is filled.
 
 **D0 residual labor (2026-08-07):** [RQL_D0_RESIDUAL_INVENTORY.md](./RQL_D0_RESIDUAL_INVENTORY.md)
 (D0.1) + [RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md) (D0.2) landed;

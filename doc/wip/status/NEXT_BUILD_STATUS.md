@@ -7,11 +7,13 @@ Sources: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-05 (**RQL-I1** labor in_review —
-[RQL_WHAT_IS_LEFT.md](../../todo/rql/RQL_WHAT_IS_LEFT.md): next human
-**RQL-C1** accept; no labor todo staged. CRITICAL_PATH
-RQL→Atomics→Cluster.) Prior: RQL-0/F1/F2; P0 packaging 0.2.2;
-CSE-3 ~21–23K SoT. **ETQ-2 paused.** **AWO paused.**
+Updated: 2026-08-07 (**RQL-Q0** freeze labor complete — principal package accept
+pending: [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md).
+**Decision 0 OPEN**; RQL-C1 **forbidden**
+([RQL_D0_CLOSE_READINESS.md](../../todo/rql/RQL_D0_CLOSE_READINESS.md)).
+Q1 corpus **blocked** until Q0 accept. CRITICAL_PATH RQL→Atomics→Cluster.
+Prior: RQL-I1/0/F1/F2; P0 packaging 0.2.2; CSE-3 ~21–23K SoT.
+**ETQ-2 paused.** **AWO paused.**
 
 **How to read program order:** open [CRITICAL_PATH.md](../../../CRITICAL_PATH.md)
 then [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
