@@ -452,7 +452,7 @@ does Atomics become the active critical-path programme.
 
 | Package | State | Principal exit decision |
 |---|---|---|
-| RQL-Q0 Target freeze | `labor_complete` (amendments A1–A9; principal §5 pending) | Tier and comparator profile accepted |
+| RQL-Q0 Target freeze | `labor_complete` (amendments A1–A14 closeout; principal §5 pending) | Tier and comparator profile accepted |
 | RQL-Q1 Practical corpus | `backlog` | Immutable corpus accepted |
 | RQL-Q2 Capability closure | `backlog` | Tier A 100%; one QVM runtime |
 | RQL-Q3 Semantic qualification | `backlog` | Oracle/equivalence/damage green |
@@ -472,7 +472,7 @@ Product project: `019fda36-f8f4-7f40-9a9b-a86cfae1466e`
 |---|---|---|
 | Decision-0 residual (pre-Q2 honesty) | `019fda4c-a6f2-7932-a9d7-6e04400fd3df` | D0.1–D0.2 labor cards board `done`; **Decision 0 still OPEN** (principal disposition required); blocks Q2 one-runtime exit claim |
 | RQL-Q0 Target freeze (first freeze) | `019fda4b-d981-7980-a283-549a7312f2a9` | Q0.1–Q0.8 labor complete/`in_review`; **not package accept** |
-| RQL-Q0 Amendment package | `019fdac4-1408-7321-8edc-a09851c9e656` | **Q0.A1–Q0.A9 `todo` (ADMITTED)** — principal review findings; claim before re-accept |
+| RQL-Q0 Amendment package | `019fdac4-1408-7321-8edc-a09851c9e656` | **Q0.A1–A10 landed; A11–A14 closeout ADMITTED** — claim before re-accept |
 | RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | Q1.1–Q1.4 titles `[BLOCKED:Q0]` (stage still `todo`; host forbids demote); **do not claim** — see [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) |
 | RQL-Q2 Capability closure | `019fda4c-1227-7c93-b7e6-292141ec7a78` | backlog; spawn gap packages after audit |
 | RQL-Q3 Semantic qualification | `019fda4c-5994-77e2-a2c9-aaa0c3097b29` | backlog |
@@ -488,9 +488,10 @@ scoreboard honesty landed. Principal advanced those **labor cards** to board
 to fill accept pack **§5**. Do not implement Q1 until §5 records ACCEPT.
 
 **Principal review (2026-08-07):** Q0 **not accepted yet**. Material holes
-(comparator pins, equivalence, matrix breadth, public RQB1, Full-over-wire,
-synthetic ids, micro-op over-requirement, doc sprawl). Amendment Feature
-`019fdac4-1408-7321-8edc-a09851c9e656` schedules Q0.A1–Q0.A9 in `todo`.
+(first wave A1–A10 closed in substance). Review 2: **ACCEPT_WITH_AMENDMENTS** —
+CBL Full Sync, live RQB1 docs, named query defaults, gates+§5 SHA (A11–A14).
+RQB1 is **deleted from code**; do not restore. Amendment Feature
+`019fdac4-1408-7321-8edc-a09851c9e656` schedules A11–A14 closeout in `todo`.
 
 **Labor hold (updated):** [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) — admit
 **amendment** todos only; Q1 remains `[BLOCKED:Q0]` until post-amendment §5

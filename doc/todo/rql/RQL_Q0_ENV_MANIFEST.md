@@ -1,13 +1,13 @@
 # RQL-Q0 — Environment and engine manifest
 
-Status: **Q0.A11 CBL Full Sync freeze · principal freeze re-accept pending**
+Status: **Q0.A13 named query defaults freeze · principal freeze re-accept pending**
 
 Package: RQL-Q0 deliverable 1 (amended)
 Authority: [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §3 ·
-principal review finding #1 (obsolete comparator pins) · ACCEPT_WITH_AMENDMENTS #1 (CBL Full Sync)
-Board: Q0.1 (first freeze) · **Q0.A1** (pin bump) · **Q0.A11** (CBL Full Sync)
+principal review finding #1 (obsolete comparator pins) · ACCEPT_WITH_AMENDMENTS (CBL Full Sync + named query defaults)
+Board: Q0.1 · **Q0.A1** · **Q0.A11** (CBL Full Sync) · **Q0.A13** (named query defaults)
 Feature: `019fdac4-1408-7321-8edc-a09851c9e656`
-Effective: 2026-08-07 (A1 pin bump; A11 Full Sync)
+Effective: 2026-08-07 (A1 pin bump; A11 Full Sync; A13 named query defaults)
 
 This file freezes **what is compared** and **how environment is fingerprinted**.
 It does not claim performance competitiveness or Gate-1 pass.
@@ -182,7 +182,11 @@ compatibility façade; **lane E qualification uses `CollectionClient`**.)
 | Default write options | [`PutOptions::default()`](../../crates/residiuum-sdk/src/receipt.rs) → **`DurabilityMode::Durable`** |
 | Acknowledgement boundary | Loader step completes only after Durable ack is returned (store durable barrier for that put). No “write then query before ack” in baseline cells |
 | Buffered / Memory durability | **Out of primary profile** for comparative write cells (`DurabilityMode::Buffered` / `Memory` forbidden unless cell freezes a residual class) |
-| Query consistency | Product default consistency mode of `QueryRunOptions::default()` for Core RQL cells; record mode in fingerprint |
+| Query run options (primary profile) | **Named values** (do **not** freeze by `QueryRunOptions::default()` alone — a future Default() change must not silently alter the accepted profile): |
+| | • `consistency` = **`ConsistencyMode::Available`** |
+| | • `coverage` = **`CoveragePolicy::Complete`** |
+| | • `page_size` = **unspecified** on options (`None`); plan/runtime default page size **`64`** (`plan_v1::DEFAULT_PAGE_SIZE`) when the plan does not set page size |
+| | Code `QueryRunOptions::default()` currently matches Available + Complete + `page_size: None` (`crates/residiuum-sdk/src/app_v1.rs`); qualification authority is the **named** triple above, not the trait. Record all three in the fingerprint. |
 | Query compile vs timed window | **Compile/lower to QVM outside** measurement window; timed window is execute + page materialisation only |
 
 #### 2.3.3 Lane rules (repeat)
@@ -273,6 +277,9 @@ cbl_autocommit             # true (baseline)
 cbl_sync_enabled           # false
 cbl_full_sync              # true (required for primary competitive CBL; Full Sync ≠ replication)
 query_compile_in_window    # false (compile outside timed window)
+query_consistency          # Available (ConsistencyMode::Available)
+query_coverage             # Complete (CoveragePolicy::Complete)
+query_page_size_default    # 64 when options.page_size and plan page_size unspecified
 seed
 campaign_id
 host_class                 # primary_apple_silicon | secondary_linux | other
@@ -353,6 +360,7 @@ Aligns with performance harness environment honesty
 - [x] Exact CBL autocommit + sync-off + compile-outside-window (Q0.A10)
 - [x] Exact CBL Full Sync on (`DatabaseConfiguration.fullSync = true`) + fingerprint `cbl_full_sync=true` (Q0.A11)
 - [x] Native-default CBL residual class `native_default_non_equivalent` excluded from competitive aggregates (Q0.A11)
+- [x] Named query defaults: Available / Complete / page size 64 (Q0.A13) — not bare `Default()`
 - [ ] Principal accept of amended freeze (package-level Q0 after A11–A14 closeout)
 
 ---

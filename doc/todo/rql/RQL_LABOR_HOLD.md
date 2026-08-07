@@ -1,28 +1,27 @@
 # RQL critical-path labor hold (Q0.6 + amendment admit)
 
-Status: **2026-08-07 · Q0 not accepted · amendment labor ADMITTED · Q1 still forbidden**  
+Status: **2026-08-07 · Q0 not accepted · A1–A11 labor landed · A12–A14 closeout · Q1 still forbidden**
 Authority: principal review feedback (ACCEPT_WITH_AMENDMENTS path) ·
 [RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md) ·
 [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §3, §11 ·
-[CRITICAL_PATH.md](../../../CRITICAL_PATH.md)  
-Amendment Feature: `019fdac4-1408-7321-8edc-a09851c9e656` (Q0.A0–Q0.A9)
+[CRITICAL_PATH.md](../../../CRITICAL_PATH.md)
+Amendment Feature: `019fdac4-1408-7321-8edc-a09851c9e656` (Q0.A0–Q0.A14)
 
 ---
 
 ## Verdict
 
 ```text
-Q0 package accept        = NOT YET (amendments A1–A9 labor complete; principal §5)
-Admitted Gate-1 labor    = none on Q1; amendment labor finished for re-review
+Q0 package accept        = NOT YET (A1–A11 labor complete; A12–A14 closeout; principal §5)
+Admitted Gate-1 labor    = none on Q1; closeout wave until re-accept
 Q1 corpus implementation = FORBIDDEN until post-amendment Q0 ACCEPT (§5)
 Decision 0 / RQL-C1      = OPEN / FORBIDDEN (micro-op purity not D0 close bar — Q0.A7)
 ```
 
-Principal review (2026-08-07): QVM convergence is substantially good; focused tests
-pass. Q0 qualification foundation has material holes (obsolete comparator pins,
-loose equivalence, underspecified matrix, public RQB1, Full-over-wire lane gap,
-synthetic ids, doc sprawl). **Do not accept Q0 yet.** Land the amendment package,
-re-issue the accept pack (Q0.A9), then principal fills §5.
+Principal review 2 (2026-08-07): A1–A10 substance accepted; **ACCEPT_WITH_AMENDMENTS**
+for CBL Full Sync (A11), stale RQB1 docs (A12), named query defaults (A13), gates+§5 SHA (A14).
+**Do not accept Q0 yet** until A11–A14 land and principal fills §5.
+RQB1 is **deleted from code** (A10); live docs must not claim it remains supported (A12).
 
 ---
 
@@ -32,7 +31,7 @@ re-issue the accept pack (Q0.A9), then principal fills §5.
 |---|---|---|
 | First freeze (Q0.1–Q0.4) | `RQL_Q0_*.md` | labor cards board `done` — **requires amendment** |
 | Accept pack v1 | [RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md) | superseded for accept until A1–A8 + A9 re-issue |
-| Amendment package | Feature `019fdac4-1408-7321-8edc-a09851c9e656` | **claim Q0.A1–Q0.A9 from `todo`** |
+| Amendment package | Feature `019fdac4-1408-7321-8edc-a09851c9e656` | A1–A10 landed; claim **A11–A14** closeout from `todo` |
 | Decision 0 | D0.1/D0.2 | OPEN; A7 may de-scope micro-op purity as close blocker |
 
 **After Q0.A9:** principal fills re-issued §5 (`ACCEPT` / further amend / `REJECT`).
@@ -54,6 +53,16 @@ re-issue the accept pack (Q0.A9), then principal fills §5.
 | Q0.A7 | P2 | Decision 0 — micro-op purity not a close blocker |
 | Q0.A8 | P2 | Doc consolidation + rename conflicting RQL-Q1 |
 | Q0.A9 | exit | Re-issue principal accept pack after amendments |
+
+### Closeout wave (ACCEPT_WITH_AMENDMENTS review 2)
+
+| Task | Priority | Title |
+|---|---|---|
+| Q0.A10 | exit | RQB1 delete + durability freeze + accept SHA (landed) |
+| Q0.A11 | P0 | CBL Full Sync for competitive write cells |
+| Q0.A12 | P1 | Remove stale live RQB1 documentation |
+| Q0.A13 | P2 | Freeze named query defaults in Q0 manifest |
+| Q0.A14 | exit | Re-run gates + fill accept pack §5 SHA |
 
 Pull **P0 first** (A1, A2), then P1 docs/code (A3–A6), then P2 (A7–A8), then A9.
 A5/A6 may parallel A3/A4.
@@ -84,7 +93,7 @@ Q1.1–Q1.4 remain stage **`todo`** on the Kanban board (host data-plane forbids
 - Self-accept Q0, Decision 0, or RQL-C1
 - Start Q2/Q5/Q7 or performance claims
 - Invent parallel roadmap docs that compete with CRITICAL_PATH
-- Treat first freeze as accepted without A1–A9 and principal §5
+- Treat first freeze as accepted without A1–A14 closeout and principal §5
 
 ---
 

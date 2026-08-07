@@ -1,14 +1,14 @@
 # RQL-Q0 — Principal accept pack (re-issue after amendments)
 
-Status: **Q0.A11 CBL Full Sync landed · A12–A14 residual · awaiting principal package accept**  
-Package: RQL-Q0 Target and profile freeze  
-Board Features: first freeze `019fda4b-d981-7980-a283-549a7312f2a9` · amendment `019fdac4-1408-7321-8edc-a09851c9e656`  
-Authority: [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §3 exit · §11  
-Labor re-issue date: 2026-08-07 (Q0.A9 + **Q0.A10** + **Q0.A11** Full Sync)  
-Tree baseline at re-issue: git `e764d218af38f72058e68813a567ae25cd259331` (A10 reviewed tip) · A11 docs on dirty tip until A14 SHA fill · VERSION **0.2.2** · accept on clean tip · **git_dirty=false**
+Status: **Q0.A11–A14 closeout labor complete · awaiting principal package accept**
+Package: RQL-Q0 Target and profile freeze
+Board Features: first freeze `019fda4b-d981-7980-a283-549a7312f2a9` · amendment `019fdac4-1408-7321-8edc-a09851c9e656`
+Authority: [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §3 exit · §11
+Labor re-issue date: 2026-08-07 (Q0.A9–A14 closeout wave)
+Tree baseline: parent/content **A10 reviewed tip** `e764d218af38f72058e68813a567ae25cd259331` · A11 commit `98342415d1275d399de0d2fd29b7220cf8b5aad5` · A12–A14 docs at labor handoff may be uncommitted — principal §5 SHA = **clean tip only** (`git_dirty=false`) · VERSION **0.2.2**
 
-**This file does not accept Q0.** Only the principal fills §5.  
-**Q1 corpus labor must not start until §5 records ACCEPT.**  
+**This file does not accept Q0.** Only the principal fills §5.
+**Q1 corpus labor must not start until §5 records ACCEPT.**
 **Decision 0 / RQL-C1 are out of scope for this pack** (see [RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md)).
 
 Doc map: [RQL_Q0_DOC_INDEX.md](./RQL_Q0_DOC_INDEX.md).
@@ -67,7 +67,7 @@ Related honesty (not Q0 freeze exit criteria):
 
 Residiuum package pin: **0.2.2**, MSRV **1.88.0**, evidence `git_sha` = full HEAD (`git_dirty=false`).
 Residiuum writes: **`DurabilityMode::Durable`** ack before next step; product API **`CollectionClient::rql`** (not legacy-flat).
-CBL: autocommit single-doc saves; **replication/Sync Gateway off**; **Full Sync on** (`fullSync=true`, fingerprint `cbl_full_sync=true`); query compile outside timed windows.  
+CBL: autocommit single-doc saves; **replication/Sync Gateway off**; **Full Sync on** (`fullSync=true`, fingerprint `cbl_full_sync=true`); query compile outside timed windows.
 Do not conflate lanes in portfolio scoring.
 
 ### 3.2 Capability law
@@ -108,6 +108,20 @@ Labor must not apply these as if already accepted.
 - Do not accept RQL-C1 / close Decision 0 via this pack alone.
 - Do not start Q5 performance claims.
 - Do not score Full Tier-A as lane-S wins until Q2-BLOCK-FULL-WIRE closes.
+
+### 4.1 Labor tip evidence (A14 — **not** package accept)
+
+| Item | Value |
+|---|---|
+| Pre-closeout reviewed tip (A10) | `e764d218af38f72058e68813a567ae25cd259331` |
+| A11 commit (CBL Full Sync docs) | `98342415d1275d399de0d2fd29b7220cf8b5aad5` |
+| A12–A14 content | RQB1 live-doc cleanup + named query defaults + this evidence — **commit before §5** if still dirty |
+| Architecture gate | `scripts/check_query_runtime_architecture.sh` → **OK** |
+| Delivery-status | `scripts/verify-delivery-status.sh` → **OK (114 packages)** |
+| QVM unit tests | `cargo test -p residiuum-sdk --lib query_bytecode_v1` → **56/56** |
+| `git diff --check` | **clean** |
+
+Principal: fill §5 on the **clean** post-closeout SHA (after any remaining A12–A14 commit). Parent/content baseline approach remains valid from A10 tip above.
 
 ---
 
@@ -158,21 +172,21 @@ Labor must leave this block blank.
 - [x] Scoreboard / Q1 unlock proposed (not applied as accept)
 - [x] §5 left blank for principal
 - [ ] Principal §5 filled (human)
- 
+
 ### Q0.A11 labor (ACCEPT_WITH_AMENDMENTS wave)
 
 - [x] A11: CBL Full Sync required for competitive cells; fingerprint `cbl_full_sync`
-- [ ] A12: stale live RQB1 documentation cleanup
-- [ ] A13: named query defaults freeze (not bare `Default()`)
-- [ ] A14: re-run gates + fill §5 SHA on clean tip
+- [x] A12: stale live RQB1 documentation cleanup (QVM-only truth; QUERY_ISA_V1 retired)
+- [x] A13: named query defaults freeze (`Available` / `Complete` / page size 64)
+- [x] A14: gates re-run green; labor tip evidence in §4.1; §5 decision left blank for principal
 
 ---
 
 ## One-line verdict
 
 ```text
-Q0 A10 closeout   = complete for principal re-review
-Q0 package        = NOT accepted (principal only) — ready for §5 ACCEPT if review ok
+Q0 A11–A14 closeout = complete for principal re-review (gates green)
+Q0 package          = NOT accepted (principal only) — ready for §5 ACCEPT on clean tip
 Q1                = BLOCKED until §5 ACCEPT
 Decision 0        = OPEN (micro-op purity not D0 close bar)
 RQB1              = removed from SDK

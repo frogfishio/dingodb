@@ -1,11 +1,17 @@
-# Query ISA v1 — durable program encoding (RQL-X3)
+# Query ISA v1 — RETIRED historical note (was RQL-X3)
 
-Status: **labor closed 2026-08-05** · board RQL-X3 `82113ba2`  
-Profile id: **`residiuum-query-isa-v1`**  
-Companion: [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md) · runtime crate `query_bytecode_v1/isa.rs`
+> **RETIRED (Q0.A10 / Q0.A12).** This document is **not** a live product carrier.
+> Magic `RQB1`, module `query_bytecode_v1/isa.rs`, and all RQB1 encode/decode/import/execute
+> APIs are **deleted**. Product durable authority is **`QVM1`** only — see
+> [QUERY_VM_V1.md](./QUERY_VM_V1.md) · [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md).
+> Architecture gate forbids restoring `isa.rs` / RQB1 product symbols.
+> Preserve this file as historical evidence of the former RQL-X3 design; body text below is **not normative**.
 
-This freezes the **durable binary carrier** for compiled query programs so the
-product ISA is not “whatever Rust structs are in memory today.”
+Status: **RETIRED 2026-08-07** · original labor closed 2026-08-05 · board RQL-X3 `82113ba2`
+Profile id (historical): **`residiuum-query-isa-v1`**
+Companion (live): [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md) · runtime: **`qvm.rs` (QVM1)** — not `isa.rs`
+
+~~Former freeze of durable binary carrier…~~ **Superseded:** durable carrier is QVM1.
 
 ---
 

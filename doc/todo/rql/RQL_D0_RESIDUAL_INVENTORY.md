@@ -97,9 +97,9 @@ product executor.
 | Carrier | Magic / role | Residual |
 |---|---|---|
 | **QVM1** | Public durable executable identity (`qvm.rs`) | Sole public authority on product path |
-| **RQB1** | Legacy AST carrier (`isa.rs`) | Ingress may lower RQB1→QVM; not product execute authority |
+| **RQB1** | **Deleted (Q0.A10)** — former `isa.rs` / magic `RQB1` | **Not in tree.** No encode, decode, import, or execute path. Architecture gate forbids restoration. Historical only: [QUERY_ISA_V1.md](./QUERY_ISA_V1.md) (retired) |
 | `VmProgram` / `VmPool` | In-memory ops + pool | No `RqlPlanV1` sidecar on pool (QVM1 labor) |
-| `QueryBytecodeV1` | Envelope of QVM1 bytes | `from_isa_bytes` accepts legacy RQB1 Core and lowers |
+| `QueryBytecodeV1` | Envelope of QVM1 bytes | Public stored bytes are **QVM1** only; `from_isa_bytes` **removed** |
 
 ---
 
@@ -114,8 +114,8 @@ product executor.
 | Full RQL (local) | `execute_rql_full` / `_with` | `compile_rql_full` → `lower_full` → `encode_qvm` → `execute_full_qvm_with` → `run_vm` |
 | Full QVM bytes | `execute_full_qvm_with` | decode QVM → `run_vm` |
 | Portable dialects | `Collection::find_dialect` sql/json/mongo | `CompiledPortable` → plan → `QueryBytecodeV1` → `execute_bytecode` → `run_vm` |
-| Legacy Core ISA import | `execute_isa_bytes` (RQB1) | decode RQB1 → lower Core → `run_vm` (via `execute_decoded_core`) |
-| Legacy Full ISA import | `execute_full_isa_with` (RQB1) | decode RQB1 Full → lower → QVM → `run_vm` |
+| ~~Legacy Core ISA import~~ | ~~`execute_isa_bytes`~~ | **Removed (Q0.A10)** — not a product path |
+| ~~Legacy Full ISA import~~ | ~~`execute_full_isa_with`~~ | **Removed (Q0.A10)** — not a product path |
 | Remote Core | op **118** `rql_query` | Server/host path uses same Core execute stack (product wire; Full refused on Core wire — RQL-F2) |
 
 ### 2.2 Paths that are **not** product QVM (allowed under invariant)

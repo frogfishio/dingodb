@@ -74,11 +74,11 @@ proceeds.
 | 5–7 Port Core / equivalence / shrink frozen Core executor | **X2b done** — Core in `query_bytecode_v1/core_page` |
 | 5–8 Port full attach; CI bytecode-only `execute_*` | **X2c done** — `full_attach.rs` |
 | Delete shims; unify op 118 | **X2d done** — shims deleted; evidence `rql_x2d_shim_delete.log` |
-| Durable binary ISA carrier | **X3 done** — [QUERY_ISA_V1.md](./QUERY_ISA_V1.md); evidence `rql_x3_isa.log` |
+| Durable binary ISA carrier | **X3 done then RQB1 retired (Q0.A10)** — [QUERY_ISA_V1.md](./QUERY_ISA_V1.md) historical; live carrier is **QVM1** |
 | ENR+SDA kernel eval (Core `where`) | **X4 done** — [QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md); evidence `rql_x4_kernel.log` |
 | Full attach on same kernel | **X4b done** (predicates) — evidence `rql_x4b_attach_kernel.log` |
-| ISA sole executable input (Core) | **X5 done** — private envelope; `execute_*` decodes ISA |
-| Full-language execute from ISA | **X5b done** — `execute_full_isa_with` |
+| ISA sole executable input (Core) | **X5 done then QVM1-only (Q0.A10)** — Core `execute_*` decodes **QVM1** |
+| Full-language execute from ISA | **X5b done then QVM1-only** — product path is `execute_full_qvm_with` (RQB1 APIs deleted) |
 | One-dispatch + IR residual honesty | **X5c done** — `execute_decoded_core` + [QUERY_IR_RESIDUAL.md](./QUERY_IR_RESIDUAL.md) |
 | Core path-project named IR | **IR1 done** — [QUERY_IR_PROJECT_V1.md](./QUERY_IR_PROJECT_V1.md) |
 | Core order/sort-tuple named IR | **IR2 done** — [QUERY_IR_ORDER_V1.md](./QUERY_IR_ORDER_V1.md) |

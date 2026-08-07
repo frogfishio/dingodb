@@ -17,7 +17,7 @@ immediates — not a pure stack micro-VM. Full cite table: **D0.1 inventory**.
 
 | Phase | Location | Status |
 |---|---|---|
-| ISA encode/decode carrier | `isa.rs` (`RQB1`) | Legacy AST carrier — lowers into QVM |
+| ISA encode/decode carrier | ~~`isa.rs` (`RQB1`)~~ | **Deleted (Q0.A10)** — retired; [QUERY_ISA_V1.md](./QUERY_ISA_V1.md) historical only |
 | Durable QVM wire | `qvm.rs` (`QVM1`) | **QVM1 labor closed** (public authority) |
 | `where` / attach filters | `kernel.rs` → SDA | Kernel substrate (not second executor) |
 | Core path-project / order / page | `ir_project.rs` / `ir_order.rs` / `ir_page.rs` | **Named IR** — still Rust |

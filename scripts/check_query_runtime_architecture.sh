@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Decision 0 architecture gate (behavioral, not filename theatre).
-# Shims forbidden; ISA must drive Core + full execute; one post-decode Core dispatch.
+# Shims forbidden; QVM1 drives Core + full execute; RQB1/isa.rs forbidden; one run_vm.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -105,6 +105,20 @@ if rg -q 'fn from_isa_bytes|fn execute_isa_bytes|fn execute_full_isa_with|fn dec
 fi
 if rg -n 'pub use query_bytecode_v1::' -A 25 "$LIB_RS" | rg -q 'decode_isa|encode_core|execute_isa|from_isa'; then
   fail "lib.rs must not re-export RQB1 (Q0.A10)"
+fi
+# Q0.A12: live normative rql docs must not claim RQB1 remains a supported product path.
+# QUERY_ISA_V1.md is retired historical (banner + body); evidence/ logs are historical.
+RQL_DOC_DIR="$ROOT/doc/todo/rql"
+if [[ -d "$RQL_DOC_DIR" ]]; then
+  while IFS= read -r -d '' md; do
+    base="$(basename "$md")"
+    case "$base" in
+      QUERY_ISA_V1.md) continue ;;
+    esac
+    if rg -q 'Legacy RQB1 may lower|from_isa_bytes accepts|execute_isa_bytes \(RQB1\)|execute_full_isa_with \(RQB1\)|Legacy AST carrier — lowers into QVM|RQB1 crate-private quarantine' "$md"; then
+      fail "live normative doc claims RQB1 still supported: ${md#$ROOT/} (Q0.A12)"
+    fi
+  done < <(find "$RQL_DOC_DIR" -maxdepth 1 -type f -name '*.md' -print0)
 fi
 rg -q 'execute_full_qvm_enrich_within_project_nonempty' \
   crates/residiuum-sdk/tests/rql_full_isa_execute.rs \

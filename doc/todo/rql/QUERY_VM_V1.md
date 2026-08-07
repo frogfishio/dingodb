@@ -3,8 +3,9 @@
 Status: **2026-08-07** · Principal **rejected prior VM1 / P1c** · **VM1R labor closed** · Decision 0 remains OPEN · RQL-C1 **forbidden**
 Profile id: **`residiuum-query-vm-v1`** · version byte **`1`** · durable magic **`QVM1`**
 Runtime: `query_bytecode_v1/vm.rs` · `vm_exec.rs` · `qvm.rs` · `core_phases.rs` (`CoreFrame`)
-Companion: [QUERY_ISA_V1.md](./QUERY_ISA_V1.md) · [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md) ·
+Companion: [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md) · [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md) ·
 [RQL_D0_RESIDUAL_INVENTORY.md](./RQL_D0_RESIDUAL_INVENTORY.md)
+Historical (retired RQB1): [QUERY_ISA_V1.md](./QUERY_ISA_V1.md) — **not** a live product carrier.
 
 Opcode vocabulary (**RQL-VM0**) and intermediate Core/Full phase work (**VM2–VM4**,
 including `CoreFrame`; fused `run_core_page` deleted DEL1) landed. **RQL-QVM1**
@@ -26,8 +27,8 @@ All syntax → compiler intermediates → canonical QVM bytecode
 ```
 
 Today (product): compile → **`encode_qvm` / `decode_qvm`** → **`run_vm`**.
-Legacy RQB1 may lower into QVM at ingress. `VmProgram` holds ops + `VmPool` only
-(no plan/pipeline/project sidecars).
+**RQB1 is deleted** (Q0.A10): no `isa.rs`, no `from_isa_bytes`, no RQB1 encode/execute.
+`VmProgram` holds ops + `VmPool` only (no plan/pipeline/project sidecars).
 
 ---
 

@@ -2,7 +2,7 @@
 
 Status: **labor closed 2026-08-05** · board RQL-X4 `401f7ef5`  
 Profile id: **`residiuum-query-kernel-sda-v1`**  
-Runtime: `query_bytecode_v1/kernel.rs` · Companion: [QUERY_ISA_V1.md](./QUERY_ISA_V1.md)
+Runtime: `query_bytecode_v1/kernel.rs` · Companion: [QUERY_VM_V1.md](./QUERY_VM_V1.md) · [QUERY_BYTECODE_V1.md](./QUERY_BYTECODE_V1.md)
 
 Core `where` meaning evaluates through **`residiuum-sda`** boolean programs.
 Host remains scan / index / get only.

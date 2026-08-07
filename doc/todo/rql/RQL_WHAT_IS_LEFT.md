@@ -33,7 +33,7 @@ convergence claims stay rejected.
 
 ```text
 Verdict     = Decision 0 OPEN; RQL-C1 must NOT be accepted
-NEXT        = Q0 amendments A1–A9 then principal §5; Q1 still blocked
+NEXT        = Q0 amendments A1–A14 then principal §5; Q1 still blocked
 D0 close bar= A1–A8 product QVM path (A9 micro-op purity NOT required — Q0.A7)
 ```
 
@@ -63,7 +63,7 @@ Raw SDA → explicitly raw SDA APIs only (dialect `sda` / Collection::sda)
 - Custom `QueryDialect` is portable-only; raw SDA is explicit surface only
 - Filter is sole where authority (`IndexEq` is force_scan only)
 - Cursor identity = `qvm_hash` of complete canonical QVM bytes (not wire plan_hash)
-- Full product path: compile → `encode_qvm` → `execute_full_qvm_with` (RQB1 crate-private quarantine, Q0.A5)
+- Full product path: compile → `encode_qvm` → `execute_full_qvm_with` (**RQB1 deleted** Q0.A10; QVM1 only)
 - Canonical decode: `encode(decode(bytes)) == bytes`
 - Public QVM API is byte-oriented (`validate_qvm` / `qvm_hash`); `encode`/`decode` crate-private
 - `run_attach_pipeline` deleted; dead Compiled*Ir wrappers removed

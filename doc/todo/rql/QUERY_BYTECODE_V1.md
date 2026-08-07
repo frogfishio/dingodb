@@ -59,10 +59,10 @@ encoding of the same AST). It is **not** a second algebra.
 |---|---|
 | Dialect `rql` → ENR+SDA **text** → `residiuum-sda` | Legal lineage; text is an interim encoding, not a second product runtime |
 | Former `query_exec_v1` / `execute_rql_full` | **Removed (X2d)** — semantics under `query_bytecode_v1/` |
-| Rust plan/AST as runtime input | Interim views — durable carrier is **`residiuum-query-isa-v1`** ([QUERY_ISA_V1.md](./QUERY_ISA_V1.md)) |
+| Rust plan/AST as runtime input | Interim compile views only — durable carrier is **`QVM1`** ([QUERY_VM_V1.md](./QUERY_VM_V1.md)); RQB1/`residiuum-query-isa-v1` **retired** ([QUERY_ISA_V1.md](./QUERY_ISA_V1.md) historical) |
 | ENR+SDA text → `residiuum-sda` | Legal lineage; Core `where` now evaluates via kernel ([QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md)) |
 
-RQL-X3 freezes the durable ISA encoding. **RQL-X4** landed Core `where` on
+RQL-X3 once froze RQB1 ISA encoding (**retired Q0.A10**). **RQL-X4** landed Core `where` on
 `residiuum-sda`. **RQL-X4b** ports full attach filters onto the same kernel.
 
 ---
@@ -167,7 +167,7 @@ violation.
 
 ## 9. Non-claims
 
-- No claim that bytecode encoding is unimplemented — see [QUERY_ISA_V1.md](./QUERY_ISA_V1.md).
+- No claim that bytecode encoding is unimplemented — durable form is **QVM1** ([QUERY_VM_V1.md](./QUERY_VM_V1.md)); RQB1 ISA is retired ([QUERY_ISA_V1.md](./QUERY_ISA_V1.md) historical).
 - No claim that ENR+SDA **eval** is unused — Core + attach filters use
   [QUERY_KERNEL_SDA_V1.md](./QUERY_KERNEL_SDA_V1.md).
 - No APP-6 / APP-7 / APB-7 package accept.
