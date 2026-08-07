@@ -113,22 +113,22 @@ pub use cursor_v1::{
     PROFILE as CURSOR_V1_PROFILE, SKEW_SECONDS as CURSOR_SKEW_SECONDS,
     TTL_SECONDS as CURSOR_TTL_SECONDS, VECTOR_LOCK_SEED,
 };
+// Product query runtime: QVM1 only (Q0.A5). RQB1 encode/decode/execute is crate-private.
+// Offline RQB1→QVM import: QueryBytecodeV1::from_isa_bytes.
 pub use query_bytecode_v1::{
-    compile_rql_full, compile_where, decode_isa, decode_isa_canonical, encode_core_program,
-    encode_full_program, execute_bytecode, execute_core_rql, execute_full_isa_with,
-    execute_full_qvm_with, execute_isa_bytes, execute_qvm_bytes, execute_rql_full,
-    execute_rql_full_with, explain_core_source, explain_rql_full, explain_rql_full_on_heap,
-    explain_rql_source, isa_hash, lower_core_source, lower_predicate, qvm_hash,
-    refuse_full_language_on_core_wire, source_uses_rql_full_constructs, validate_qvm,
-    CompiledKernelWhere, CompiledRqlFull, EnrichAttachMode, EnrichCardinality, EnrichLoadEvidence,
-    EnrichStepV1, FullPipelineStepV1, HostCapabilities, ProjectItemV1, QueryBytecodeV1,
-    QueryIsaFullSection, QueryIsaProgram, RqlFullExecuteOptions, RqlFullPage, WithinStepV1,
-    ATTACH_IR_PROFILE, BYTECODE_PROFILE, DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL,
+    compile_rql_full, compile_where, execute_bytecode, execute_core_rql, execute_full_qvm_with,
+    execute_qvm_bytes, execute_rql_full, execute_rql_full_with, explain_core_source,
+    explain_rql_full, explain_rql_full_on_heap, explain_rql_source, lower_core_source,
+    lower_predicate, qvm_hash, refuse_full_language_on_core_wire, source_uses_rql_full_constructs,
+    validate_qvm, CompiledKernelWhere, CompiledRqlFull, EnrichAttachMode, EnrichCardinality,
+    EnrichLoadEvidence, EnrichStepV1, FullPipelineStepV1, HostCapabilities, ProjectItemV1,
+    QueryBytecodeV1, RqlFullExecuteOptions, RqlFullPage, WithinStepV1, ATTACH_IR_PROFILE,
+    BYTECODE_PROFILE, DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL,
     DIAG_RQL_PROJECTION_CONFLICT, DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE, EXEC_PROFILE,
-    FULL_EXPLAIN_HASH_DOMAIN, ISA_MAGIC, ISA_MAX_SECTION_BYTES, ISA_MAX_TOTAL_BYTES, ISA_PROFILE,
-    ISA_VERSION, KERNEL_PROFILE, MAX_PROJECT_DEPTH, MAX_WITHIN_DEPTH, ORDER_IR_PROFILE,
-    PAGE_IR_PROFILE, PROJECT_IR_PROFILE, QVM_MAGIC, QVM_MAX_BLOB_BYTES, QVM_MAX_OPS,
-    QVM_MAX_TOTAL_BYTES, RQL_FULL_PROFILE, VM_PROFILE, VM_VERSION, Instruction, OpCode,
+    FULL_EXPLAIN_HASH_DOMAIN, KERNEL_PROFILE, MAX_PROJECT_DEPTH, MAX_WITHIN_DEPTH,
+    ORDER_IR_PROFILE, PAGE_IR_PROFILE, PROJECT_IR_PROFILE, QVM_MAGIC, QVM_MAX_BLOB_BYTES,
+    QVM_MAX_OPS, QVM_MAX_TOTAL_BYTES, RQL_FULL_PROFILE, VM_PROFILE, VM_VERSION, Instruction,
+    OpCode,
 };
 pub use read_view_v1::{
     AuthoritativeFrontier, FrontierDrift, FrontierKind, PinCapability, ReadView, ReadViewInfo,

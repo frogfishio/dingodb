@@ -62,12 +62,14 @@ pub struct QueryIsaFullSection {
 }
 
 /// Encode a Core program (plan + optional budget) into ISA bytes.
-pub fn encode_core_program(plan: &RqlPlanV1, budget: Option<QueryBudget>) -> Result<Vec<u8>, Error> {
+#[allow(dead_code)] // Q0.A5: RQB1 encode retained for crate tests / offline migration
+pub(crate) fn encode_core_program(plan: &RqlPlanV1, budget: Option<QueryBudget>) -> Result<Vec<u8>, Error> {
     encode_program(plan, budget, None)
 }
 
 /// Encode Core + full attach into ISA bytes.
-pub fn encode_full_program(
+#[allow(dead_code)] // Q0.A5 quarantine
+pub(crate) fn encode_full_program(
     plan: &RqlPlanV1,
     budget: Option<QueryBudget>,
     pipeline: &[FullPipelineStepV1],
@@ -122,7 +124,7 @@ fn encode_program(
 }
 
 /// Decode ISA bytes into a program (rejects reserved flag bits + oversize).
-pub fn decode_isa(bytes: &[u8]) -> Result<QueryIsaProgram, Error> {
+pub(crate) fn decode_isa(bytes: &[u8]) -> Result<QueryIsaProgram, Error> {
     if bytes.len() > ISA_MAX_TOTAL_BYTES {
         return Err(Error::QueryInvalid(format!(
             "isa: total length {} exceeds max {ISA_MAX_TOTAL_BYTES}",
@@ -200,7 +202,7 @@ pub fn decode_isa(bytes: &[u8]) -> Result<QueryIsaProgram, Error> {
 ///
 /// Product execution entries use this so distinct byte strings cannot share
 /// meaning while hashing differently (RQL-D0R / principal P1).
-pub fn decode_isa_canonical(bytes: &[u8]) -> Result<QueryIsaProgram, Error> {
+pub(crate) fn decode_isa_canonical(bytes: &[u8]) -> Result<QueryIsaProgram, Error> {
     let prog = decode_isa(bytes)?;
     let again = encode_program(&prog.core, prog.budget, prog.full.clone())?;
     if again.as_slice() != bytes {
@@ -212,7 +214,8 @@ pub fn decode_isa_canonical(bytes: &[u8]) -> Result<QueryIsaProgram, Error> {
 }
 
 /// BLAKE3-256 over domain || 0x00 || isa bytes (durable program identity).
-pub fn isa_hash(bytes: &[u8]) -> [u8; 32] {
+#[allow(dead_code)] // Q0.A5 quarantine
+pub(crate) fn isa_hash(bytes: &[u8]) -> [u8; 32] {
     let mut hasher = blake3::Hasher::new();
     hasher.update(b"residiuum:query-isa-v1:hash-v1");
     hasher.update(&[0u8]);

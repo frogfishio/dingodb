@@ -5,7 +5,8 @@
 //!
 //! **RQL-WIRE1 / QVM sole public authority:** [`QueryBytecodeV1`] holds **QVM1**
 //! durable bytes. Execution is `decode_qvm` → `verify_vm_program` → `run_vm`.
-//! Legacy `RQB1` may be accepted at ingress and immediately lowered to QVM.
+//! Legacy `RQB1` is **not** a public product encode/execute surface (Q0.A5).
+//! Offline migration may use [`QueryBytecodeV1::from_isa_bytes`] (RQB1→QVM lower).
 //!
 //! **RQL-VM1R:** Core and Full run through one [`vm_exec::run_vm`] loop.
 //! See [QUERY_IR_RESIDUAL.md](../../../../doc/todo/rql/QUERY_IR_RESIDUAL.md) and
@@ -34,8 +35,7 @@ pub use core_page::{explain_rql_source, EXEC_PROFILE};
 // `CollectionClient` (residual) and the VM's internal `HostScan` (product).
 pub(crate) use core_page::DocScan;
 pub use full_attach::{
-    compile_rql_full, execute_full_isa_with, execute_full_qvm_with, execute_rql_full,
-    execute_rql_full_with,
+    compile_rql_full, execute_full_qvm_with, execute_rql_full, execute_rql_full_with,
     explain_rql_full, explain_rql_full_on_heap, refuse_full_language_on_core_wire,
     source_uses_rql_full_constructs, CompiledRqlFull, EnrichAttachMode, EnrichCardinality,
     EnrichLoadEvidence, EnrichStepV1, FullPipelineStepV1, ProjectItemV1, RqlFullExecuteOptions,
@@ -43,12 +43,15 @@ pub use full_attach::{
     DIAG_RQL_PROJECTION_CONFLICT, DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE,
     FULL_EXPLAIN_HASH_DOMAIN, MAX_PROJECT_DEPTH, MAX_WITHIN_DEPTH, RQL_FULL_PROFILE,
 };
+// Legacy RQB1 Full import: crate-private quarantine (Q0.A5) — not product surface.
+pub(crate) use full_attach::execute_full_isa_with;
 // IR / attach orchestration: crate-private (RQL-P0b) — profiles remain public stamps.
 pub use ir_attach::ATTACH_IR_PROFILE;
 pub use ir_order::ORDER_IR_PROFILE;
 pub use ir_page::PAGE_IR_PROFILE;
 pub use ir_project::PROJECT_IR_PROFILE;
-pub use isa::{
+// RQB1 codec: crate-private. Offline migration: QueryBytecodeV1::from_isa_bytes (RQB1→QVM).
+pub(crate) use isa::{
     decode_isa, decode_isa_canonical, encode_core_program, encode_full_program, isa_hash,
     QueryIsaFullSection, QueryIsaProgram, ISA_MAGIC, ISA_MAX_SECTION_BYTES, ISA_MAX_TOTAL_BYTES,
     ISA_PROFILE, ISA_VERSION,
@@ -302,7 +305,7 @@ pub fn execute_core_rql<H: HostCapabilities>(
 /// Core entry for QVM1 **or** legacy RQB1 Core ISA bytes.
 ///
 /// QVM1 is preferred; RQB1 is lowered to QVM then executed. Full RQB1 is refused.
-pub fn execute_isa_bytes<H: HostCapabilities>(
+pub(crate) fn execute_isa_bytes<H: HostCapabilities>(
     host: &mut H,
     isa_bytes: &[u8],
     params: &BTreeMap<String, JsonValue>,

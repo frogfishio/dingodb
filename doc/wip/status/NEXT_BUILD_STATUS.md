@@ -215,7 +215,9 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 | **1** | **Q0.A1** [P0] Comparator pins + full config | `in_review` | Mongo **8.2.12** + driver 3.8.0; CBL **4.1.0** + full config (env manifest) |
 | **2** | **Q0.A2** [P0] Tighten equivalence laws | `in_review` | §2 str/int/mn/agg/arr/cur laws; ban post-hoc type_incomparable |
 | **3** | **Q0.A3** [P1] Expand capability matrix | `in_review` | DISTINCT/IN/string/array/arith/date/COUNT DISTINCT/collation/pipeline rows |
-| **3b** | **Q0.A4–A6** [P1] Full-wire / RQB1 / durable ids | `todo` | Docs + code; A5/A6 may parallel |
+| **3b** | **Q0.A4** [P1] Full-over-wire Q2 blocker | `in_review` | Q2-BLOCK-FULL-WIRE; lane S Full not competitive |
+| **3c** | **Q0.A5** [P1] RQB1 public quarantine | `in_review` | QVM-only public SDK; RQB1 pub(crate) |
+| **3d** | **Q0.A6** [P1] Durable dialect host ids | `in_review` | store_id-scoped; not name-only |
 | **4** | **Q0.A7–A8** [P2] D0 micro-op policy + doc consolidate | `todo` | After or parallel P1 docs |
 | **5** | **Q0.A9** Re-issue accept pack | `todo` | After A1–A8; then principal §5 |
 | — | Q0.1–Q0.8 first freeze labor | board `done` / `in_review` | **≠** package accept |

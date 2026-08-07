@@ -1815,7 +1815,7 @@ pub fn execute_full_qvm_with(
 /// Legacy RQB1 Full import: decode RQB1 → lower → QVM → run.
 ///
 /// Prefer [`execute_full_qvm_with`] / [`execute_rql_full_with`] for product paths.
-pub fn execute_full_isa_with(
+pub(crate) fn execute_full_isa_with(
     client: &mut HeapClient,
     isa_bytes: &[u8],
     parameters: &Parameters,

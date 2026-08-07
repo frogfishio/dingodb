@@ -96,9 +96,14 @@ rg -n 'fn execute_full_qvm_with' -A 50 "$FULL" | rg -q 'decode_qvm' \
   || fail "execute_full_qvm_with must decode_qvm"
 rg -n 'fn execute_full_qvm_with' -A 50 "$FULL" | rg -q 'run_vm\b' \
   || fail "execute_full_qvm_with must call run_vm"
-# Legacy RQB1 import remains but is not product compile path.
-rg -q 'fn execute_full_isa_with' "$FULL" \
-  || fail "missing execute_full_isa_with (legacy RQB1 import)"
+# Q0.A5: RQB1 is crate-private quarantine, not public product surface.
+LIB_RS="$SDK_SRC/lib.rs"
+if rg -n 'pub use query_bytecode_v1::' -A 20 "$LIB_RS" | rg -q 'decode_isa|encode_core_program|encode_full_program|execute_isa_bytes|execute_full_isa_with'; then
+  fail "lib.rs must not re-export RQB1 product surfaces (Q0.A5)"
+fi
+if ! rg -q 'pub\(crate\) fn execute_full_isa_with' "$FULL" && ! rg -q 'pub\(crate\) use full_attach::execute_full_isa_with' "$MOD"; then
+  fail "execute_full_isa_with must remain crate-private quarantine"
+fi
 rg -n 'fn execute_full_isa_with' -A 40 "$FULL" | rg -q 'decode_isa_canonical|decode_qvm' \
   || fail "execute_full_isa_with must decode RQB1 or QVM"
 rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'lower_full|execute_full_qvm' \
@@ -106,9 +111,12 @@ rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'lower_full|execute_full
 if rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'run_vm_attach|execute_decoded_core'; then
   fail "execute_full_isa_with must not dual-dispatch (RQL-VM1R)"
 fi
-rg -q 'execute_full_isa_enrich_within_project_nonempty' \
+# Public migration ingress only via QueryBytecodeV1::from_isa_bytes (RQB1→QVM).
+rg -q 'fn from_isa_bytes' "$MOD" \
+  || fail "missing QueryBytecodeV1::from_isa_bytes (offline RQB1→QVM import)"
+rg -q 'execute_full_qvm_enrich_within_project_nonempty' \
   crates/residiuum-sdk/tests/rql_full_isa_execute.rs \
-  || fail "missing full ISA non-empty E2E test"
+  || fail "missing full QVM non-empty E2E test"
 
 CORE_PHASES="$SDK_SRC/query_bytecode_v1/core_phases.rs"
 [[ -f "$CORE_PHASES" ]] || fail "missing core_phases.rs (RQL-VM2)"

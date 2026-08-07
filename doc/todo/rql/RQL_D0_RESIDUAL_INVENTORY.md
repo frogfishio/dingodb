@@ -170,7 +170,7 @@ accepted C1. Blockers for a principal close (honest list):
    Does not alone open Decision 0 if Core path is one runtime, but blocks any
    claim that "all product frontends including Full wire" are identical.
 5. **Dialect Heap-id honesty** — portable dialect execute on `Collection` uses
-   name-derived ids; product Heap RQL uses durable ids. Same `run_vm`, different
+   store-scoped durable ids (store_id + name, Q0.A6); product Heap RQL uses catalog CollectionId. Same `run_vm`, different
    host identity story.
 6. **Capability gaps are separate** (aggregates, nested within-index, Tier-A
    corpus, etc.) — those are **Q2/Q3 programme** work, not substitutes for
@@ -213,6 +213,6 @@ accepted C1. Blockers for a principal close (honest list):
 Decision 0 = OPEN
 RQL-C1     = FORBIDDEN
 Landed     = QVM1 public path; one run_vm; dialects portable→QVM; DEL1 orchestrators gone
-Residual   = IR = Rust phase bodies; Full not on Core wire; dialect synthetic ids; principal reject stands
+Residual   = IR = Rust phase bodies; Full not on Core wire; dialect store-scoped ids (not Heap catalog UUID residual); principal reject stands
 Next labor = principal review (D0.2 checklist: RQL_D0_CLOSE_READINESS.md); no false C1 accept
 ```

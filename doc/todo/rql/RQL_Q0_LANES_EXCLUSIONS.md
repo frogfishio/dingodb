@@ -1,12 +1,13 @@
 # RQL-Q0 — Comparison lanes and exclusion / refusal freeze
 
-Status: **labor complete · principal freeze pending**
+Status: **Q0.A4 amendment · principal freeze re-accept pending**
 
 Package: RQL-Q0 deliverables 4–5
 Authority: [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §2.3, §3, §7
 Related: [RQL_Q0_ENV_MANIFEST.md](./RQL_Q0_ENV_MANIFEST.md), [RQL_Q0_CAPABILITY_MATRIX.md](./RQL_Q0_CAPABILITY_MATRIX.md)
-Board task: Q0.4
-Effective: 2026-08-07
+Board task: Q0.4 (first freeze) · **Q0.A4** (Full-over-wire Q2 blocker)
+Feature: `019fdac4-1408-7321-8edc-a09851c9e656`
+Effective: 2026-08-07 (A4)
 
 ---
 
@@ -40,6 +41,51 @@ Use for: protocol-inclusive operational comparison. Both sides use loopback only
 3. Warm cache, durability, and index maintenance posture must be matched **within**
    a lane (programme hard law: equivalent work only).
 4. Optional future lanes (remote WAN, multi-node) are **out of Gate-1**.
+
+---
+
+## 1.1 Full RQL vs Core wire — **Q2 blocker for lane S** (Q0.A4)
+
+**Facts (product honesty):**
+
+- Full RQL (enrich / `within` / brace projection) executes on the **local**
+  product path (`execute_rql_full` / Full QVM → `run_vm`).
+- Core wire **op 118** refuses Full language constructs
+  (`refuse_full_language_on_core_wire`). Full is **not** on the server protocol
+  surface used by lane **S**.
+- Lane **S** compares Residiuum **server protocol** (loopback) to MongoDB TCP.
+  Mongo cells exercise a client/server transport for the full comparator query
+  surface under test.
+
+**Law:**
+
+```text
+Tier-A enrich / within / full (brace) projection MUST NOT be scored as
+lane-S (local client/server) competitive passes while Full remains local-only
+and op 118 refuses Full constructs.
+```
+
+| Capability class | Lane E (embedded) | Lane S (local c/s) until Q2 wire |
+|---|---|---|
+| Application Core RQL (op 118 surface) | Eligible | Eligible |
+| Full enrich / within / full project | Eligible **only** if both sides use embedded Full-capable APIs | **Not eligible** for Gate-1 pass cells — residual **Q2-BLOCK-FULL-WIRE** |
+| Aggregates / other Tier A blockers | Follow matrix class; not a wire excuse | Same |
+
+**Q2-BLOCK-FULL-WIRE** (named blocker for programme §5 / Q2 exit honesty):
+
+1. Ship Full QVM (or equivalent Full programme) on the **product server wire**
+   with the same refuse/execute law as local Full, **or**
+2. Principal reclassifies enrich/within/full project for lane S as
+   `lane_local_only` / embedded-only Tier A (not silent demotion without note).
+
+Until one of those happens: corpus cases requiring Full semantics are
+`lane_id=embedded` only for competitive claims, or marked
+`server_lane_ineligible=true`.
+
+Stable residual code for wrong surface: existing Full-on-Core refuse
+(`refuse_full_language_on_core_wire` / `rql_feature_unavailable` family) —
+not empty complete pages.
+
 
 ---
 
@@ -129,10 +175,18 @@ projection remain Tier A blockers (SPEC amend in Q2) rather than demotion to Tie
 
 ---
 
-## 6. Exit (Q0.4)
+## 6. Exit
+
+### Q0.4 (first freeze)
 
 - [x] Lanes E and S frozen with transport honesty
 - [x] Tier C exclusions named with refusal owners/codes
 - [x] Alignment with existing ErrorCode + sql+ diagnostics
 - [x] Principal accept pack linked
-- [ ] Principal accept of Q0 freeze
+
+### Q0.A4 (this amendment)
+
+- [x] Full local-only vs op 118 refuse stated
+- [x] Lane S ineligibility for Full Tier-A competitive cells named
+- [x] **Q2-BLOCK-FULL-WIRE** blocker id recorded (not silent Tier C demotion)
+- [ ] Principal accept of amended freeze

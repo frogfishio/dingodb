@@ -59,7 +59,7 @@ syntax lands).
 | TA-BOOL | Boolean composition (and/or/not) | `exact` | implemented | Predicate / Core where | |
 | TA-PARAM | Named parameter binding `$` | `exact` | implemented | Core | Cursor param MAC residual separate |
 | TA-PROJ-FLAT | Flat projection | `exact` | implemented | Core project | On wire op 118 |
-| TA-PROJ-NEST | Nested / brace projection | `exact` | partial | Full RQL project | Local façade; wire refuse full language |
+| TA-PROJ-NEST | Nested / brace projection | `exact` | partial | Full RQL project | Local façade; wire refuse; **not lane-S pass** until Q2-BLOCK-FULL-WIRE |
 | TA-PROJ-COMP | Computed projection | `blocker` | absent | RQL_SPEC amend + Q2 | SPEC v1 excludes arbitrary computed proj; programme requires practical shaping |
 | TA-PROJ-COND | Conditional projection / shaping | `blocker` | absent | RQL_SPEC amend + Q2 | Same as computed for Gate-1 practical surface |
 | TA-ORDER | Deterministic multi-field order + immutable key tie-break | `exact` | implemented | Core order | |
@@ -68,10 +68,10 @@ syntax lands).
 | TA-IDX-EQ | Equality index eligibility | `exact` | partial | APB-7 index pushdown | Admitted paths only; scan fallback honest |
 | TA-IDX-RANGE | Range index eligibility | `exact` | partial | Planner / index | Residual multipage |
 | TA-IDX-COMPOUND | Compound index eligibility | `exact` | partial | Planner / index | |
-| TA-ENRICH-1 | Enrich `exactly_one` | `exact` | partial | Full enrich; ENR | Local path; **op 118 refuse**; root eq-index partial |
-| TA-ENRICH-OPT | Enrich `optional` | `exact` | partial | Full enrich | Same wire residual |
-| TA-ENRICH-MANY | Enrich `many` | `exact` | partial | Full enrich | Same; within still scan |
-| TA-WITHIN | Nested `within` carrier | `exact` | partial | Full within | Depth bound; wire refuse |
+| TA-ENRICH-1 | Enrich `exactly_one` | `exact` | partial | Full enrich; ENR | Local path; **op 118 refuse**; **lane S competitive pass forbidden** until Q2-BLOCK-FULL-WIRE (Q0.A4) |
+| TA-ENRICH-OPT | Enrich `optional` | `exact` | partial | Full enrich | Same; **not lane-S pass** until Q2-BLOCK-FULL-WIRE |
+| TA-ENRICH-MANY | Enrich `many` | `exact` | partial | Full enrich | Same; **not lane-S pass** until Q2-BLOCK-FULL-WIRE |
+| TA-WITHIN | Nested `within` carrier | `exact` | partial | Full within | Depth bound; wire refuse; **not lane-S pass** until Q2-BLOCK-FULL-WIRE |
 | TA-GROUP | Grouping | `blocker` | absent | RQL_SPEC amend; APB-8 lane | SPEC v1 excludes GROUP BY; programme Tier A requires it |
 | TA-AGG-COUNT | Count accumulator | `blocker` | absent | RQL_SPEC amend | sql+ refuses aggregates today |
 | TA-AGG-SUM | Sum accumulator | `blocker` | absent | RQL_SPEC amend | |

@@ -37,6 +37,26 @@ impl<'a> Collection<'a> {
         &self.name
     }
 
+    /// Durable 16-byte store identity for dialect HostCapabilities binding (Q0.A6).
+    fn durable_store_id_bytes(&mut self) -> Result<[u8; 16], Error> {
+        let id = match self.backend {
+            Backend::Local(s) => s.store_id(),
+            Backend::Remote(c) => c.store_id(),
+            #[cfg(feature = "cluster")]
+            Backend::Cluster(_) => {
+                return Err(Error::RemoteUnsupported(
+                    "portable dialect durable store id (cluster)",
+                ));
+            }
+        };
+        if id == [0u8; 16] {
+            return Err(Error::QueryInvalid(
+                "portable dialect requires non-zero durable store_id (Q0.A6)".into(),
+            ));
+        }
+        Ok(id)
+    }
+
     fn local_store(&mut self) -> Result<&Store, Error> {
         match self.backend {
             Backend::Local(s) => Ok(s),
@@ -508,13 +528,19 @@ impl<'a> Collection<'a> {
         }
     }
 
-    /// Execute a portable-filter dialect compile via Query VM (**RQL-DQ1**).
+    /// Execute a portable-filter dialect compile via Query VM (**RQL-DQ1** / **Q0.A6**).
     ///
-    /// Not the Heap-qualified execution path: [`CollectionId`] / [`HeapId`]
-    /// are deterministically derived from the collection name (stable across
-    /// calls, never persisted) so the compiled plan / cursor can bind and
-    /// page correctly. Product Heap query execution
-    /// ([`crate::app_v1::CollectionClient::rql`]) uses real durable ids.
+    /// Host identity for the plan/cursor is **store-scoped durable**:
+    /// - `HeapId` bytes = durable [`Store::store_id`] / remote store id (not a name hash)
+    /// - `CollectionId` = domain-separated id over `(store_id, collection name)`
+    ///
+    /// This is **not** a Heap-catalog collection UUID. Product Heap query
+    /// ([`crate::app_v1::CollectionClient::rql`]) binds the real
+    /// [`CollectionClient::id`] / [`CollectionClient::heap_id`]. Frontend
+    /// equivalence claims that require Heap catalog identity must use that path.
+    ///
+    /// Name-only synthetic ids (v1) are **removed** so two stores no longer
+    /// share dialect host ids for the same collection name.
     fn find_portable_with(
         &mut self,
         compiled: &crate::dialects::CompiledPortable,
@@ -526,16 +552,16 @@ impl<'a> Collection<'a> {
         use residiuum_heap::{CollectionId, HeapId};
 
         let predicate = compiled.filter.to_predicate()?;
-        let collection_id = CollectionId::from_bytes(dialect_uuid_bytes(
-            "residiuum-dialect-collection-id-v1",
+        let store_id = self.durable_store_id_bytes()?;
+        // Shape durable store_id into HeapId/CollectionId UUID constraints (v4/RFC).
+        let heap_id = HeapId::from_bytes(uuid_v4_shape(store_id)).map_err(|e| {
+            Error::QueryInvalid(format!("dialect heap id from store_id: {e}"))
+        })?;
+        let collection_id = CollectionId::from_bytes(dialect_collection_id_bytes(
+            store_id,
             &self.name,
         ))
         .map_err(|e| Error::QueryInvalid(format!("dialect collection id: {e}")))?;
-        let heap_id = HeapId::from_bytes(dialect_uuid_bytes(
-            "residiuum-dialect-heap-id-v1",
-            &self.name,
-        ))
-        .map_err(|e| Error::QueryInvalid(format!("dialect heap id: {e}")))?;
 
         let mut bindings = CollectionBindings::default();
         bindings.bind(&self.name, collection_id);
@@ -765,14 +791,24 @@ impl<'a> Collection<'a> {
     }
 }
 
-/// Deterministic UUIDv4-shaped bytes from a domain tag + collection name
-/// (**RQL-DQ1**: synthetic [`residiuum_heap::CollectionId`] / [`residiuum_heap::HeapId`]
-/// for portable-dialect Query VM execution over the legacy flat collection
-/// surface, which has no durable Heap-issued ids). Not security-sensitive;
-/// stable per name, never persisted or trusted as an authority boundary.
-fn dialect_uuid_bytes(domain: &str, name: &str) -> [u8; 16] {
+/// Store-scoped durable collection id for DX portable dialect (Q0.A6).
+///
+/// Domain-separated over the durable store id + collection name. Stable across
+/// reopens of the same store; does not collide across different stores that
+/// happen to share a collection name. Not a Heap-catalog UUID.
+
+/// Force RFC4122 version/variant bits so store-derived ids parse as HeapId/CollectionId.
+fn uuid_v4_shape(mut bytes: [u8; 16]) -> [u8; 16] {
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    bytes
+}
+
+fn dialect_collection_id_bytes(store_id: [u8; 16], name: &str) -> [u8; 16] {
     let mut hasher = blake3::Hasher::new();
-    hasher.update(domain.as_bytes());
+    hasher.update(b"residiuum-dialect-collection-id-v2");
+    hasher.update(&[0u8]);
+    hasher.update(&store_id);
     hasher.update(&[0u8]);
     hasher.update(name.as_bytes());
     let hash = hasher.finalize();

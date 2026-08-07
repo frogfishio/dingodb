@@ -1,5 +1,5 @@
-//! RQL-X5b: full-language execute only after ISA encode→decode.
-//! Non-empty enrich / within / project from ISA bytes (not CompiledRqlFull sidecar).
+//! Full-language product execute via QVM path (Q0.A5: RQB1 not public).
+//! Non-empty enrich / within / project from compile → execute_rql_full_with.
 
 use residiuum_heap::{
     mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, Constraints, DeploymentId,
@@ -7,9 +7,8 @@ use residiuum_heap::{
     TrustedInstant, VerifiedCertificate,
 };
 use residiuum_sdk::{
-    compile_rql_full, decode_isa, encode_full_program, execute_full_isa_with, execute_isa_bytes,
-    CollectionBindings, HeapClient, Parameters, QueryRunOptions, ResidiuumDeployment,
-    RqlFullExecuteOptions, RQL_FULL_PROFILE,
+    compile_rql_full, execute_rql_full_with, validate_qvm, CollectionBindings, HeapClient,
+    Parameters, QueryRunOptions, ResidiuumDeployment, RqlFullExecuteOptions, RQL_FULL_PROFILE,
 };
 use residiuum_store::{publish_staged_genesis, stage_heap_genesis, HeapMetaLayout};
 use std::sync::Arc;
@@ -98,7 +97,7 @@ const FULL_SRC: &str = r#"from orders
            page size 64"#;
 
 #[test]
-fn execute_full_isa_enrich_within_project_nonempty() {
+fn execute_full_qvm_enrich_within_project_nonempty() {
     let dir = tempdir().unwrap();
     let root = dir.path();
     let deployment = ResidiuumDeployment::create(root).unwrap();
@@ -118,50 +117,21 @@ fn execute_full_isa_enrich_within_project_nonempty() {
         bindings.bind(&info.name, info.collection_id);
     }
     let compiled = compile_rql_full(FULL_SRC, &bindings).expect("compile");
-    let isa = encode_full_program(
-        &compiled.base.plan,
-        compiled.base.budget,
-        &compiled.pipeline,
-        &compiled.project,
-    )
-    .expect("encode");
-    let prog = decode_isa(&isa).expect("decode");
-    assert!(prog.full.is_some());
-    assert_eq!(prog.full.as_ref().unwrap().pipeline, compiled.pipeline);
 
-    // Core entry refuses full-language ISA.
-    let mut base = client.open_collection("orders").unwrap();
-    let heap_id = base.heap_id();
-    let collection_id = base.id();
-    let err = execute_isa_bytes(
-        &mut base,
-        &isa,
-        &Parameters::default().values,
-        &QueryRunOptions::default(),
-        heap_id,
-        collection_id,
-    )
-    .unwrap_err();
-    assert!(
-        err.to_string().contains("execute_full_isa_with"),
-        "{err}"
-    );
-    drop(base);
-
-    let page = execute_full_isa_with(
+    let page = execute_rql_full_with(
         &mut client,
-        &isa,
+        FULL_SRC,
         &Parameters::default(),
         RqlFullExecuteOptions {
             query: QueryRunOptions::default(),
             force_enrich_scan: false,
         },
     )
-    .expect("execute_full_isa");
+    .expect("execute_rql_full");
 
     assert_eq!(page.profile, RQL_FULL_PROFILE);
-    assert_eq!(page.pipeline, prog.full.as_ref().unwrap().pipeline);
-    assert_eq!(page.project, prog.full.as_ref().unwrap().project);
+    assert_eq!(page.pipeline, compiled.pipeline);
+    assert_eq!(page.project, compiled.project);
     assert_eq!(page.rows.len(), 1);
     let row = &page.rows[0].1;
     assert_eq!(row["order_id"], "o1");
@@ -172,7 +142,7 @@ fn execute_full_isa_enrich_within_project_nonempty() {
 }
 
 #[test]
-fn corrupted_full_isa_refuses_execute() {
+fn corrupted_qvm_refuses_validate_and_full_still_runs() {
     let dir = tempdir().unwrap();
     let root = dir.path();
     let deployment = ResidiuumDeployment::create(root).unwrap();
@@ -191,26 +161,27 @@ fn corrupted_full_isa_refuses_execute() {
     for info in &infos {
         bindings.bind(&info.name, info.collection_id);
     }
-    let compiled = compile_rql_full(FULL_SRC, &bindings).expect("compile");
-    let mut isa = encode_full_program(
-        &compiled.base.plan,
-        compiled.base.budget,
-        &compiled.pipeline,
-        &compiled.project,
-    )
-    .expect("encode");
-    let last = isa.len() - 1;
-    isa[last] ^= 0x5a;
-
-    let err = execute_full_isa_with(
+    let _compiled = compile_rql_full(FULL_SRC, &bindings).expect("compile");
+    // Corrupt QVM magic / payload: validate_qvm must refuse (public product check).
+    let mut bad = b"QVM1".to_vec();
+    bad.extend_from_slice(&[0u8; 32]);
+    bad[4] ^= 0xff;
+    let err = validate_qvm(&bad).unwrap_err();
+    assert!(
+        err.to_string().contains("qvm")
+            || err.to_string().contains("QVM")
+            || err.to_string().contains("QueryInvalid")
+            || err.to_string().contains("magic")
+            || err.to_string().contains("invalid"),
+        "{err}"
+    );
+    // Product Full path still works for the same corpus source.
+    let page = execute_rql_full_with(
         &mut client,
-        &isa,
+        FULL_SRC,
         &Parameters::default(),
         RqlFullExecuteOptions::default(),
     )
-    .unwrap_err();
-    assert!(
-        err.to_string().contains("isa") || err.to_string().contains("QueryInvalid"),
-        "{err}"
-    );
+    .expect("full still runs");
+    assert_eq!(page.rows.len(), 1);
 }

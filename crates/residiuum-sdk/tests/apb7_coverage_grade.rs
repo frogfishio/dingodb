@@ -1,8 +1,7 @@
 //! APB-7 T9: QueryPage complete-by-default coverage grade.
 //!
-//! Holey-host cases go through **canonical ISA** (`encode_core_program` →
-//! `execute_isa_bytes`) — the sole product Core execute path (RQL-P0b; the
-//! demoted `execute_plan` orchestrator bypass is deleted, RQL-DEL1).
+//! Holey-host cases go through **QVM1 product path** (`QueryBytecodeV1::from_core_plan` →
+//! `execute_bytecode`) — sole public Core execute path (Q0.A5; RQB1 not public).
 
 use residiuum_heap::{
     mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, Constraints, DeploymentId,
@@ -10,8 +9,8 @@ use residiuum_heap::{
     TrustedInstant, VerifiedCertificate,
 };
 use residiuum_sdk::{
-    encode_core_program, execute_isa_bytes, CollectionBindings, CoveragePolicy, ErrorCode,
-    HeapClient, HostCapabilities, OrderDir, Parameters, PlanBuilder, QueryRunOptions,
+    execute_bytecode, CollectionBindings, CoveragePolicy, ErrorCode, HeapClient,
+    HostCapabilities, OrderDir, Parameters, PlanBuilder, QueryBytecodeV1, QueryRunOptions,
     ResidiuumDeployment,
 };
 use residiuum_store::{publish_staged_genesis, stage_heap_genesis, HeapMetaLayout};
@@ -162,11 +161,11 @@ fn complete_policy_fails_closed_on_holes() {
         .compile(&bindings)
         .unwrap();
     assert_eq!(plan.coverage, CoveragePolicy::Complete);
-    let isa = encode_core_program(&plan, None).expect("encode");
+    let bc = QueryBytecodeV1::from_core_plan(plan, None).expect("encode qvm");
 
-    let err = execute_isa_bytes(
+    let err = execute_bytecode(
         &mut host,
-        &isa,
+        &bc,
         &BTreeMap::new(),
         &QueryRunOptions::default(),
         heap,
@@ -198,11 +197,11 @@ fn incomplete_allowed_returns_page_with_hole_evidence() {
         .coverage(CoveragePolicy::IncompleteAllowed)
         .compile(&bindings)
         .unwrap();
-    let isa = encode_core_program(&plan, None).expect("encode");
+    let bc = QueryBytecodeV1::from_core_plan(plan, None).expect("encode qvm");
 
-    let page = execute_isa_bytes(
+    let page = execute_bytecode(
         &mut host,
-        &isa,
+        &bc,
         &BTreeMap::new(),
         &QueryRunOptions {
             coverage: CoveragePolicy::IncompleteAllowed,
