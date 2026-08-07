@@ -1,11 +1,11 @@
 # RQL-Q0 — Principal accept pack (re-issue after amendments)
 
-Status: **Q0.A10 closeout complete · awaiting principal package accept**  
+Status: **Q0.A11 CBL Full Sync landed · A12–A14 residual · awaiting principal package accept**  
 Package: RQL-Q0 Target and profile freeze  
 Board Features: first freeze `019fda4b-d981-7980-a283-549a7312f2a9` · amendment `019fdac4-1408-7321-8edc-a09851c9e656`  
 Authority: [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §3 exit · §11  
-Labor re-issue date: 2026-08-07 (Q0.A9 + **Q0.A10** closeout)  
-Tree baseline at re-issue: git `fd3c8b1db8da456c6293220f92c87daaa259dc7c` (A10 content) · VERSION **0.2.2** · accept on clean tip including this pack note · **git_dirty=false**
+Labor re-issue date: 2026-08-07 (Q0.A9 + **Q0.A10** + **Q0.A11** Full Sync)  
+Tree baseline at re-issue: git `e764d218af38f72058e68813a567ae25cd259331` (A10 reviewed tip) · A11 docs on dirty tip until A14 SHA fill · VERSION **0.2.2** · accept on clean tip · **git_dirty=false**
 
 **This file does not accept Q0.** Only the principal fills §5.  
 **Q1 corpus labor must not start until §5 records ACCEPT.**  
@@ -22,6 +22,7 @@ Doc map: [RQL_Q0_DOC_INDEX.md](./RQL_Q0_DOC_INDEX.md).
 | 2026-08-07 | First freeze labor complete | Pack v1; §5 blank |
 | 2026-08-07 | **Do not accept yet** | Principal review: material holes in qualification foundation |
 | 2026-08-07 | Amendment package A1–A8 labor | This re-issue (A9) incorporates required amendments |
+| 2026-08-07 | **ACCEPT_WITH_AMENDMENTS** | Principal: A1–A10 substance ok; hold for CBL Full Sync + RQB1 doc cleanup + named query defaults |
 
 ---
 
@@ -40,7 +41,7 @@ Doc map: [RQL_Q0_DOC_INDEX.md](./RQL_Q0_DOC_INDEX.md).
 
 | # | Artefact | Deliverable | Labor status |
 |---|---|---|---|
-| 1 | [RQL_Q0_ENV_MANIFEST.md](./RQL_Q0_ENV_MANIFEST.md) | Pins + full comparator config | **A1 amended**: Mongo **8.2.12**, driver `mongodb` **3.8.0**, CBL **4.1.0**, WC/RC/pool/TLS/auth frozen |
+| 1 | [RQL_Q0_ENV_MANIFEST.md](./RQL_Q0_ENV_MANIFEST.md) | Pins + full comparator config | **A1**: Mongo **8.2.12**, driver `mongodb` **3.8.0**, CBL **4.1.0**, WC/RC/pool/TLS/auth. **A11**: CBL `fullSync=true` + fingerprint `cbl_full_sync=true`; `native_default_non_equivalent` excluded from competitive aggregates |
 | 2 | [RQL_Q0_CAPABILITY_MATRIX.md](./RQL_Q0_CAPABILITY_MATRIX.md) | Tier A/B/C class + owner | **A3 amended**: DISTINCT Tier A; IN/string/array/arith/date/COUNT DISTINCT/pipeline rows |
 | 3 | [RQL_Q0_RESULT_EQUIVALENCE.md](./RQL_Q0_RESULT_EQUIVALENCE.md) | Equivalent-result laws | **A2 amended**: str/int/mn/agg/arr/cur laws; ban post-hoc exclusion |
 | 4 | [RQL_Q0_LANES_EXCLUSIONS.md](./RQL_Q0_LANES_EXCLUSIONS.md) | Lanes + exclusions + refusals | **A4 amended**: **Q2-BLOCK-FULL-WIRE** (Full not lane-S pass) |
@@ -66,7 +67,7 @@ Related honesty (not Q0 freeze exit criteria):
 
 Residiuum package pin: **0.2.2**, MSRV **1.88.0**, evidence `git_sha` = full HEAD (`git_dirty=false`).
 Residiuum writes: **`DurabilityMode::Durable`** ack before next step; product API **`CollectionClient::rql`** (not legacy-flat).
-CBL: autocommit single-doc saves; **sync off**; query compile outside timed windows.  
+CBL: autocommit single-doc saves; **replication/Sync Gateway off**; **Full Sync on** (`fullSync=true`, fingerprint `cbl_full_sync=true`); query compile outside timed windows.  
 Do not conflate lanes in portfolio scoring.
 
 ### 3.2 Capability law
@@ -157,6 +158,13 @@ Labor must leave this block blank.
 - [x] Scoreboard / Q1 unlock proposed (not applied as accept)
 - [x] §5 left blank for principal
 - [ ] Principal §5 filled (human)
+ 
+### Q0.A11 labor (ACCEPT_WITH_AMENDMENTS wave)
+
+- [x] A11: CBL Full Sync required for competitive cells; fingerprint `cbl_full_sync`
+- [ ] A12: stale live RQB1 documentation cleanup
+- [ ] A13: named query defaults freeze (not bare `Default()`)
+- [ ] A14: re-run gates + fill §5 SHA on clean tip
 
 ---
 

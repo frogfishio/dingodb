@@ -1,13 +1,13 @@
 # RQL-Q0 — Environment and engine manifest
 
-Status: **Q0.A10 closeout · principal freeze re-accept pending**
+Status: **Q0.A11 CBL Full Sync freeze · principal freeze re-accept pending**
 
 Package: RQL-Q0 deliverable 1 (amended)
 Authority: [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §3 ·
-principal review finding #1 (obsolete comparator pins)
-Board: Q0.1 (first freeze) · **Q0.A1** (this amendment)
+principal review finding #1 (obsolete comparator pins) · ACCEPT_WITH_AMENDMENTS #1 (CBL Full Sync)
+Board: Q0.1 (first freeze) · **Q0.A1** (pin bump) · **Q0.A11** (CBL Full Sync)
 Feature: `019fdac4-1408-7321-8edc-a09851c9e656`
-Effective: 2026-08-07 (A1 pin bump)
+Effective: 2026-08-07 (A1 pin bump; A11 Full Sync)
 
 This file freezes **what is compared** and **how environment is fingerprinted**.
 It does not claim performance competitiveness or Gate-1 pass.
@@ -141,7 +141,9 @@ must not mix bindings within a campaign without a named residual.
 | Encryption | **Off** (`DatabaseConfiguration.encryption_key` unset / null) |
 | Auto-commit / transactions | **No multi-statement transaction API** for baseline cells. Each mutation is an individual CBL document save that **auto-commits** to the local database file before the next harness step. Explicit `beginTransaction` / multi-doc transactions are **out of primary profile** unless the cell freezes them on both sides |
 | Sync / replication | **Off** — no replicator, no Sync Gateway, no peer sync, no continuous pull/push |
-| Full sync / revs | Default CBL 4.1.0 Community revision storage; do not enable experimental flags; record any non-default `DatabaseConfiguration` fields in fingerprint |
+| **Full Sync** (`DatabaseConfiguration.fullSync`) | **`true` for all primary-profile competitive CBL cells** (write-bearing and read-only). CBL default is **off**; Full Sync fsyncs transactional data against crash/power loss and is required so mixed 90/10 and 70/30 cells perform durability work equivalent to Residiuum `DurabilityMode::Durable` and Mongo `{w:1,j:true}`. Authority: [CBL database Full Sync](https://docs.couchbase.com/couchbase-lite/current/c/database.html). Record `cbl_full_sync=true` in the fingerprint. **Not** the same as Sync Gateway / replication (those stay off). |
+| Native-default residual | Opening CBL with Full Sync left at product default (**off**) is **not** competitive primary profile. If measured for diagnosis only, label the cell `native_default_non_equivalent` and **exclude** it from competitive aggregate scores |
+| Other `DatabaseConfiguration` | Do not enable experimental flags; record any additional non-default fields in fingerprint |
 | Concurrency | Single writer thread for load phase unless cell names multi-writer; record thread model |
 | Index build | Explicit indexes required by corpus only; build **outside** timed query windows; record definitions |
 | Query API | **SQL++** via CBL Query API and/or **QueryBuilder** as declared per corpus case — both target the same open CBL 4.1.0 database |
@@ -269,6 +271,7 @@ residiuum_durability       # Durable (required for primary write cells)
 residiuum_ack_boundary     # durable_ack_before_next_step
 cbl_autocommit             # true (baseline)
 cbl_sync_enabled           # false
+cbl_full_sync              # true (required for primary competitive CBL; Full Sync ≠ replication)
 query_compile_in_window    # false (compile outside timed window)
 seed
 campaign_id
@@ -292,7 +295,8 @@ cbl_binding                # c | java | csharp | ...
 cbl_binding_version        # must match product line unless residual named
 cbl_core_version           # from package / CBL_Version()
 cbl_encryption             # false for baseline
-cbl_database_config        # non-default fields only
+cbl_database_config        # non-default fields only (must include fullSync=true for competitive)
+cell_equivalence_class     # competitive | native_default_non_equivalent | residual_named
 ```
 
 Optional but recommended: free disk bytes, thermal state, power source, process
@@ -305,6 +309,8 @@ limits, active background agents.
 - mismatched engine pin vs this manifest (including **retired** 8.0.4 / 3.2.1);
 - wrong write/read concern vs §2.1.4 or undeclared pool/TLS/auth;
 - CBL binding/core not recorded or mixed within a campaign without residual;
+- competitive CBL cell with `cbl_full_sync` not `true` (weaker durability than Residiuum Durable / Mongo j:true);
+- including a `native_default_non_equivalent` cell in competitive aggregate scores;
 - thermal/power throttling observed mid-run when the harness can detect it;
 - ENOSPC or media errors;
 - mixed lanes collapsed into one score.
@@ -345,7 +351,9 @@ Aligns with performance harness environment honesty
 - [x] Exact Residiuum product API (`CollectionClient::rql` / op 118) frozen (Q0.A10)
 - [x] Exact Residiuum durability `DurabilityMode::Durable` + ack boundary (Q0.A10)
 - [x] Exact CBL autocommit + sync-off + compile-outside-window (Q0.A10)
-- [ ] Principal accept of amended freeze (package-level Q0 after A10 closeout)
+- [x] Exact CBL Full Sync on (`DatabaseConfiguration.fullSync = true`) + fingerprint `cbl_full_sync=true` (Q0.A11)
+- [x] Native-default CBL residual class `native_default_non_equivalent` excluded from competitive aggregates (Q0.A11)
+- [ ] Principal accept of amended freeze (package-level Q0 after A11–A14 closeout)
 
 ---
 
@@ -355,3 +363,4 @@ Aligns with performance harness environment honesty
 - MongoDB Rust driver 3.8.0: https://crates.io/crates/mongodb/3.8.0
 - Couchbase Lite 4.1: https://docs.couchbase.com/couchbase-lite/current/cbl-whatsnew.html
 - Couchbase Lite C install 4.1.0: https://docs.couchbase.com/couchbase-lite/current/c/gs-install.html
+- Couchbase Lite Full Sync (C): https://docs.couchbase.com/couchbase-lite/current/c/database.html
