@@ -453,7 +453,7 @@ does Atomics become the active critical-path programme.
 | Package | State | Principal exit decision |
 |---|---|---|
 | RQL-Q0 Target freeze | **`accept`** (2026-08-07; SHA e1f5c670…) | Tier and comparator profile accepted |
-| RQL-Q1 Practical corpus | `active` (Q1.1 scaffold; Q1.2–Q1.4 open) | Immutable corpus accepted |
+| RQL-Q1 Practical corpus | `active` (Q1.2 Commerce+Messaging bulk; Q1.3–Q1.4 open) | Immutable corpus accepted |
 | RQL-Q2 Capability closure | `backlog` | Tier A 100%; one QVM runtime |
 | RQL-Q3 Semantic qualification | `backlog` | Oracle/equivalence/damage green |
 | RQL-Q4 Harness | `backlog` | Cross-engine harness accepted |
@@ -473,7 +473,7 @@ Product project: `019fda36-f8f4-7f40-9a9b-a86cfae1466e`
 | Decision-0 residual (pre-Q2 honesty) | `019fda4c-a6f2-7932-a9d7-6e04400fd3df` | D0.1–D0.2 labor cards board `done`; **Decision 0 still OPEN** (principal disposition required); blocks Q2 one-runtime exit claim |
 | RQL-Q0 Target freeze (first freeze) | `019fda4b-d981-7980-a283-549a7312f2a9` | Q0.1–Q0.8 labor complete/`in_review`; **not package accept** |
 | RQL-Q0 Amendment package | `019fdac4-1408-7321-8edc-a09851c9e656` | A1–A15 complete; package ACCEPT recorded |
-| RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | Q1.1 scaffold `in_review`; claim Q1.2 next |
+| RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | Q1.2 Commerce+Messaging `in_review`; claim Q1.3 next |
 | RQL-Q2 Capability closure | `019fda4c-1227-7c93-b7e6-292141ec7a78` | backlog; spawn gap packages after audit |
 | RQL-Q3 Semantic qualification | `019fda4c-5994-77e2-a2c9-aaa0c3097b29` | backlog |
 | RQL-Q4 Harness | `019fda4c-59bf-7320-a0cb-35f92c50fc45` | backlog (scaffold allowed; no competitive claims pre-Q3) |
@@ -513,7 +513,7 @@ features are archived or package stages change after principal accept.
 
 1. **Done:** Q0 ACCEPT (2026-08-07); Q1.1 corpus schema scaffold landed
    (`spec/rql/qualification/corpus-v1/` + [RQL_Q1_CORPUS.md](./RQL_Q1_CORPUS.md)).
-2. **Labor next:** Q1.2 Commerce + Messaging fixtures (then Q1.3, Q1.4 floors).
+2. **Labor next:** Q1.3 Directory + Telemetry + Project management fixtures (then Q1.4 floors).
 3. After Q1 package accept: capability audit → Q2 from actual failures (include
    Full-over-wire blocker from Q0.A4).
 4. Decision 0 residual: one product QVM path is the close test; still

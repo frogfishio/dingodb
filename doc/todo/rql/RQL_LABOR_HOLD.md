@@ -74,7 +74,7 @@ Q1.1–Q1.4 are stage **`todo`** and **claimable** after Q0 ACCEPT:
 | Task | Claim policy |
 |---|---|
 | Q1.1 schema | **Claim next** (scaffolding) |
-| Q1.2 Commerce/Messaging | After Q1.1 |
+| Q1.2 Commerce/Messaging | landed → in_review |
 | Q1.3 Directory/Telemetry/Project | After Q1.1 |
 | Q1.4 floors + comparator | After Q1.2–Q1.3 bulk |
 

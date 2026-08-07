@@ -1,7 +1,7 @@
 {
   "format": "residiuum-rql-q1-corpus-v1",
   "profile": "rql-gate1-practical-corpus-v1",
-  "corpus_version": "rql-q1-corpus-v0.1.0",
+  "corpus_version": "rql-q1-corpus-v0.2.0",
   "authority": {
     "programme": "doc/todo/rql/RQL_QUERY_QUALIFICATION_PROGRAM.md",
     "section": "4",
@@ -13,7 +13,7 @@
   "amendment_policy": {
     "requires_principal_review": true,
     "process_doc": "doc/todo/rql/RQL_Q1_CORPUS.md",
-    "semver_rules": "MAJOR: remove/redefine frozen case meaning or floor policy. MINOR: add cases or non-breaking fields after principal accept. PATCH: typos, notes, generator params that do not change intention/result. Never silently edit a frozen case_id in place — archive + replace under amendment log."
+    "semver_rules": "MAJOR: remove/redefine frozen case meaning or floor policy. MINOR: add cases or non-breaking fields after principal accept. PATCH: typos, notes, generator params that do not change intention/result. Never silently edit a frozen case_id in place \u2014 archive + replace under amendment log."
   },
   "floor_policy": {
     "measure": "count_cases_with_family_tag",
@@ -37,7 +37,4205 @@
       "case_ids_added": [],
       "case_ids_changed": [],
       "case_ids_archived": []
+    },
+    {
+      "corpus_version": "rql-q1-corpus-v0.2.0",
+      "date": "2026-08-07",
+      "summary": "Q1.2 Commerce + Messaging: seeded generators + Tier-A intention cases (draft). Dogfood: invented_honest_label (no in-tree dogfood). Floors still unenforced.",
+      "principal_disposition": "pending",
+      "case_ids_added": [
+        "commerce.orders.eq_status_paid",
+        "commerce.orders.key_get",
+        "commerce.orders.range_amount",
+        "commerce.orders.compound_region_status",
+        "commerce.orders.in_regions",
+        "commerce.orders.neq_cancelled",
+        "commerce.products.eq_category_widget",
+        "commerce.inventory.range_qty",
+        "commerce.orders.missing_deleted_at",
+        "commerce.orders.null_notes",
+        "commerce.orders.present_customer_id",
+        "commerce.orders.array_tags_empty",
+        "commerce.orders.array_tags_contains",
+        "commerce.products.missing_attrs",
+        "commerce.orders.project_id_status",
+        "commerce.orders.project_nested_customer",
+        "commerce.orders.project_computed_amount_band",
+        "commerce.orders.order_created_desc",
+        "commerce.orders.topk_recent_10",
+        "commerce.orders.page_first",
+        "commerce.orders.page_resume",
+        "commerce.products.order_price_asc",
+        "commerce.orders.enrich_customer_exactly_one",
+        "commerce.orders.enrich_line_items_many",
+        "commerce.line_items.enrich_product_optional",
+        "commerce.orders.group_region_count",
+        "commerce.orders.group_status_sum_amount",
+        "commerce.orders.agg_min_max_amount",
+        "commerce.orders.agg_avg_amount_paid",
+        "commerce.orders.budget_documents",
+        "commerce.orders.coverage_incomplete",
+        "commerce.orders.refuse_offset_discard",
+        "commerce.customers.eq_tier_gold",
+        "messaging.messages.eq_conversation",
+        "messaging.messages.unread",
+        "messaging.messages.null_body",
+        "messaging.messages.has_attachments",
+        "messaging.messages.recent_topk",
+        "messaging.messages.conversation_history_page",
+        "messaging.messages.conversation_history_resume",
+        "messaging.messages.project_snippet",
+        "messaging.conversations.eq_kind_direct",
+        "messaging.conversations.recent_activity_order",
+        "messaging.participants.eq_user",
+        "messaging.participants.owners_only",
+        "messaging.participants.muted",
+        "messaging.messages.enrich_conversation_exactly_one",
+        "messaging.conversations.enrich_participants_many",
+        "messaging.messages.group_unread_by_conversation",
+        "messaging.messages.group_sender_count",
+        "messaging.messages.budget_cancel_surface",
+        "messaging.messages.consistency_available",
+        "messaging.messages.sender_param",
+        "messaging.conversations.project_title_kind"
+      ],
+      "case_ids_changed": [],
+      "case_ids_archived": []
     }
   ],
-  "cases": []
+  "cases": [
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "All orders where status == \"paid\"; bag of full documents; optimiser-independent."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.eq_status_paid",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "plain_english_intent": "Return all orders with status equal to paid as an unordered multiset.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders where status = \"paid\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "status": "paid"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders WHERE status = 'paid'"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "orders(status)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Singleton document with _key == \"o-0007\" if present else empty."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.key_get",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-SEL-KEY"
+      ],
+      "plain_english_intent": "Fetch the single order document with key o-0007.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "singleton"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders where _key = \"o-0007\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "_id": "o-0007"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders WHERE META().id = 'o-0007'"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "point",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Orders where amount is a number and 100 <= amount < 500; wrong-type amount values excluded."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.range_amount",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-SEL-RANGE"
+      ],
+      "plain_english_intent": "Return orders whose numeric amount is in [100, 500).",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders where amount >= 100 and amount < 500"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "amount": {
+                "$gte": 100,
+                "$lt": 500
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders WHERE amount >= 100 AND amount < 500"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "orders(amount)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "wrong_type"
+          ],
+          "notes": "string amount rows must not match numeric range"
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Orders with region==\"us\" AND status==\"open\"."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.compound_region_status",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-SEL-COMPOUND"
+      ],
+      "plain_english_intent": "Return orders in region us with status open.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders where region = \"us\" and status = \"open\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "region": "us",
+              "status": "open"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders WHERE region = 'us' AND status = 'open'"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "orders(region,status)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Orders with region in {\"us\",\"eu\"}."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.in_regions",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "plain_english_intent": "Return orders whose region is us or eu.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 2,
+        "params": {
+          "n_orders": 48
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders where region in [\"us\", \"eu\"]"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "region": {
+                "$in": [
+                  "us",
+                  "eu"
+                ]
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders WHERE region IN ['us', 'eu']"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "orders(region)"
+        ]
+      },
+      "selectivity_class": "high",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Orders with status != \"cancelled\"."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.neq_cancelled",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "plain_english_intent": "Return orders whose status is not cancelled.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders where status != \"cancelled\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "status": {
+                "$ne": "cancelled"
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders WHERE status != 'cancelled'"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "orders(status)"
+        ]
+      },
+      "selectivity_class": "high",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Products with category==\"widget\" AND active==true."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.products.eq_category_widget",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "plain_english_intent": "Return products in category widget that are active.",
+      "fixture": {
+        "generator_id": "commerce.products_v1",
+        "seed": 3,
+        "params": {
+          "n_products": 48
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from products where category = \"widget\" and active = true"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "category": "widget",
+              "active": true
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM products WHERE category = 'widget' AND active = true"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "products(category,active)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Inventory with warehouse==\"w1\" AND qty_on_hand >= 100."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.inventory.range_qty",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-SEL-RANGE"
+      ],
+      "plain_english_intent": "Return inventory rows with qty_on_hand >= 100 in warehouse w1.",
+      "fixture": {
+        "generator_id": "commerce.inventory_v1",
+        "seed": 4,
+        "params": {
+          "n_products": 48
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from inventory where warehouse = \"w1\" and qty_on_hand >= 100"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "warehouse": "w1",
+              "qty_on_hand": {
+                "$gte": 100
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM inventory WHERE warehouse = 'w1' AND qty_on_hand >= 100"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "inventory(warehouse,qty_on_hand)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Orders where field deleted_at is absent; null deleted_at does not match missing()."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.missing_deleted_at",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "capability_ids": [
+        "TA-PRED-MISSING"
+      ],
+      "plain_english_intent": "Return live orders where deleted_at field is missing (not null).",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders where missing(deleted_at)"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "deleted_at": {
+                "$exists": false
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders WHERE deleted_at IS MISSING"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "high",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "missing",
+            "null"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Orders with notes == null (field present)."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.null_notes",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "capability_ids": [
+        "TA-PRED-NULL"
+      ],
+      "plain_english_intent": "Return orders whose notes field is present and null.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders where notes is null"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "notes": null
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders WHERE notes IS NULL"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "null"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Orders where customer.id path is present (customer object not omitted)."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.present_customer_id",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "capability_ids": [
+        "TA-PRED-NESTED"
+      ],
+      "plain_english_intent": "Return orders that have nested customer.id present.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders where present(customer.id)"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "customer.id": {
+                "$exists": true
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders WHERE customer.id IS VALUED"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "orders(customer.id)"
+        ]
+      },
+      "selectivity_class": "high",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "missing",
+            "nested"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Orders where tags is an array of length 0."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.array_tags_empty",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "capability_ids": [
+        "TA-PRED-ARRAY"
+      ],
+      "plain_english_intent": "Return orders whose tags array is empty.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders where tags = []"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "tags": []
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders WHERE ARRAY_LENGTH(tags) = 0"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "array_empty"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Orders where tags is array and contains element \"sku\"."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.array_tags_contains",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "capability_ids": [
+        "TA-PRED-ARRAY"
+      ],
+      "plain_english_intent": "Return orders whose tags array contains the string sku.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders where contains(tags, \"sku\")"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "tags": "sku"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders WHERE ANY t IN tags SATISFIES t = 'sku' END"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "array_dup",
+            "array_empty"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Products where attrs field is absent."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.products.missing_attrs",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "capability_ids": [
+        "TA-PRED-MISSING",
+        "TA-PRED-NESTED"
+      ],
+      "plain_english_intent": "Return products missing the nested attrs object.",
+      "fixture": {
+        "generator_id": "commerce.products_v1",
+        "seed": 3,
+        "params": {
+          "n_products": 48
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from products where missing(attrs)"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "attrs": {
+                "$exists": false
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM products WHERE attrs IS MISSING"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "missing",
+            "nested"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "For status==paid, emit documents with only identity key + status fields; no other payload fields."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.project_id_status",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "projection_computed_conditional",
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-PROJ-FLAT"
+      ],
+      "plain_english_intent": "Return paid orders projected to id and status only.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders where status = \"paid\" project _key, status"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "status": "paid"
+            },
+            "projection": {
+              "_id": 1,
+              "status": 1
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, status FROM orders WHERE status = 'paid'"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "orders(status)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Each result has _key and customer.id when present; missing customer yields absent nested field per equivalence profile."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.project_nested_customer",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "capability_ids": [
+        "TA-PROJ-NESTED"
+      ],
+      "plain_english_intent": "Project orders to _key and nested customer.id.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders project _key, customer.id"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "projection": {
+              "_id": 1,
+              "customer.id": 1
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, customer.id FROM orders"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "broad",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "missing",
+            "nested"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "amount_band = low if amount<100 else mid if amount<500 else high; wrong-type amount => null band or stable refusal \u2014 freeze in Q2/SPEC."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.project_computed_amount_band",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "capability_ids": [
+        "TA-PROJ-COMP",
+        "TA-PROJ-COND"
+      ],
+      "plain_english_intent": "Project each order to _key and a computed amount_band (low/mid/high) from numeric amount.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from orders project _key, amount_band = if amount < 100 then \"low\" else if amount < 500 then \"mid\" else \"high\""
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$project": {
+                "_id": 1,
+                "amount_band": {
+                  "$switch": {
+                    "branches": [
+                      {
+                        "case": {
+                          "$lt": [
+                            "$amount",
+                            100
+                          ]
+                        },
+                        "then": "low"
+                      },
+                      {
+                        "case": {
+                          "$lt": [
+                            "$amount",
+                            500
+                          ]
+                        },
+                        "then": "mid"
+                      }
+                    ],
+                    "default": "high"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, CASE WHEN amount < 100 THEN 'low' WHEN amount < 500 THEN 'mid' ELSE 'high' END AS amount_band FROM orders"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "broad",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "wrong_type"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "notes": "Tier A intention; RQL computed/conditional projection is Q0 blocker residual until Q2/SPEC amend."
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Total order: created_at desc, _key asc; bag becomes sequence."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.order_created_desc",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "capability_ids": [
+        "TA-ORDER"
+      ],
+      "plain_english_intent": "Return all orders ordered by created_at descending with key tie-break ascending.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc",
+        "nulls": "last"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders order by created_at desc, _key asc nulls last"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "sort": {
+              "created_at": -1,
+              "_id": 1
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders ORDER BY created_at DESC, META().id ASC"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "orders(created_at)"
+        ]
+      },
+      "selectivity_class": "broad",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "First 10 of total order created_at desc, _key asc."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.topk_recent_10",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "capability_ids": [
+        "TA-TOPK"
+      ],
+      "plain_english_intent": "Return the 10 most recent orders by created_at desc with key tie-break.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders order by created_at desc, _key asc limit 10"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "sort": {
+              "created_at": -1,
+              "_id": 1
+            },
+            "limit": 10
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders ORDER BY created_at DESC, META().id ASC LIMIT 10"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "orders(created_at)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Rows 0..7 of created_at desc,_key asc; continuation token encodes last sort key."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.page_first",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "plain_english_intent": "First page of orders by created_at desc, page size 8.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders order by created_at desc, _key asc page size 8"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "sort": {
+              "created_at": -1,
+              "_id": 1
+            },
+            "limit": 8
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders ORDER BY created_at DESC, META().id ASC LIMIT 8"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "orders(created_at)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": true,
+          "page_size": 8,
+          "kinds": [
+            "first_page"
+          ]
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Rows 8..15 of same total order; pages concatenate to unpaged; no offset discard."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.page_resume",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "plain_english_intent": "Resume pagination after the first page of orders (page size 8) under same order.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders order by created_at desc, _key asc page size 8 after $cursor"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "sort": {
+              "created_at": -1,
+              "_id": 1
+            },
+            "limit": 8,
+            "notes": "resume via min bound on sort keys from prior page"
+          },
+          "notes": "cursor form is lane-local encoding"
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders WHERE (created_at, META().id) < ($last_created, $last_id) ORDER BY created_at DESC, META().id ASC LIMIT 8",
+          "notes": "tuple compare sketch"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "orders(created_at)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": true,
+          "page_size": 8,
+          "kinds": [
+            "resume_after",
+            "deep_page"
+          ]
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "active==true; order price_cents asc, sku asc."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.products.order_price_asc",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "order_topk_cursor",
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-ORDER"
+      ],
+      "plain_english_intent": "Active products ordered by price_cents ascending with sku tie-break.",
+      "fixture": {
+        "generator_id": "commerce.products_v1",
+        "seed": 3,
+        "params": {
+          "n_products": 48
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "sku asc"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from products where active = true order by price_cents asc, sku asc"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "active": true
+            },
+            "sort": {
+              "price_cents": 1,
+              "sku": 1
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM products WHERE active = true ORDER BY price_cents ASC, sku ASC"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "products(price_cents)"
+        ]
+      },
+      "selectivity_class": "high",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Join orders.customer.id -> customers._key cardinality exactly_one; orders missing customer excluded or refuse per SPEC freeze."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.enrich_customer_exactly_one",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "capability_ids": [
+        "TA-ENRICH-1"
+      ],
+      "plain_english_intent": "For each order with customer.id, enrich exactly one customer document; fail cardinality if 0 or many.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 5,
+        "params": {
+          "n_orders": 32,
+          "n_customers": 16
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from orders where present(customer.id) enrich customer from customers on customer.id = customers._key exactly_one"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$match": {
+                "customer.id": {
+                  "$exists": true
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "customers",
+                "localField": "customer.id",
+                "foreignField": "_id",
+                "as": "customer_doc"
+              }
+            },
+            {
+              "$match": {
+                "customer_doc": {
+                  "$size": 1
+                }
+              }
+            },
+            {
+              "$unwind": "$customer_doc"
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT o.*, c FROM orders AS o JOIN customers AS c ON o.customer.id = META(c).id"
+        }
+      },
+      "indexes": {
+        "required": [
+          "customers(_key)"
+        ],
+        "optional": [
+          "orders(customer.id)"
+        ]
+      },
+      "selectivity_class": "high",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "missing",
+            "nested"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "notes": "Q0 partial enrich; wire refuse residual. Intention frozen for Q2."
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "For each order, attach array of line_items where order_id matches; empty array ok."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.enrich_line_items_many",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "capability_ids": [
+        "TA-ENRICH-MANY"
+      ],
+      "plain_english_intent": "Enrich each order with many line_items (0..N allowed).",
+      "fixture": {
+        "generator_id": "commerce.line_items_v1",
+        "seed": 6,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from orders enrich items from line_items on orders._key = line_items.order_id many"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$lookup": {
+                "from": "line_items",
+                "localField": "_id",
+                "foreignField": "order_id",
+                "as": "items"
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT o.*, (SELECT RAW li FROM line_items li WHERE li.order_id = META(o).id) AS items FROM orders o"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "line_items(order_id)"
+        ]
+      },
+      "selectivity_class": "broad",
+      "cardinality_class": "high",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Left enrich product by product_id; missing product yields null product field, not drop."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.line_items.enrich_product_optional",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "capability_ids": [
+        "TA-ENRICH-OPT"
+      ],
+      "plain_english_intent": "Enrich line items with optional product (0 or 1).",
+      "fixture": {
+        "generator_id": "commerce.line_items_v1",
+        "seed": 6,
+        "params": {
+          "n_orders": 32,
+          "n_products": 48
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from line_items enrich product from products on line_items.product_id = products._key optional"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$lookup": {
+                "from": "products",
+                "localField": "product_id",
+                "foreignField": "_id",
+                "as": "product"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$product",
+                "preserveNullAndEmptyArrays": true
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT li.*, p FROM line_items li LEFT JOIN products p ON li.product_id = META(p).id"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "products(_key)"
+        ]
+      },
+      "selectivity_class": "broad",
+      "cardinality_class": "high",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "One row per distinct region with count(*) of orders; optimiser-independent."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.group_region_count",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "plain_english_intent": "Count orders per region.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "set"
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from orders group by region project region, count() as order_count"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$group": {
+                "_id": "$region",
+                "order_count": {
+                  "$sum": 1
+                }
+              }
+            },
+            {
+              "$project": {
+                "region": "$_id",
+                "order_count": 1,
+                "_id": 0
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT region, COUNT(*) AS order_count FROM orders GROUP BY region"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "orders(region)"
+        ]
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "notes": "Q0 blocker aggregates; intention retained for Gate-1 Tier A."
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Per status, sum of amount where amount is number; exclude wrong-type amounts from sum."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.group_status_sum_amount",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-SUM"
+      ],
+      "plain_english_intent": "Sum numeric amount of orders grouped by status.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "set"
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from orders group by status project status, sum(amount) as total_amount"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$match": {
+                "amount": {
+                  "$type": "number"
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": "$status",
+                "total_amount": {
+                  "$sum": "$amount"
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT status, SUM(amount) AS total_amount FROM orders WHERE ISNUMBER(amount) GROUP BY status"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "orders(status)"
+        ]
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "wrong_type"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Singleton {min_amount, max_amount} over numeric amounts only."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.agg_min_max_amount",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "capability_ids": [
+        "TA-AGG-MIN",
+        "TA-AGG-MAX"
+      ],
+      "plain_english_intent": "Global min and max numeric amount across all orders.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "singleton"
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from orders project min(amount) as min_amount, max(amount) as max_amount"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$match": {
+                "amount": {
+                  "$type": "number"
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": null,
+                "min_amount": {
+                  "$min": "$amount"
+                },
+                "max_amount": {
+                  "$max": "$amount"
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT MIN(amount) AS min_amount, MAX(amount) AS max_amount FROM orders WHERE ISNUMBER(amount)"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "not_applicable",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "wrong_type"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "avg(amount) where status==paid and amount is number."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.orders.agg_avg_amount_paid",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "group_aggregate",
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-AGG-AVG"
+      ],
+      "plain_english_intent": "Average numeric amount for paid orders.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "singleton"
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from orders where status = \"paid\" project avg(amount) as avg_amount"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$match": {
+                "status": "paid",
+                "amount": {
+                  "$type": "number"
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": null,
+                "avg_amount": {
+                  "$avg": "$amount"
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT AVG(amount) AS avg_amount FROM orders WHERE status = 'paid' AND ISNUMBER(amount)"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "orders(status)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "not_applicable",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "wrong_type"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "At most 10 documents examined/returned per budget semantics; coverage incomplete when n_orders>10."
+      },
+      "exclusion_or_refusal": {
+        "kind": "predeclared_native_diff",
+        "code": "Q0-BUDGET-NATIVE",
+        "reason": "Budget+coverage is Residiuum-native; Mongo/CBL forms are non-equivalent approximations for harness awareness only."
+      },
+      "case_id": "commerce.orders.budget_documents",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "capability_ids": [
+        "TA-BUDGET"
+      ],
+      "plain_english_intent": "Scan orders with document budget 10; stop with partial coverage when budget exhausted.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders budget { documents: 10, bytes: 1048576, result_bytes: 65536 }"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "limit": 10
+          },
+          "notes": "Mongo limit is not Residiuum budget coverage; lane-local approximation"
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders LIMIT 10",
+          "notes": "CBL lacks Residiuum budget/coverage; approximate"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Results may be partial; coverage flag incomplete is part of answer; no false completeness."
+      },
+      "exclusion_or_refusal": {
+        "kind": "predeclared_native_diff",
+        "code": "Q0-COVERAGE-NATIVE",
+        "reason": "Coverage is Residiuum-native; comparators excluded for competitive equality."
+      },
+      "case_id": "commerce.orders.coverage_incomplete",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "capability_ids": [
+        "TA-COVERAGE"
+      ],
+      "plain_english_intent": "Query orders allowing incomplete coverage under damage/budget.",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from orders coverage incomplete"
+        },
+        "mongo": {
+          "status": "deliberate_exclusion",
+          "notes": "No coverage channel",
+          "refusal_code": "Q0-COVERAGE-NATIVE"
+        },
+        "cbl": {
+          "status": "deliberate_exclusion",
+          "notes": "No coverage channel",
+          "refusal_code": "Q0-COVERAGE-NATIVE"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "broad",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "stable_refusal",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Stable refusal: offset/skip discard not admitted on Gate-1 competitive path; use cursor after."
+      },
+      "exclusion_or_refusal": {
+        "kind": "stable_refusal",
+        "code": "rql_offset_discard_unsupported",
+        "reason": "Programme forbids offset discard for Tier A cursor semantics."
+      },
+      "case_id": "commerce.orders.refuse_offset_discard",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "budget_coverage_damage_refusal",
+        "order_topk_cursor"
+      ],
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "plain_english_intent": "Refuse SQL-style OFFSET discard pagination as a product path (cursor required).",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 1,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "refusal_unordered",
+        "multiplicity": "empty_ok"
+      },
+      "implementations": {
+        "rql": {
+          "status": "stable_refusal",
+          "refusal_code": "rql_offset_discard_unsupported",
+          "source": "from orders order by created_at desc offset 8 limit 8"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "sort": {
+              "created_at": -1
+            },
+            "skip": 8,
+            "limit": 8
+          },
+          "notes": "Mongo can skip; competitive cell excludes skip as Residiuum equivalent"
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM orders ORDER BY created_at DESC OFFSET 8 LIMIT 8",
+          "notes": "CBL OFFSET exists; not Residiuum-equivalent product path"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "not_applicable",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": true,
+          "kinds": [
+            "resume_after"
+          ]
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Customers with tier==\"gold\"."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "commerce.customers.eq_tier_gold",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "plain_english_intent": "Return gold-tier customers.",
+      "fixture": {
+        "generator_id": "commerce.customers_v1",
+        "seed": 7,
+        "params": {
+          "n_customers": 16
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from customers where tier = \"gold\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "tier": "gold"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM customers WHERE tier = 'gold'"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "customers(tier)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Messages with conversation_id==\"cv-0003\"."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.messages.eq_conversation",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "plain_english_intent": "Return all messages in conversation cv-0003.",
+      "fixture": {
+        "generator_id": "messaging.messages_v1",
+        "seed": 10,
+        "params": {
+          "n_messages": 96,
+          "n_conversations": 24
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from messages where conversation_id = \"cv-0003\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "conversation_id": "cv-0003"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM messages WHERE conversation_id = 'cv-0003'"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "messages(conversation_id)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Messages where read_at is null OR missing(read_at)."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.messages.unread",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array",
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-PRED-NULL",
+        "TA-PRED-MISSING"
+      ],
+      "plain_english_intent": "Return unread messages: read_at is null or missing.",
+      "fixture": {
+        "generator_id": "messaging.messages_v1",
+        "seed": 10,
+        "params": {
+          "n_messages": 96
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from messages where read_at is null or missing(read_at)"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "$or": [
+                {
+                  "read_at": null
+                },
+                {
+                  "read_at": {
+                    "$exists": false
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM messages WHERE read_at IS NULL OR read_at IS MISSING"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "messages(read_at)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "null",
+            "missing"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Messages with body == null."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.messages.null_body",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "capability_ids": [
+        "TA-PRED-NULL"
+      ],
+      "plain_english_intent": "Return messages with null body (placeholder/deleted body).",
+      "fixture": {
+        "generator_id": "messaging.messages_v1",
+        "seed": 10,
+        "params": {
+          "n_messages": 96
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from messages where body is null"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "body": null
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM messages WHERE body IS NULL"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "null"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Messages where len(attachments) >= 1."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.messages.has_attachments",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array"
+      ],
+      "capability_ids": [
+        "TA-PRED-ARRAY"
+      ],
+      "plain_english_intent": "Return messages whose attachments array is non-empty.",
+      "fixture": {
+        "generator_id": "messaging.messages_v1",
+        "seed": 10,
+        "params": {
+          "n_messages": 96
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from messages where attachments != []"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "attachments.0": {
+                "$exists": true
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM messages WHERE ARRAY_LENGTH(attachments) > 0"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "array_empty"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Top 20 by sent_at desc, _key asc tie-break."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.messages.recent_topk",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "capability_ids": [
+        "TA-TOPK",
+        "TA-ORDER"
+      ],
+      "plain_english_intent": "Return the 20 most recent messages globally by sent_at desc.",
+      "fixture": {
+        "generator_id": "messaging.messages_v1",
+        "seed": 10,
+        "params": {
+          "n_messages": 96
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from messages order by sent_at desc, _key asc limit 20"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "sort": {
+              "sent_at": -1,
+              "_id": 1
+            },
+            "limit": 20
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM messages ORDER BY sent_at DESC, META().id ASC LIMIT 20"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "messages(sent_at)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "conversation_id==cv-0001; order sent_at asc,_key asc; first 16 rows."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.messages.conversation_history_page",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "order_topk_cursor",
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-CURSOR",
+        "TA-ORDER"
+      ],
+      "plain_english_intent": "First page of message history for a conversation ordered by sent_at ascending.",
+      "fixture": {
+        "generator_id": "messaging.messages_v1",
+        "seed": 10,
+        "params": {
+          "n_messages": 96,
+          "n_conversations": 24
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from messages where conversation_id = \"cv-0001\" order by sent_at asc, _key asc page size 16"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "conversation_id": "cv-0001"
+            },
+            "sort": {
+              "sent_at": 1,
+              "_id": 1
+            },
+            "limit": 16
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM messages WHERE conversation_id = 'cv-0001' ORDER BY sent_at ASC, META().id ASC LIMIT 16"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "messages(conversation_id,sent_at)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": true,
+          "page_size": 16,
+          "kinds": [
+            "first_page"
+          ]
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Next 16 rows after prior page under same order; concat equals unpaged."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.messages.conversation_history_resume",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "capability_ids": [
+        "TA-CURSOR"
+      ],
+      "plain_english_intent": "Resume conversation history after cursor (page size 16).",
+      "fixture": {
+        "generator_id": "messaging.messages_v1",
+        "seed": 10,
+        "params": {
+          "n_messages": 96
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from messages where conversation_id = \"cv-0001\" order by sent_at asc, _key asc page size 16 after $cursor"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "conversation_id": "cv-0001"
+            },
+            "sort": {
+              "sent_at": 1,
+              "_id": 1
+            },
+            "limit": 16
+          },
+          "notes": "resume via sort-key lower bound"
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM messages WHERE conversation_id = 'cv-0001' AND (sent_at, META().id) > ($last_sent, $last_id) ORDER BY sent_at ASC, META().id ASC LIMIT 16"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "messages(conversation_id,sent_at)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": true,
+          "page_size": 16,
+          "kinds": [
+            "resume_after",
+            "deep_page",
+            "empty_tail"
+          ]
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "For conversation_id==cv-0002, project listed fields only."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.messages.project_snippet",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "capability_ids": [
+        "TA-PROJ-FLAT"
+      ],
+      "plain_english_intent": "Project messages to _key, sender_id, sent_at, body for a conversation.",
+      "fixture": {
+        "generator_id": "messaging.messages_v1",
+        "seed": 10,
+        "params": {
+          "n_messages": 96
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from messages where conversation_id = \"cv-0002\" project _key, sender_id, sent_at, body"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "conversation_id": "cv-0002"
+            },
+            "projection": {
+              "_id": 1,
+              "sender_id": 1,
+              "sent_at": 1,
+              "body": 1
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, sender_id, sent_at, body FROM messages WHERE conversation_id = 'cv-0002'"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "messages(conversation_id)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "null"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "kind==\"direct\" AND archived==false."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.conversations.eq_kind_direct",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "plain_english_intent": "Return non-archived direct conversations.",
+      "fixture": {
+        "generator_id": "messaging.conversations_v1",
+        "seed": 11,
+        "params": {
+          "n_conversations": 24
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from conversations where kind = \"direct\" and archived = false"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "kind": "direct",
+              "archived": false
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM conversations WHERE kind = 'direct' AND archived = false"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "conversations(kind,archived)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Top 10 last_message_at desc, _key asc."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.conversations.recent_activity_order",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "order_topk_cursor"
+      ],
+      "capability_ids": [
+        "TA-ORDER",
+        "TA-TOPK"
+      ],
+      "plain_english_intent": "Top 10 conversations by last_message_at descending.",
+      "fixture": {
+        "generator_id": "messaging.conversations_v1",
+        "seed": 11,
+        "params": {
+          "n_conversations": 24
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "partial_order_with_tie_break",
+        "multiplicity": "bag",
+        "tie_break": "_key asc"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from conversations order by last_message_at desc, _key asc limit 10"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {},
+            "sort": {
+              "last_message_at": -1,
+              "_id": 1
+            },
+            "limit": 10
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM conversations ORDER BY last_message_at DESC, META().id ASC LIMIT 10"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "conversations(last_message_at)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Participants with user_id==\"u-0002\"."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.participants.eq_user",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "plain_english_intent": "Return participant rows for user u-0002.",
+      "fixture": {
+        "generator_id": "messaging.participants_v1",
+        "seed": 12,
+        "params": {
+          "n_conversations": 24,
+          "n_users": 12
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from participants where user_id = \"u-0002\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "user_id": "u-0002"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM participants WHERE user_id = 'u-0002'"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "participants(user_id)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "role==\"owner\"."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.participants.owners_only",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "plain_english_intent": "Return participant rows where role is owner.",
+      "fixture": {
+        "generator_id": "messaging.participants_v1",
+        "seed": 12,
+        "params": {
+          "n_conversations": 24,
+          "n_users": 12
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from participants where role = \"owner\""
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "role": "owner"
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM participants WHERE role = 'owner'"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "participants(role)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "muted==true."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.participants.muted",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-SEL-EQ"
+      ],
+      "plain_english_intent": "Return muted participant memberships.",
+      "fixture": {
+        "generator_id": "messaging.participants_v1",
+        "seed": 12,
+        "params": {
+          "n_conversations": 24,
+          "n_users": 12
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from participants where muted = true"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "muted": true
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM participants WHERE muted = true"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "participants(muted)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Join messages.conversation_id -> conversations._key exactly_one."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.messages.enrich_conversation_exactly_one",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "capability_ids": [
+        "TA-ENRICH-1"
+      ],
+      "plain_english_intent": "Enrich each message with exactly one conversation document.",
+      "fixture": {
+        "generator_id": "messaging.messages_v1",
+        "seed": 10,
+        "params": {
+          "n_messages": 96,
+          "n_conversations": 24
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from messages enrich conversation from conversations on messages.conversation_id = conversations._key exactly_one"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$lookup": {
+                "from": "conversations",
+                "localField": "conversation_id",
+                "foreignField": "_id",
+                "as": "conversation"
+              }
+            },
+            {
+              "$unwind": "$conversation"
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT m.*, c FROM messages m JOIN conversations c ON m.conversation_id = META(c).id"
+        }
+      },
+      "indexes": {
+        "required": [
+          "conversations(_key)"
+        ],
+        "optional": [
+          "messages(conversation_id)"
+        ]
+      },
+      "selectivity_class": "broad",
+      "cardinality_class": "high",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Attach participants array where conversation_id matches; 2\u20134 members per fixture."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.conversations.enrich_participants_many",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "enrichment_cardinality"
+      ],
+      "capability_ids": [
+        "TA-ENRICH-MANY"
+      ],
+      "plain_english_intent": "Enrich each conversation with many participants.",
+      "fixture": {
+        "generator_id": "messaging.participants_v1",
+        "seed": 12,
+        "params": {
+          "n_conversations": 24,
+          "n_users": 12
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from conversations enrich members from participants on conversations._key = participants.conversation_id many"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$lookup": {
+                "from": "participants",
+                "localField": "_id",
+                "foreignField": "conversation_id",
+                "as": "members"
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT c.*, (SELECT RAW p FROM participants p WHERE p.conversation_id = META(c).id) AS members FROM conversations c"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "participants(conversation_id)"
+        ]
+      },
+      "selectivity_class": "broad",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Filter unread (read_at null or missing); group by conversation_id; count."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.messages.group_unread_by_conversation",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "group_aggregate",
+        "predicate_missing_null_type_nested_array"
+      ],
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "plain_english_intent": "Count unread messages per conversation.",
+      "fixture": {
+        "generator_id": "messaging.messages_v1",
+        "seed": 10,
+        "params": {
+          "n_messages": 96
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "set"
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from messages where read_at is null or missing(read_at) group by conversation_id project conversation_id, count() as unread_count"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$match": {
+                "$or": [
+                  {
+                    "read_at": null
+                  },
+                  {
+                    "read_at": {
+                      "$exists": false
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "$group": {
+                "_id": "$conversation_id",
+                "unread_count": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT conversation_id, COUNT(*) AS unread_count FROM messages WHERE read_at IS NULL OR read_at IS MISSING GROUP BY conversation_id"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "messages(conversation_id,read_at)"
+        ]
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "null",
+            "missing"
+          ]
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Group by sender_id; count messages."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.messages.group_sender_count",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "group_aggregate"
+      ],
+      "capability_ids": [
+        "TA-GROUP",
+        "TA-AGG-COUNT"
+      ],
+      "plain_english_intent": "Count messages per sender_id.",
+      "fixture": {
+        "generator_id": "messaging.messages_v1",
+        "seed": 10,
+        "params": {
+          "n_messages": 96
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "set"
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from messages group by sender_id project sender_id, count() as message_count"
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$group": {
+                "_id": "$sender_id",
+                "message_count": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT sender_id, COUNT(*) AS message_count FROM messages GROUP BY sender_id"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "messages(sender_id)"
+        ]
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Respect result_bytes budget; partial result + incomplete coverage when exhausted."
+      },
+      "exclusion_or_refusal": {
+        "kind": "predeclared_native_diff",
+        "code": "Q0-BUDGET-NATIVE",
+        "reason": "Budget is Residiuum-native."
+      },
+      "case_id": "messaging.messages.budget_cancel_surface",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "capability_ids": [
+        "TA-BUDGET"
+      ],
+      "plain_english_intent": "Messages scan under tight result_bytes budget.",
+      "fixture": {
+        "generator_id": "messaging.messages_v1",
+        "seed": 10,
+        "params": {
+          "n_messages": 96
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from messages budget { documents: 100000, bytes: 1048576, result_bytes: 4096 }"
+        },
+        "mongo": {
+          "status": "lane_local_only",
+          "notes": "No result_bytes budget",
+          "refusal_code": "Q0-BUDGET-NATIVE"
+        },
+        "cbl": {
+          "status": "lane_local_only",
+          "notes": "No result_bytes budget",
+          "refusal_code": "Q0-BUDGET-NATIVE"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Query declares consistency available; result validity under that mode."
+      },
+      "exclusion_or_refusal": {
+        "kind": "predeclared_native_diff",
+        "code": "Q0-CONSISTENCY-MODE",
+        "reason": "Consistency mode labels are Residiuum-native; comparators approximate."
+      },
+      "case_id": "messaging.messages.consistency_available",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "capability_ids": [
+        "TA-CONSISTENCY"
+      ],
+      "plain_english_intent": "Read messages under declared Available consistency (product default).",
+      "fixture": {
+        "generator_id": "messaging.messages_v1",
+        "seed": 10,
+        "params": {
+          "n_messages": 96
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from messages consistency available"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {}
+          },
+          "notes": "readConcern local ~ Available approx"
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM messages",
+          "notes": "embedded local read"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "broad",
+      "cardinality_class": "high",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Messages where sender_id == bound $sender (fixture bind u-0004)."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.messages.sender_param",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "selection_key_eq_range_compound"
+      ],
+      "capability_ids": [
+        "TA-SEL-EQ",
+        "TA-PARAM"
+      ],
+      "plain_english_intent": "Return messages from parameterised sender_id.",
+      "fixture": {
+        "generator_id": "messaging.messages_v1",
+        "seed": 10,
+        "params": {
+          "n_messages": 96
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from messages where sender_id = $sender"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "sender_id": {
+                "$eq": "PARAM:sender"
+              }
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM messages WHERE sender_id = $sender"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "messages(sender_id)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "notes": "Bind $sender = u-0004 for oracle evaluation."
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
+      },
+      "status": "draft",
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "archived==false; project _key,title,kind only."
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "case_id": "messaging.conversations.project_title_kind",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "projection_computed_conditional"
+      ],
+      "capability_ids": [
+        "TA-PROJ-FLAT"
+      ],
+      "plain_english_intent": "Project conversations to _key, title, kind for non-archived.",
+      "fixture": {
+        "generator_id": "messaging.conversations_v1",
+        "seed": 11,
+        "params": {
+          "n_conversations": 24
+        }
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from conversations where archived = false project _key, title, kind"
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "archived": false
+            },
+            "projection": {
+              "_id": 1,
+              "title": 1,
+              "kind": 1
+            }
+          }
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, title, kind FROM conversations WHERE archived = false"
+        }
+      },
+      "indexes": {
+        "required": [],
+        "optional": [
+          "conversations(archived)"
+        ]
+      },
+      "selectivity_class": "high",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      }
+    }
+  ]
 }

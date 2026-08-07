@@ -9,7 +9,7 @@ Equivalence laws: [`doc/todo/rql/RQL_Q0_RESULT_EQUIVALENCE.md`](../../../../doc/
 ## Non-claims
 
 - This is **not** the APP-5 `rql_app_core` or Phase-3 full surface corpus under `spec/app/v1/`.
-- Scaffold / empty cases ≠ package accept ≠ Gate-1 pass.
+- Draft cases (Q1.2+) ≠ package accept ≠ Gate-1 pass. Floors not enforced until Q1.4.
 - Decision 0 remains OPEN; this corpus does not close RQL-C1.
 
 ## Layout
@@ -21,6 +21,7 @@ Equivalence laws: [`doc/todo/rql/RQL_Q0_RESULT_EQUIVALENCE.md`](../../../../doc/
 | `corpus-case-v1.schema.json` | Per-case record contract (programme §4.2) |
 | `fixtures/case.accepted.min.json` | Minimum complete case (validator positive control) |
 | `fixtures/case.rejected.incomplete.json` | Incomplete case (validator negative control) |
+| `generators/` | Seeded fixture generator specs (commerce + messaging in Q1.2) |
 
 ## Record contract (every case)
 
@@ -65,3 +66,11 @@ bash scripts/verify-rql-q1-corpus.sh
 
 Exit 0 means structural schema + fixture self-tests pass. It does **not** mean
 floors are met or Q1 is accepted.
+
+## Generators (Q1.2+)
+
+See [`generators/README.md`](./generators/README.md). Materialise:
+
+```sh
+python3 tools/rql_q1/materialise_fixture.py --generator commerce.orders_v1 --seed 1
+```
