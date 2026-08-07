@@ -452,7 +452,7 @@ does Atomics become the active critical-path programme.
 
 | Package | State | Principal exit decision |
 |---|---|---|
-| RQL-Q0 Target freeze | `labor_complete` (principal accept pending) | Tier and comparator profile accepted |
+| RQL-Q0 Target freeze | `active` (principal review: amend before accept) | Tier and comparator profile accepted |
 | RQL-Q1 Practical corpus | `backlog` | Immutable corpus accepted |
 | RQL-Q2 Capability closure | `backlog` | Tier A 100%; one QVM runtime |
 | RQL-Q3 Semantic qualification | `backlog` | Oracle/equivalence/damage green |
@@ -471,7 +471,8 @@ Product project: `019fda36-f8f4-7f40-9a9b-a86cfae1466e`
 | Package | Feature id | Task stage policy |
 |---|---|---|
 | Decision-0 residual (pre-Q2 honesty) | `019fda4c-a6f2-7932-a9d7-6e04400fd3df` | D0.1–D0.2 labor cards board `done`; **Decision 0 still OPEN** (principal disposition required); blocks Q2 one-runtime exit claim |
-| RQL-Q0 Target freeze | `019fda4b-d981-7980-a283-549a7312f2a9` | Q0.1–Q0.7 labor cards board `done`; **package accept still pending** on [RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md) §5 |
+| RQL-Q0 Target freeze (first freeze) | `019fda4b-d981-7980-a283-549a7312f2a9` | Q0.1–Q0.8 labor complete/`in_review`; **not package accept** |
+| RQL-Q0 Amendment package | `019fdac4-1408-7321-8edc-a09851c9e656` | **Q0.A1–Q0.A9 `todo` (ADMITTED)** — principal review findings; claim before re-accept |
 | RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | Q1.1–Q1.4 titles `[BLOCKED:Q0]` (stage still `todo`; host forbids demote); **do not claim** — see [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) |
 | RQL-Q2 Capability closure | `019fda4c-1227-7c93-b7e6-292141ec7a78` | backlog; spawn gap packages after audit |
 | RQL-Q3 Semantic qualification | `019fda4c-5994-77e2-a2c9-aaa0c3097b29` | backlog |
@@ -486,9 +487,14 @@ scoreboard honesty landed. Principal advanced those **labor cards** to board
 `done`. **That is not package accept.** Package exit still requires principal
 to fill accept pack **§5**. Do not implement Q1 until §5 records ACCEPT.
 
-**Labor hold (active while §5 blank):** [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) —
-no admitted critical-path implementer todo on Gate-1 while Q0 §5 is blank. Q1
-cards remain titled `[BLOCKED:Q0]` (host forbids `todo`→`backlog` demote).
+**Principal review (2026-08-07):** Q0 **not accepted yet**. Material holes
+(comparator pins, equivalence, matrix breadth, public RQB1, Full-over-wire,
+synthetic ids, micro-op over-requirement, doc sprawl). Amendment Feature
+`019fdac4-1408-7321-8edc-a09851c9e656` schedules Q0.A1–Q0.A9 in `todo`.
+
+**Labor hold (updated):** [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) — admit
+**amendment** todos only; Q1 remains `[BLOCKED:Q0]` until post-amendment §5
+ACCEPT (host still forbids `todo`→`backlog` demote on Q1 cards).
 
 **D0 residual labor (2026-08-07):** [RQL_D0_RESIDUAL_INVENTORY.md](./RQL_D0_RESIDUAL_INVENTORY.md)
 (D0.1) + [RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md) (D0.2) labor
@@ -507,13 +513,17 @@ features are archived or package stages change after principal accept.
 
 ## 12. Immediate marching order
 
-1. **Principal:** accept or amend RQL-Q0 via [RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md) §5.
-2. **Labor hold** until then: [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) (no Q1 claim).
-3. After Q0 ACCEPT: build RQL-Q1 as data and executable cases, not prose examples.
-4. Run the capability audit and generate Q2 from actual failures.
-5. Decision 0 residual remains open for Q2 one-runtime *exit claim* honesty
-   ([RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md)).
-6. Do not benchmark a semantic family until it passes Q3.
+1. **Labor:** claim Q0.A1–Q0.A9 amendment todos (P0 first) — Feature
+   `019fdac4-1408-7321-8edc-a09851c9e656`.
+2. **Labor:** re-issue accept pack (Q0.A9); leave §5 blank.
+3. **Principal:** ACCEPT (or further amend) via re-issued pack §5.
+4. After Q0 ACCEPT: build RQL-Q1 as **machine-readable corpus data + one report**,
+   not another document series.
+5. Run the capability audit and generate Q2 from actual failures (include
+   Full-over-wire blocker from Q0.A4).
+6. Decision 0 residual: one product QVM path is the close test (Q0.A7 may drop
+   pure micro-op as a hard blocker); still principal-only for C1.
+7. Do not benchmark a semantic family until it passes Q3.
 
 ## 13. Non-claims
 

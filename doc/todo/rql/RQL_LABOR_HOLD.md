@@ -1,40 +1,62 @@
-# RQL critical-path labor hold (Q0.6)
+# RQL critical-path labor hold (Q0.6 + amendment admit)
 
-Status: **2026-08-07 · labor hold active · not package accept**  
-Authority: [RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md) §5–§6 ·
+Status: **2026-08-07 · Q0 not accepted · amendment labor ADMITTED · Q1 still forbidden**  
+Authority: principal review feedback (ACCEPT_WITH_AMENDMENTS path) ·
+[RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md) ·
 [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §3, §11 ·
 [CRITICAL_PATH.md](../../../CRITICAL_PATH.md)  
-Board task: Q0.6 (`019fda97-73ef-76c3-afa1-d3466411b3d0`)
+Amendment Feature: `019fdac4-1408-7321-8edc-a09851c9e656` (Q0.A0–Q0.A9)
 
 ---
 
 ## Verdict
 
 ```text
-Admitted implementer labor on RQL Gate-1 critical path = NONE
-Blocker = principal has not filled Q0 accept pack §5
-Q1 corpus implementation = FORBIDDEN until Q0 ACCEPT
-Decision 0 / RQL-C1 = OPEN / FORBIDDEN (separate; not a substitute for Q0)
+Q0 package accept        = NOT YET (principal will not accept until amendments land)
+Admitted Gate-1 labor    = Q0.A1–Q0.A9 amendment todos only
+Q1 corpus implementation = FORBIDDEN until post-amendment Q0 ACCEPT (§5)
+Decision 0 / RQL-C1      = OPEN / FORBIDDEN (A7 may reclassify micro-op purity only)
 ```
 
-This is process honesty, not idle. Labor completed all Q0 freeze artefacts and the
-principal accept pack. Further corpus/schema work would violate programme law.
+Principal review (2026-08-07): QVM convergence is substantially good; focused tests
+pass. Q0 qualification foundation has material holes (obsolete comparator pins,
+loose equivalence, underspecified matrix, public RQB1, Full-over-wire lane gap,
+synthetic ids, doc sprawl). **Do not accept Q0 yet.** Land the amendment package,
+re-issue the accept pack (Q0.A9), then principal fills §5.
 
 ---
 
-## What is ready for principal
+## What is ready for principal (after amendments)
 
 | Pack | Path | Labor |
 |---|---|---|
-| Q0 freeze (env/matrix/equiv/lanes) | `RQL_Q0_*.md` | complete → labor cards board `done` |
-| Q0 principal accept pack (doc) | [RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md) | pack labor board `done`; **§5 still blank** |
-| Decision 0 inventory + checklist | [RQL_D0_RESIDUAL_INVENTORY.md](./RQL_D0_RESIDUAL_INVENTORY.md), [RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md) | labor cards board `done`; Decision 0 still OPEN |
-| Scoreboard honesty (Q0.7) | [NEXT_BUILD_STATUS.md](../../wip/status/NEXT_BUILD_STATUS.md) RQL-Q* rows | labor card board `done` |
+| First freeze (Q0.1–Q0.4) | `RQL_Q0_*.md` | labor cards board `done` — **requires amendment** |
+| Accept pack v1 | [RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md) | superseded for accept until A1–A8 + A9 re-issue |
+| Amendment package | Feature `019fdac4-1408-7321-8edc-a09851c9e656` | **claim Q0.A1–Q0.A9 from `todo`** |
+| Decision 0 | D0.1/D0.2 | OPEN; A7 may de-scope micro-op purity as close blocker |
 
-**Human action required:** fill Q0 accept pack §5 (`ACCEPT` / amend / `REJECT`).
+**After Q0.A9:** principal fills re-issued §5 (`ACCEPT` / further amend / `REJECT`).
 
-**Do not confuse:** advancing Q0.1–Q0.7 labor cards to board `done` accepted the
-implementer work products. It does **not** fill §5 and does **not** admit Q1.
+**Do not confuse:** board `done` on Q0.1–Q0.8 labor cards ≠ package accept.
+
+---
+
+## Admitted amendment todos (claim order)
+
+| Task | Priority | Title |
+|---|---|---|
+| Q0.A1 | P0 | Current comparator pins + full config freeze |
+| Q0.A2 | P0 | Tighten semantic-equivalence laws |
+| Q0.A3 | P1 | Expand capability matrix (Mongo/SQL++ surface) |
+| Q0.A4 | P1 | Full-over-wire as Q2 server-lane blocker |
+| Q0.A5 | P1 | Quarantine/delete public RQB1 SDK surface |
+| Q0.A6 | P1 | Durable HeapId/CollectionId on portable path |
+| Q0.A7 | P2 | Decision 0 — micro-op purity not a close blocker |
+| Q0.A8 | P2 | Doc consolidation + rename conflicting RQL-Q1 |
+| Q0.A9 | exit | Re-issue principal accept pack after amendments |
+
+Pull **P0 first** (A1, A2), then P1 docs/code (A3–A6), then P2 (A7–A8), then A9.
+A5/A6 may parallel A3/A4.
 
 ---
 
@@ -62,6 +84,7 @@ Q1.1–Q1.4 remain stage **`todo`** on the Kanban board (host data-plane forbids
 - Self-accept Q0, Decision 0, or RQL-C1
 - Start Q2/Q5/Q7 or performance claims
 - Invent parallel roadmap docs that compete with CRITICAL_PATH
+- Treat first freeze as accepted without A1–A9 and principal §5
 
 ---
 
@@ -69,8 +92,9 @@ Q1.1–Q1.4 remain stage **`todo`** on the Kanban board (host data-plane forbids
 
 | Condition | Next admitted labor |
 |---|---|
-| Principal **ACCEPT** on Q0 pack §5 | Q1.1 corpus schema (then Q1.2…) |
-| Principal **ACCEPT_WITH_AMENDMENTS** | Rework named Q0 artefacts; re-issue pack; hold remains until re-accept |
+| Principal amendment feedback scheduled (this note) | **Q0.A1–Q0.A9** (active) |
+| Principal **ACCEPT** on re-issued Q0 pack §5 | Q1.1 corpus schema (then Q1.2…) |
+| Principal **ACCEPT_WITH_AMENDMENTS** (in progress) | Complete named amendments; A9 re-issue; hold on Q1 until re-accept |
 | Principal **REJECT** | Follow rejection notes; hold until new freeze |
 | Principal Decision 0 disposition only | Does **not** by itself admit Q1 |
 
@@ -82,12 +106,14 @@ Q1.1–Q1.4 remain stage **`todo`** on the Kanban board (host data-plane forbids
   `bash scripts/check_query_runtime_architecture.sh`
 - Q0 pack: [RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md)
 - Scoreboard banner: [NEXT_BUILD_STATUS.md](../../wip/status/NEXT_BUILD_STATUS.md)
+- Amendment Feature: `019fdac4-1408-7321-8edc-a09851c9e656`
 
 ---
 
-## Exit (Q0.6 labor)
+## Exit (hold / schedule labor)
 
 - [x] Citable labor-hold note
 - [x] Q1 claim policy restated (titles marked blocked; stage demotion blocked by host)
 - [x] Q0 not self-accepted
-- [ ] Principal Q0 §5 filled (human)
+- [x] Principal feedback scheduled as Q0.A1–Q0.A9 `todo` (Feature `019fdac4-…`)
+- [ ] Principal Q0 §5 filled on post-amendment pack (human)

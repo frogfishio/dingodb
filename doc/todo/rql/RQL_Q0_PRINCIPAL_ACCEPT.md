@@ -1,6 +1,6 @@
 # RQL-Q0 — Principal accept pack
 
-Status: **labor complete · awaiting principal package accept**  
+Status: **first freeze labor complete · principal will not accept yet · amendment package in progress**  
 Package: RQL-Q0 Target and profile freeze  
 Board: Feature `019fda4b-d981-7980-a283-549a7312f2a9` · task Q0.5  
 Authority: [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §3 exit · §11  
@@ -10,6 +10,22 @@ Tree baseline at pack write: git `55841993ef9f531c8c28bc5ca978f91a563aff3c` · V
 **This file does not accept Q0.** Only the principal fills §5.  
 **Q1 corpus labor must not start until §5 records accept.**  
 **Decision 0 / RQL-C1 are out of scope for this pack** (see [RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md)).
+
+### Principal review (2026-08-07) — disposition
+
+Principal feedback: **do not accept Q0 yet** (ACCEPT_WITH_AMENDMENTS path).
+QVM convergence is substantially good; qualification foundation has material
+holes. Amendment work is scheduled on Feature
+`019fdac4-1408-7321-8edc-a09851c9e656` as **Q0.A1–Q0.A9** (`todo`). After those
+land, re-issue this pack (Q0.A9) before filling §5.
+
+Required amendments (summary): current comparator pins + full config; tight
+equivalence laws; expanded matrix; Full-over-wire Q2 blocker; quarantine public
+RQB1; durable heap/collection ids; Decision 0 micro-op purity not a close
+blocker; doc consolidation / rename conflicting gap-ledger `RQL-Q1`.
+
+Hold SoT: [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md).
+
 
 ---
 

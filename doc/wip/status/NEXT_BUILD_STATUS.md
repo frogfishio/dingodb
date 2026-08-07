@@ -7,15 +7,16 @@ Sources: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-07 (**RQL-Q0** freeze labor complete — principal package accept
-pending: [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md).
+Updated: 2026-08-07 (**RQL-Q0** not accepted yet — principal review requires
+amendments). Amendment Feature `019fdac4-1408-7321-8edc-a09851c9e656` schedules
+Q0.A1–Q0.A9 in `todo`. Pack: [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md).
 **Decision 0 OPEN**; RQL-C1 **forbidden**
 ([RQL_D0_CLOSE_READINESS.md](../../todo/rql/RQL_D0_CLOSE_READINESS.md)).
-Q1 corpus **blocked** until Q0 accept. CRITICAL_PATH RQL→Atomics→Cluster.
+Q1 corpus **blocked** until post-amendment Q0 accept. CRITICAL_PATH RQL→Atomics→Cluster.
 Prior: RQL-I1/0/F1/F2; P0 packaging 0.2.2; CSE-3 ~21–23K SoT.
 **ETQ-2 paused.** **AWO paused.**
-Labor hold: [RQL_LABOR_HOLD.md](../../todo/rql/RQL_LABOR_HOLD.md) — no admitted
-implementer todo on Gate-1 path until principal fills Q0 accept pack §5.
+Labor hold: [RQL_LABOR_HOLD.md](../../todo/rql/RQL_LABOR_HOLD.md) — admit **Q0
+amendment** todos only; Q1 still forbidden until post-amendment §5 ACCEPT.
 
 **How to read program order:** open [CRITICAL_PATH.md](../../../CRITICAL_PATH.md)
 then [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
@@ -134,7 +135,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APP-6 | active | 2026-08-02 | APP-3, APP-5, HAR-4 | **T1–T3**: cursor + page executor + multipage field-order; APB-7 T10 product ring binds params; `app6_page_executor` **4/4**; `app6_field_order_multipage` **3/3** | HAR-4 remote op 118; Heap-confined cursor secrets residual; **no product query / APB-7 package accept** | query execution |
 | APP-7 | active | 2026-08-02 | APP-6, HAR-4 | **T6**: op **118** `rql_query` **active** in heap+baseline ops; server dispatch + `RemoteHeap::rql_query` + façade remote `rql` wire path; dual pack remote green; gates `har4_query_remote_gate` **7/7** | package accept residual; plan-only args residual | remote query |
 | APP-8 | not_started | — | APP-1…APP-7 | — | release evidence pack | application journey |
-| RQL-Q0 | blocked | 2026-08-07 | principal §5 on [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md) | freeze pack complete: [RQL_Q0_ENV_MANIFEST.md](../../todo/rql/RQL_Q0_ENV_MANIFEST.md), [RQL_Q0_CAPABILITY_MATRIX.md](../../todo/rql/RQL_Q0_CAPABILITY_MATRIX.md), [RQL_Q0_RESULT_EQUIVALENCE.md](../../todo/rql/RQL_Q0_RESULT_EQUIVALENCE.md), [RQL_Q0_LANES_EXCLUSIONS.md](../../todo/rql/RQL_Q0_LANES_EXCLUSIONS.md); hold [RQL_LABOR_HOLD.md](../../todo/rql/RQL_LABOR_HOLD.md); programme [RQL_QUERY_QUALIFICATION_PROGRAM.md](../../todo/rql/RQL_QUERY_QUALIFICATION_PROGRAM.md) §3/§11; labor cards Q0.1–Q0.7 board `done` (**≠** package accept) | **not** package accept; §5 still blank; labor must not self-accept | Gate-1 target/profile freeze |
+| RQL-Q0 | active | 2026-08-07 | principal review: accept deferred pending Q0.A1–Q0.A9 | first freeze pack landed; Feature `019fdac4-1408-7321-8edc-a09851c9e656` schedules P0 pins/equivalence, P1 matrix/RQB1/ids/Full-wire, P2 D0 micro-op + doc consolidate, A9 re-issue accept pack; hold [RQL_LABOR_HOLD.md](../../todo/rql/RQL_LABOR_HOLD.md) | **not** package accept until post-amendment §5; Q1 still blocked | Gate-1 target/profile freeze |
 | RQL-Q1 | blocked | — | RQL-Q0 principal accept | cards Q1.1–Q1.4 titled `[BLOCKED:Q0]` (stage still `todo`; host forbids demote); **do not claim** | corpus schema/fixtures forbidden until Q0 ACCEPT | practical query corpus |
 | RQL-Q2 | not_started | — | RQL-Q1 accept; Decision-0 honesty for one-runtime *exit claim* | — | Tier A gaps not closed as Gate-1 programme package | capability closure |
 | RQL-Q3 | not_started | — | RQL-Q2 family expressibility | — | independent oracle / differential matrix absent as programme package | semantic qualification |
@@ -207,19 +208,21 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 6. **Pre-stage** open backlog as `todo` (no next-pull invented only in docs)
 7. Prefer host board tools; do not invent boards under `.koderra/`
 
-### Critical-path Gate-1 (2026-08-07 — labor hold)
+### Critical-path Gate-1 (2026-08-07 — amendment package)
 
 | Priority | Action / card | Stage | Note |
 |---:|---|---|---|
-| **1** | **Principal:** fill [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md) **§5** | human | Only human accept unlocks Q1; labor must leave §5 blank |
-| — | Q0.1–Q0.7 freeze + accept pack + hold + scoreboard honesty | board `done` | Labor cards accepted; **package still blocked on §5** |
-| — | D0.1 inventory + D0.2 checklist | board `done` | Decision 0 still OPEN; RQL-C1 forbidden |
-| — | Q1.1–Q1.4 corpus cards | `todo` titled `[BLOCKED:Q0]` | **Do not claim** until Q0 ACCEPT ([RQL_LABOR_HOLD.md](../../todo/rql/RQL_LABOR_HOLD.md)) |
-| later | Q2…Q7 Features | `backlog` | After Q1; Q2 one-runtime *exit claim* still needs D0 disposition |
+| **1** | **Q0.A1** [P0] Comparator pins + full config | `todo` | Claim next — obsolete Mongo 8.0.4 / CBL 3.2.1 |
+| **2** | **Q0.A2** [P0] Tighten equivalence laws | `todo` | Collation, ints, missing/null, agg, arrays, cursor writes |
+| **3** | **Q0.A3–A6** [P1] Matrix / Full-wire / RQB1 / durable ids | `todo` | Docs + code; A5/A6 may parallel |
+| **4** | **Q0.A7–A8** [P2] D0 micro-op policy + doc consolidate | `todo` | After or parallel P1 docs |
+| **5** | **Q0.A9** Re-issue accept pack | `todo` | After A1–A8; then principal §5 |
+| — | Q0.1–Q0.8 first freeze labor | board `done` / `in_review` | **≠** package accept |
+| — | Q1.1–Q1.4 corpus cards | `todo` `[BLOCKED:Q0]` | **Do not claim** until post-amendment ACCEPT |
+| later | Q2…Q7 Features | `backlog` | After Q1; Full-wire is Q2 blocker (A4) |
 
-Admitted implementer labor on Gate-1 **= none** while §5 is blank. Scoreboard
-rows **RQL-Q0…Q7 / RQL-D0** above are claims honesty only — board stage remains
-Kanban SoT.
+Admitted Gate-1 labor = **Q0 amendment todos only**. Q1 remains forbidden.
+Feature: `019fdac4-1408-7321-8edc-a09851c9e656`.
 
 **Pull order (Application Core product path — board SoT; 2026-08-02 complete pre-stage):**
 
@@ -309,8 +312,9 @@ A2 claim language is admitted only with the CSQ-12 evidence bundle above; A3 is 
 
 | Order | Package | Note |
 |---:|---|---|
-| **now** | **RQL-Q0 principal accept** | Human fills [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md) §5; scoreboard row **blocked** until then; labor hold active |
-| next labor | **RQL-Q1** corpus | Only after Q0 ACCEPT; cards still `[BLOCKED:Q0]` until unlocked |
+| **now** | **RQL-Q0 amendments Q0.A1–Q0.A9** | Feature `019fdac4-1408-7321-8edc-a09851c9e656`; principal will not accept until amendments; claim P0 first |
+| next | **Q0.A9 re-issue + principal §5** | After A1–A8; then ACCEPT unlocks Q1 |
+| next labor | **RQL-Q1** corpus | Only after post-amendment Q0 ACCEPT; cards still `[BLOCKED:Q0]` until unlocked |
 | 1 | DEF-098…DEF-104 | Accepted; permanent regression authorities |
 | 2 | **CSQ-12 / A2** | Scoreboard **accept** 2026-08-01; A3 residuals deferred |
 | 3 | **FAS-0…FAS-4** | Scoreboard **accept** MVP 2026-08-01; foundation closed |
