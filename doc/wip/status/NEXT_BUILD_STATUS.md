@@ -134,7 +134,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APP-6 | active | 2026-08-02 | APP-3, APP-5, HAR-4 | **T1–T3**: cursor + page executor + multipage field-order; APB-7 T10 product ring binds params; `app6_page_executor` **4/4**; `app6_field_order_multipage` **3/3** | HAR-4 remote op 118; Heap-confined cursor secrets residual; **no product query / APB-7 package accept** | query execution |
 | APP-7 | active | 2026-08-02 | APP-6, HAR-4 | **T6**: op **118** `rql_query` **active** in heap+baseline ops; server dispatch + `RemoteHeap::rql_query` + façade remote `rql` wire path; dual pack remote green; gates `har4_query_remote_gate` **7/7** | package accept residual; plan-only args residual | remote query |
 | APP-8 | not_started | — | APP-1…APP-7 | — | release evidence pack | application journey |
-| RQL-Q0 | blocked | 2026-08-07 | principal §5 on [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md) | freeze pack complete: [RQL_Q0_ENV_MANIFEST.md](../../todo/rql/RQL_Q0_ENV_MANIFEST.md), [RQL_Q0_CAPABILITY_MATRIX.md](../../todo/rql/RQL_Q0_CAPABILITY_MATRIX.md), [RQL_Q0_RESULT_EQUIVALENCE.md](../../todo/rql/RQL_Q0_RESULT_EQUIVALENCE.md), [RQL_Q0_LANES_EXCLUSIONS.md](../../todo/rql/RQL_Q0_LANES_EXCLUSIONS.md); hold [RQL_LABOR_HOLD.md](../../todo/rql/RQL_LABOR_HOLD.md); programme [RQL_QUERY_QUALIFICATION_PROGRAM.md](../../todo/rql/RQL_QUERY_QUALIFICATION_PROGRAM.md) §3/§11; board Q0.1–Q0.6 `in_review` | **not** package accept; labor must not self-accept | Gate-1 target/profile freeze |
+| RQL-Q0 | blocked | 2026-08-07 | principal §5 on [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md) | freeze pack complete: [RQL_Q0_ENV_MANIFEST.md](../../todo/rql/RQL_Q0_ENV_MANIFEST.md), [RQL_Q0_CAPABILITY_MATRIX.md](../../todo/rql/RQL_Q0_CAPABILITY_MATRIX.md), [RQL_Q0_RESULT_EQUIVALENCE.md](../../todo/rql/RQL_Q0_RESULT_EQUIVALENCE.md), [RQL_Q0_LANES_EXCLUSIONS.md](../../todo/rql/RQL_Q0_LANES_EXCLUSIONS.md); hold [RQL_LABOR_HOLD.md](../../todo/rql/RQL_LABOR_HOLD.md); programme [RQL_QUERY_QUALIFICATION_PROGRAM.md](../../todo/rql/RQL_QUERY_QUALIFICATION_PROGRAM.md) §3/§11; labor cards Q0.1–Q0.7 board `done` (**≠** package accept) | **not** package accept; §5 still blank; labor must not self-accept | Gate-1 target/profile freeze |
 | RQL-Q1 | blocked | — | RQL-Q0 principal accept | cards Q1.1–Q1.4 titled `[BLOCKED:Q0]` (stage still `todo`; host forbids demote); **do not claim** | corpus schema/fixtures forbidden until Q0 ACCEPT | practical query corpus |
 | RQL-Q2 | not_started | — | RQL-Q1 accept; Decision-0 honesty for one-runtime *exit claim* | — | Tier A gaps not closed as Gate-1 programme package | capability closure |
 | RQL-Q3 | not_started | — | RQL-Q2 family expressibility | — | independent oracle / differential matrix absent as programme package | semantic qualification |
@@ -142,7 +142,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | RQL-Q5 | not_started | — | RQL-Q4 harness; Q3-green families | — | unoptimised baseline not run | controlled baseline |
 | RQL-Q6 | not_started | — | RQL-Q5 accept + frozen gates | — | no pre-baseline optimisation admitted | evidence-led optimisation |
 | RQL-Q7 | not_started | — | RQL-Q2/Q3 green; Q5 gates; Q6 closed or residuals accepted | — | Gate-1 decision pack absent | final qualification / Gate-1 |
-| RQL-D0 | blocked | 2026-08-07 | principal disposition ([RQL_D0_CLOSE_READINESS.md](../../todo/rql/RQL_D0_CLOSE_READINESS.md) A12–A13) | inventory [RQL_D0_RESIDUAL_INVENTORY.md](../../todo/rql/RQL_D0_RESIDUAL_INVENTORY.md); checklist D0.2; arch gate green; board D0.1–D0.2 `in_review` | Decision 0 **OPEN**; RQL-C1 **forbidden**; does not substitute for Q0 accept | pre-Q2 one-runtime honesty |
+| RQL-D0 | blocked | 2026-08-07 | principal disposition ([RQL_D0_CLOSE_READINESS.md](../../todo/rql/RQL_D0_CLOSE_READINESS.md) A12–A13) | inventory [RQL_D0_RESIDUAL_INVENTORY.md](../../todo/rql/RQL_D0_RESIDUAL_INVENTORY.md); checklist D0.2; arch gate green; labor cards D0.1–D0.2 board `done` (**≠** Decision 0 close) | Decision 0 **OPEN**; RQL-C1 **forbidden**; does not substitute for Q0 accept | pre-Q2 one-runtime honesty |
 | DEL-0 | not_started | — | HAR-3 (drafting may start after) | — | drafting only until M1; no live surface | Evidence registries |
 | TEL-0 | not_started | — | HAR-3 (drafting may start after) | — | drafting only until M1 | Telemetry registries |
 | DST-000 | not_started | — | HAR-3 (drafting may start after) | — | not M2 engine gate | Studio scaffolding |
@@ -212,8 +212,8 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 | Priority | Action / card | Stage | Note |
 |---:|---|---|---|
 | **1** | **Principal:** fill [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md) **§5** | human | Only human accept unlocks Q1; labor must leave §5 blank |
-| — | Q0.1–Q0.6 freeze + accept pack + hold | `in_review` | Labor complete; **not** package accept |
-| — | D0.1 inventory + D0.2 checklist | `in_review` | Decision 0 OPEN; RQL-C1 forbidden |
+| — | Q0.1–Q0.7 freeze + accept pack + hold + scoreboard honesty | board `done` | Labor cards accepted; **package still blocked on §5** |
+| — | D0.1 inventory + D0.2 checklist | board `done` | Decision 0 still OPEN; RQL-C1 forbidden |
 | — | Q1.1–Q1.4 corpus cards | `todo` titled `[BLOCKED:Q0]` | **Do not claim** until Q0 ACCEPT ([RQL_LABOR_HOLD.md](../../todo/rql/RQL_LABOR_HOLD.md)) |
 | later | Q2…Q7 Features | `backlog` | After Q1; Q2 one-runtime *exit claim* still needs D0 disposition |
 

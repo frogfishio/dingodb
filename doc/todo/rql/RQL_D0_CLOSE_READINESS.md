@@ -144,7 +144,7 @@ Kanban Feature (blocks Q2 exit claim): `019fda4c-a6f2-7932-a9d7-6e04400fd3df`
 2. **Full ≠ Core wire** — Full local QVM path; op 118 Core only / Full refuse.
 3. **Dialect identity** — name-derived ids on comfort `Collection` dialect path.
 4. **Prior principal rejects** — VM1, P1c, prior D0/C1 closure claims stay rejected.
-5. **Q0 principal accept open** — Q0.1–Q0.4 labor `in_review`; blocks Q1 promotion.
+5. **Q0 principal accept open** — Q0.1–Q0.7 labor cards board `done` but accept pack **§5 blank**; blocks Q1 promotion (board `done` ≠ package ACCEPT).
 6. **No Tier-A Q1 corpus yet** — separate from D0; required for Q2/Q3/Gate-1.
 
 ---

@@ -26,11 +26,15 @@ principal accept pack. Further corpus/schema work would violate programme law.
 
 | Pack | Path | Labor |
 |---|---|---|
-| Q0 freeze (env/matrix/equiv/lanes) | `RQL_Q0_*.md` | complete → board `in_review` |
-| Q0 principal accept | [RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md) | complete → board `in_review` |
-| Decision 0 inventory + checklist | [RQL_D0_RESIDUAL_INVENTORY.md](./RQL_D0_RESIDUAL_INVENTORY.md), [RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md) | complete → board `in_review` |
+| Q0 freeze (env/matrix/equiv/lanes) | `RQL_Q0_*.md` | complete → labor cards board `done` |
+| Q0 principal accept pack (doc) | [RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md) | pack labor board `done`; **§5 still blank** |
+| Decision 0 inventory + checklist | [RQL_D0_RESIDUAL_INVENTORY.md](./RQL_D0_RESIDUAL_INVENTORY.md), [RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md) | labor cards board `done`; Decision 0 still OPEN |
+| Scoreboard honesty (Q0.7) | [NEXT_BUILD_STATUS.md](../../wip/status/NEXT_BUILD_STATUS.md) RQL-Q* rows | labor card board `done` |
 
 **Human action required:** fill Q0 accept pack §5 (`ACCEPT` / amend / `REJECT`).
+
+**Do not confuse:** advancing Q0.1–Q0.7 labor cards to board `done` accepted the
+implementer work products. It does **not** fill §5 and does **not** admit Q1.
 
 ---
 

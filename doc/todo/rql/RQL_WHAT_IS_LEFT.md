@@ -80,8 +80,8 @@ Raw SDA → explicitly raw SDA APIs only (dialect `sda` / Collection::sda)
 | **DQ1** | Dialects sql/json/mongo → portable → QVM | **labor closed** |
 | **WIRE1** | Public QVM1 wire (store/hash/execute) | **labor closed** |
 | **DEL1** | Delete obsolete private executors | **labor closed** (gate forbids) |
-| **D0.1** | Residual IR honesty inventory | **labor closed** → `in_review` |
-| **D0.2** | Principal close readiness checklist | **labor closed** → `in_review` |
+| **D0.1** | Residual IR honesty inventory | **labor closed** → board `done` (Decision 0 still OPEN) |
+| **D0.2** | Principal close readiness checklist | **labor closed** → board `done` (Decision 0 still OPEN) |
 | **C1** | Principal only — **never** before invariant holds | |
 
 ---

@@ -470,8 +470,8 @@ Product project: `019fda36-f8f4-7f40-9a9b-a86cfae1466e`
 
 | Package | Feature id | Task stage policy |
 |---|---|---|
-| Decision-0 residual (pre-Q2 honesty) | `019fda4c-a6f2-7932-a9d7-6e04400fd3df` | D0.1 inventory + D0.2 checklist labor `in_review`; **principal disposition required**; blocks Q2 one-runtime exit claim |
-| RQL-Q0 Target freeze | `019fda4b-d981-7980-a283-549a7312f2a9` | Q0.1–Q0.5 labor `in_review`; **principal package accept pending** |
+| Decision-0 residual (pre-Q2 honesty) | `019fda4c-a6f2-7932-a9d7-6e04400fd3df` | D0.1–D0.2 labor cards board `done`; **Decision 0 still OPEN** (principal disposition required); blocks Q2 one-runtime exit claim |
+| RQL-Q0 Target freeze | `019fda4b-d981-7980-a283-549a7312f2a9` | Q0.1–Q0.7 labor cards board `done`; **package accept still pending** on [RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md) §5 |
 | RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | Q1.1–Q1.4 titles `[BLOCKED:Q0]` (stage still `todo`; host forbids demote); **do not claim** — see [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) |
 | RQL-Q2 Capability closure | `019fda4c-1227-7c93-b7e6-292141ec7a78` | backlog; spawn gap packages after audit |
 | RQL-Q3 Semantic qualification | `019fda4c-5994-77e2-a2c9-aaa0c3097b29` | backlog |
@@ -481,18 +481,23 @@ Product project: `019fda36-f8f4-7f40-9a9b-a86cfae1466e`
 | RQL-Q7 Final / Gate-1 | `019fda4c-a6c4-7b40-b15a-f8190ca62d03` | backlog |
 
 **Q0 labor (2026-08-07):** Q0.1–Q0.4 freeze docs + Q0.5 principal accept pack
-([RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md)) landed; board
-`in_review`. **Principal package accept still required.** Do not implement Q1
-corpus until §5 of the accept pack is filled.
+([RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md)) + Q0.6 hold + Q0.7
+scoreboard honesty landed. Principal advanced those **labor cards** to board
+`done`. **That is not package accept.** Package exit still requires principal
+to fill accept pack **§5**. Do not implement Q1 until §5 records ACCEPT.
 
-**Labor hold (2026-08-07, Q0.6):** [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) —
-no admitted critical-path implementer todo while Q0 §5 is blank. Q1 cards
-marked `[BLOCKED:Q0]` (could not demote `todo`→`backlog` on host).
+**Labor hold (active while §5 blank):** [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) —
+no admitted critical-path implementer todo on Gate-1 while Q0 §5 is blank. Q1
+cards remain titled `[BLOCKED:Q0]` (host forbids `todo`→`backlog` demote).
 
 **D0 residual labor (2026-08-07):** [RQL_D0_RESIDUAL_INVENTORY.md](./RQL_D0_RESIDUAL_INVENTORY.md)
-(D0.1) + [RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md) (D0.2) landed;
-board tasks `in_review`. Decision 0 remains OPEN; RQL-C1 forbidden; Q2 must not
+(D0.1) + [RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md) (D0.2) labor
+cards board `done`. Decision 0 remains OPEN; RQL-C1 forbidden; Q2 must not
 claim one-runtime exit until principal D0 disposition (see D0.2 §D).
+
+**Honesty law:** Kanban `done` on implementer cards ≠ package `accept` on the
+scoreboard. Only principal §5 (Q0) or explicit Decision 0 disposition (D0)
+moves those package states.
 
 Implementers claim from `todo` only → `doing` → `in_review`. Principal accepts
 package exits.
