@@ -469,7 +469,7 @@ Product project: `019fda36-f8f4-7f40-9a9b-a86cfae1466e`
 
 | Package | Feature id | Task stage policy |
 |---|---|---|
-| Decision-0 residual (pre-Q2 honesty) | `019fda4c-a6f2-7932-a9d7-6e04400fd3df` | backlog until principal promotes; blocks Q2 one-runtime exit claim |
+| Decision-0 residual (pre-Q2 honesty) | `019fda4c-a6f2-7932-a9d7-6e04400fd3df` | D0.1 inventory + D0.2 checklist labor `in_review`; **principal disposition required**; blocks Q2 one-runtime exit claim |
 | RQL-Q0 Target freeze | `019fda4b-d981-7980-a283-549a7312f2a9` | **todo** (Q0.1–Q0.4 admitted) |
 | RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | backlog until Q0 principal exit |
 | RQL-Q2 Capability closure | `019fda4c-1227-7c93-b7e6-292141ec7a78` | backlog; spawn gap packages after audit |
@@ -480,8 +480,15 @@ Product project: `019fda36-f8f4-7f40-9a9b-a86cfae1466e`
 | RQL-Q7 Final / Gate-1 | `019fda4c-a6c4-7b40-b15a-f8190ca62d03` | backlog |
 
 **Q0 labor (2026-08-07):** Q0.1–Q0.4 freeze docs landed; board stage `in_review`.
-Principal package accept still required before Q1 promotion. Implementers claim
-from `todo` only → `doing` → `in_review`. Principal accepts package exits.
+Principal package accept still required before Q1 promotion.
+
+**D0 residual labor (2026-08-07):** [RQL_D0_RESIDUAL_INVENTORY.md](./RQL_D0_RESIDUAL_INVENTORY.md)
+(D0.1) + [RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md) (D0.2) landed;
+board tasks `in_review`. Decision 0 remains OPEN; RQL-C1 forbidden; Q2 must not
+claim one-runtime exit until principal D0 disposition (see D0.2 §D).
+
+Implementers claim from `todo` only → `doing` → `in_review`. Principal accepts
+package exits.
 
 Labor SoT is the Kanban board, not this table alone. Amend this section when
 features are archived or package stages change after principal accept.

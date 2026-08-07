@@ -214,5 +214,5 @@ Decision 0 = OPEN
 RQL-C1     = FORBIDDEN
 Landed     = QVM1 public path; one run_vm; dialects portable→QVM; DEL1 orchestrators gone
 Residual   = IR = Rust phase bodies; Full not on Core wire; dialect synthetic ids; principal reject stands
-Next labor = D0.2 readiness checklist (principal-facing); no false C1 accept
+Next labor = principal review (D0.2 checklist: RQL_D0_CLOSE_READINESS.md); no false C1 accept
 ```

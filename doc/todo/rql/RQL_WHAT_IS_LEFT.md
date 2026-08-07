@@ -3,7 +3,8 @@
 Status: **2026-08-07** · **Decision 0 OPEN** · Principal **rejected** prior VM1, P1c, D0 closure, RQL-C1
 Detail: [QUERY_RUNTIME_CONVERGENCE.md](./QUERY_RUNTIME_CONVERGENCE.md) ·
 [QUERY_IR_RESIDUAL.md](./QUERY_IR_RESIDUAL.md) · [QUERY_VM_V1.md](./QUERY_VM_V1.md) ·
-[RQL_D0_RESIDUAL_INVENTORY.md](./RQL_D0_RESIDUAL_INVENTORY.md) (**D0.1 citable inventory**)
+[RQL_D0_RESIDUAL_INVENTORY.md](./RQL_D0_RESIDUAL_INVENTORY.md) (**D0.1**) ·
+[RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md) (**D0.2 principal checklist**)
 
 ---
 
@@ -32,7 +33,7 @@ convergence claims stay rejected.
 
 ```text
 Verdict     = Decision 0 OPEN; RQL-C1 must NOT be accepted
-NEXT labor  = D0 residual honesty (inventory D0.1 landed; checklist D0.2); not product accept
+NEXT        = D0 residual labor closed (D0.1+D0.2 in_review); Decision 0 remains open
 ```
 
 ---
@@ -79,6 +80,8 @@ Raw SDA → explicitly raw SDA APIs only (dialect `sda` / Collection::sda)
 | **DQ1** | Dialects sql/json/mongo → portable → QVM | **labor closed** |
 | **WIRE1** | Public QVM1 wire (store/hash/execute) | **labor closed** |
 | **DEL1** | Delete obsolete private executors | **labor closed** (gate forbids) |
+| **D0.1** | Residual IR honesty inventory | **labor closed** → `in_review` |
+| **D0.2** | Principal close readiness checklist | **labor closed** → `in_review` |
 | **C1** | Principal only — **never** before invariant holds | |
 
 ---
@@ -86,8 +89,8 @@ Raw SDA → explicitly raw SDA APIs only (dialect `sda` / Collection::sda)
 ## One-line status
 
 ```text
-NEXT        = D0.2 readiness checklist + principal Decision 0 review; Decision 0 remains open
+NEXT        = Q0 package accept + Decision 0 residual disposition; Decision 0 remains open
 FORBIDDEN   = Decision 0 close; RQL-C1 accept; claim prior VM1/P1c converged
-LANDED      = D0R; P0b; P1b; VM0 vocab; VM2–VM4 intermediate; R1; QVM1; VM1R; DQ1; WIRE1; DEL1; D0.1 inventory
-HONESTY     = IR helpers still Rust phase bodies; Decision 0 OPEN — see RQL_D0_RESIDUAL_INVENTORY.md
+LANDED      = D0R; P0b; P1b; VM0 vocab; VM2–VM4 intermediate; R1; QVM1; VM1R; DQ1; WIRE1; DEL1; D0.1; D0.2
+HONESTY     = IR residual + open A9–A11; Decision 0 OPEN — see D0.1 inventory + D0.2 checklist
 ```
