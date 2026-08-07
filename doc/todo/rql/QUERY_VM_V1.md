@@ -1,17 +1,17 @@
 # Query VM v1 — instruction set + dispatch
 
-Status: **2026-08-05** · Principal **rejected prior VM1 / P1c** · **VM1R labor closed** · Decision 0 remains OPEN · RQL-C1 **forbidden**
+Status: **2026-08-07** · Principal **rejected prior VM1 / P1c** · **VM1R labor closed** · Decision 0 remains OPEN · RQL-C1 **forbidden**
 Profile id: **`residiuum-query-vm-v1`** · version byte **`1`** · durable magic **`QVM1`**
 Runtime: `query_bytecode_v1/vm.rs` · `vm_exec.rs` · `qvm.rs` · `core_phases.rs` (`CoreFrame`)
-Companion: [QUERY_ISA_V1.md](./QUERY_ISA_V1.md) · [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md)
+Companion: [QUERY_ISA_V1.md](./QUERY_ISA_V1.md) · [RQL_WHAT_IS_LEFT.md](./RQL_WHAT_IS_LEFT.md) ·
+[RQL_D0_RESIDUAL_INVENTORY.md](./RQL_D0_RESIDUAL_INVENTORY.md)
 
 Opcode vocabulary (**RQL-VM0**) and intermediate Core/Full phase work (**VM2–VM4**,
-including `CoreFrame` / demoted `run_core_page`) landed. **RQL-QVM1** freezes a
-durable `QVM1` encoding of the opcode stream + constant pool; product execute
-materializes QVM bytes before run. **RQL-VM1R** unifies dispatch into one
-`run_vm` (Core + Full). That does **not** close Decision 0: `RQB1` remains the
-public AST carrier that lowers into QVM; sql/json/mongo still → SDA. Prior VM1 /
-P1c convergence claims stay rejected.
+including `CoreFrame`; fused `run_core_page` deleted DEL1) landed. **RQL-QVM1**
+freezes durable `QVM1` encoding; product execute materializes QVM bytes before
+run. **RQL-VM1R** unifies dispatch into one `run_vm` (Core + Full). **RQL-DQ1**
+routes sql/json/mongo through portable → QVM. That does **not** close Decision 0:
+opcode bodies remain Rust phase interpreters; prior VM1 / P1c claims stay rejected.
 
 ---
 
@@ -25,8 +25,9 @@ All syntax → compiler intermediates → canonical QVM bytecode
                           collection-qualified host API
 ```
 
-Today: `RQB1` decode → lower → **`encode_qvm` / `decode_qvm`** → **`run_vm`**.
-`VmProgram` holds ops + `VmPool` only (no plan/pipeline/project sidecars).
+Today (product): compile → **`encode_qvm` / `decode_qvm`** → **`run_vm`**.
+Legacy RQB1 may lower into QVM at ingress. `VmProgram` holds ops + `VmPool` only
+(no plan/pipeline/project sidecars).
 
 ---
 
@@ -34,11 +35,12 @@ Today: `RQB1` decode → lower → **`encode_qvm` / `decode_qvm`** → **`run_vm
 
 | Component | Role today | Residual |
 |---|---|---|
-| **`QVM1` bytes** | Durable executable form (ops + pool) | Public wire still often `RQB1` |
-| **Program** | Opcode vector + `VmPool` (Core plan) | — |
-| **Dispatcher** | One `run_vm` (**VM1R labor closed**) | Dialects → QVM |
+| **`QVM1` bytes** | Durable executable form (ops + pool) | Full language not on op-118 Core wire |
+| **Program** | Opcode vector + `VmPool` | — |
+| **Dispatcher** | One `run_vm` (**VM1R labor closed**) | Bodies still Rust phases (IR residual) |
+| **Dialects sql/json/mongo** | Portable → QVM (**DQ1 closed**) | Synthetic name-derived ids on `Collection` |
 | **Host** | scan / index / get by `CollectionId` | — |
-| **Foreign cache** | Keyed by `CollectionId` (R1) | — |
+| **Foreign cache** | Keyed by `CollectionId` (R1) | Nested within-enrich scan residual |
 
 ---
 
@@ -66,10 +68,10 @@ Rust: `query_bytecode_v1::OpCode` / `VM_PROFILE` / `qvm` / `vm_exec`.
 
 ## Non-claims
 
-- QVM1 / VM1R ≠ Decision 0 complete / C1 / every frontend → QVM
+- QVM1 / VM1R / DQ1 ≠ Decision 0 complete / C1 / pure micro-VM
 - Prior VM1 / P1c board claims remain **rejected**
 - **RQL-C1 must not be accepted**
-- NEXT = dialect→QVM (sql/json/mongo)
+- NEXT = residual IR honesty + principal Decision 0 review (see D0 inventory)
 
 ---
 
