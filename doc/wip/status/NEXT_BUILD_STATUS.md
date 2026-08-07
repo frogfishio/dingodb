@@ -7,18 +7,17 @@ Sources: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md),
 [NEXT_BUILD_PLAN.md](../../done/programs/NEXT_BUILD_PLAN.md),
 [M0_1_EVIDENCE_INVENTORY.md](../../done/programs/M0_1_EVIDENCE_INVENTORY.md), and active package plans.
 
-Updated: 2026-08-07 (**RQL-Q0** amendments A1–A10 closeout labor complete — principal
-package accept pending on re-issued pack). Pack:
-[RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md) · index
+Updated: 2026-08-07 (**RQL-Q0** package **ACCEPT** — freeze only; not Gate-1).
+Accept pack §5: [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md)
+· clean tip `e1f5c670a99dc54da477c531c83bca4985199a42` · index
 [RQL_Q0_DOC_INDEX.md](../../todo/rql/RQL_Q0_DOC_INDEX.md).
 **Decision 0 OPEN**; RQL-C1 **forbidden**
-([RQL_D0_CLOSE_READINESS.md](../../todo/rql/RQL_D0_CLOSE_READINESS.md); A9 micro-op
-purity not required for D0 close — Q0.A7).
-Q1 corpus **blocked** until §5 ACCEPT. CRITICAL_PATH RQL→Atomics→Cluster.
+([RQL_D0_CLOSE_READINESS.md](../../todo/rql/RQL_D0_CLOSE_READINESS.md); A7 micro-op
+purity not required for D0 close).
+**RQL-Q1 admitted** — claim Q1.1 corpus schema next. CRITICAL_PATH RQL→Atomics→Cluster.
 Prior: RQL-I1/0/F1/F2; P0 packaging 0.2.2; CSE-3 ~21–23K SoT.
 **ETQ-2 paused.** **AWO paused.**
-Labor hold: [RQL_LABOR_HOLD.md](../../todo/rql/RQL_LABOR_HOLD.md) — Q1 still
-forbidden until principal fills re-issued accept pack §5.
+Labor hold: [RQL_LABOR_HOLD.md](../../todo/rql/RQL_LABOR_HOLD.md) — Q0 hold **lifted** for Q1.
 
 **How to read program order:** open [CRITICAL_PATH.md](../../../CRITICAL_PATH.md)
 then [MASTER_DELIVERY_PLAN.md §0 Reader map](../../../MASTER_DELIVERY_PLAN.md)
@@ -137,15 +136,15 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APP-6 | active | 2026-08-02 | APP-3, APP-5, HAR-4 | **T1–T3**: cursor + page executor + multipage field-order; APB-7 T10 product ring binds params; `app6_page_executor` **4/4**; `app6_field_order_multipage` **3/3** | HAR-4 remote op 118; Heap-confined cursor secrets residual; **no product query / APB-7 package accept** | query execution |
 | APP-7 | active | 2026-08-02 | APP-6, HAR-4 | **T6**: op **118** `rql_query` **active** in heap+baseline ops; server dispatch + `RemoteHeap::rql_query` + façade remote `rql` wire path; dual pack remote green; gates `har4_query_remote_gate` **7/7** | package accept residual; plan-only args residual | remote query |
 | APP-8 | not_started | — | APP-1…APP-7 | — | release evidence pack | application journey |
-| RQL-Q0 | blocked | 2026-08-07 | principal §5 on re-issued [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md) | A1–A10 substance complete (pins, equivalence, matrix, Full-wire, **RQB1 deleted**, durable dialect ids, D0 micro-op, doc index); closeout A11–A14 (CBL Full Sync, RQB1 live-doc cleanup, named query defaults, gates+§5 SHA) | **not** package accept until §5; Q1 still blocked | Gate-1 target/profile freeze |
-| RQL-Q1 | blocked | — | RQL-Q0 principal accept | cards Q1.1–Q1.4 titled `[BLOCKED:Q0]` (stage still `todo`; host forbids demote); **do not claim** | corpus schema/fixtures forbidden until Q0 ACCEPT | practical query corpus |
+| RQL-Q0 | accept | 2026-08-07 | — | §5 ACCEPT on [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md); clean tip `e1f5c670a99dc54da477c531c83bca4985199a42`; A1–A14 closeout complete | freeze accept only — **not** Gate-1 | Gate-1 target/profile freeze |
+| RQL-Q1 | active | 2026-08-07 | RQL-Q0 accept | Q1.1–Q1.4 **unblocked** (claim Q1.1 first); programme §4 corpus | schema/fixtures admitted | practical query corpus |
 | RQL-Q2 | not_started | — | RQL-Q1 accept; Decision-0 honesty for one-runtime *exit claim* | — | Tier A gaps not closed as Gate-1 programme package | capability closure |
 | RQL-Q3 | not_started | — | RQL-Q2 family expressibility | — | independent oracle / differential matrix absent as programme package | semantic qualification |
 | RQL-Q4 | not_started | — | RQL-Q0 lanes; Q1 corpus (scaffold may precede Q3 claims) | — | cross-engine harness not accepted | qualification harness |
 | RQL-Q5 | not_started | — | RQL-Q4 harness; Q3-green families | — | unoptimised baseline not run | controlled baseline |
 | RQL-Q6 | not_started | — | RQL-Q5 accept + frozen gates | — | no pre-baseline optimisation admitted | evidence-led optimisation |
 | RQL-Q7 | not_started | — | RQL-Q2/Q3 green; Q5 gates; Q6 closed or residuals accepted | — | Gate-1 decision pack absent | final qualification / Gate-1 |
-| RQL-D0 | blocked | 2026-08-07 | principal disposition ([RQL_D0_CLOSE_READINESS.md](../../todo/rql/RQL_D0_CLOSE_READINESS.md) A12–A13) | inventory [RQL_D0_RESIDUAL_INVENTORY.md](../../todo/rql/RQL_D0_RESIDUAL_INVENTORY.md); checklist D0.2; arch gate green; labor cards D0.1–D0.2 board `done` (**≠** Decision 0 close) | Decision 0 **OPEN**; RQL-C1 **forbidden**; does not substitute for Q0 accept | pre-Q2 one-runtime honesty |
+| RQL-D0 | blocked | 2026-08-07 | principal disposition ([RQL_D0_CLOSE_READINESS.md](../../todo/rql/RQL_D0_CLOSE_READINESS.md) A12–A13) | inventory [RQL_D0_RESIDUAL_INVENTORY.md](../../todo/rql/RQL_D0_RESIDUAL_INVENTORY.md); checklist D0.2; arch gate green; labor cards D0.1–D0.2 board `done` (**≠** Decision 0 close) | Decision 0 **OPEN**; RQL-C1 **forbidden**; Q0 freeze accept does not close D0 | pre-Q2 one-runtime honesty |
 | DEL-0 | not_started | — | HAR-3 (drafting may start after) | — | drafting only until M1; no live surface | Evidence registries |
 | TEL-0 | not_started | — | HAR-3 (drafting may start after) | — | drafting only until M1 | Telemetry registries |
 | DST-000 | not_started | — | HAR-3 (drafting may start after) | — | not M2 engine gate | Studio scaffolding |
@@ -214,14 +213,13 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 
 | Priority | Action / card | Stage | Note |
 |---:|---|---|---|
-| **1** | **Principal:** re-review [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md) **§5** | human | Only §5 ACCEPT unlocks Q1 |
-| — | Q0.A1–Q0.A9 amendment labor | `in_review` | Pins, equiv, matrix, Full-wire, RQB1, ids, D0 micro-op, docs, re-issue |
-| — | Normative freeze set | ready | [RQL_Q0_DOC_INDEX.md](../../todo/rql/RQL_Q0_DOC_INDEX.md) |
-| — | Q1.1–Q1.4 corpus cards | `todo` `[BLOCKED:Q0]` | **Do not claim** until post-amendment ACCEPT |
+| **1** | **RQL-Q1.1** corpus schema + versioning | `todo` | Q0 ACCEPT unlocks claim; scaffold only first |
+| — | Q0 package | **accept** | freeze only; SHA e1f5c670… |
+| — | Normative freeze set | accepted | [RQL_Q0_DOC_INDEX.md](../../todo/rql/RQL_Q0_DOC_INDEX.md) |
+| — | Q1.2–Q1.4 domain/floors | `todo` | After Q1.1 |
 | later | Q2…Q7 | `backlog` | Q2-BLOCK-FULL-WIRE until Full on wire |
 
-Admitted Gate-1 implementer labor on corpus = **none** until §5 ACCEPT.
-Amendment labor complete for principal re-review.
+Admitted Gate-1 implementer labor = **Q1 corpus** (start Q1.1). Not Gate-1 pass.
 
 
 ## M0-2 exit checklist
@@ -247,9 +245,9 @@ Amendment labor complete for principal re-review.
 
 | Order | Package | Note |
 |---:|---|---|
-| **now** | **RQL-Q0 amendments Q0.A1–Q0.A9** | Feature `019fdac4-1408-7321-8edc-a09851c9e656`; principal will not accept until amendments; claim P0 first |
-| next | **Q0.A9 re-issue + principal §5** | After A1–A8; then ACCEPT unlocks Q1 |
-| next labor | **RQL-Q1** corpus | Only after post-amendment Q0 ACCEPT; cards still `[BLOCKED:Q0]` until unlocked |
+| **now** | **RQL-Q1** corpus | Q0 ACCEPT; claim **Q1.1** schema first |
+| next | Q1.2–Q1.4 domains + floors | After Q1.1 scaffold |
+| later | RQL-Q2… | After Q1 accept; Decision 0 honesty for one-runtime *exit* |
 | 1 | DEF-098…DEF-104 | Accepted; permanent regression authorities |
 | 2 | **CSQ-12 / A2** | Scoreboard **accept** 2026-08-01; A3 residuals deferred |
 | 3 | **FAS-0…FAS-4** | Scoreboard **accept** MVP 2026-08-01; foundation closed |

@@ -1,14 +1,14 @@
 # RQL-Q0 — Principal accept pack (re-issue after amendments)
 
-Status: **Q0.A11–A14 closeout labor complete · awaiting principal package accept**
+Status: **Q0 package ACCEPT (principal) · freeze accepted · Q1 admitted**
 Package: RQL-Q0 Target and profile freeze
 Board Features: first freeze `019fda4b-d981-7980-a283-549a7312f2a9` · amendment `019fdac4-1408-7321-8edc-a09851c9e656`
 Authority: [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §3 exit · §11
 Labor re-issue date: 2026-08-07 (Q0.A9–A14 closeout wave)
-Tree baseline: parent/content **A10 reviewed tip** `e764d218af38f72058e68813a567ae25cd259331` · A11 commit `98342415d1275d399de0d2fd29b7220cf8b5aad5` · A12–A14 docs at labor handoff may be uncommitted — principal §5 SHA = **clean tip only** (`git_dirty=false`) · VERSION **0.2.2**
+Tree baseline: **accepted clean tip** `e1f5c670a99dc54da477c531c83bca4985199a42` (`git_dirty=false`) · parent A10 `e764d218af38f72058e68813a567ae25cd259331` · VERSION **0.2.2**
 
-**This file does not accept Q0.** Only the principal fills §5.
-**Q1 corpus labor must not start until §5 records ACCEPT.**
+**§5 records principal ACCEPT (2026-08-07).** This is freeze accept only — **not** Gate-1.
+**Q1 corpus labor is admitted** (claim Q1.1 next). Decision 0 / RQL-C1 unchanged (OPEN / forbidden).
 **Decision 0 / RQL-C1 are out of scope for this pack** (see [RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md)).
 
 Doc map: [RQL_Q0_DOC_INDEX.md](./RQL_Q0_DOC_INDEX.md).
@@ -23,6 +23,7 @@ Doc map: [RQL_Q0_DOC_INDEX.md](./RQL_Q0_DOC_INDEX.md).
 | 2026-08-07 | **Do not accept yet** | Principal review: material holes in qualification foundation |
 | 2026-08-07 | Amendment package A1–A8 labor | This re-issue (A9) incorporates required amendments |
 | 2026-08-07 | **ACCEPT_WITH_AMENDMENTS** | Principal: A1–A10 substance ok; hold for CBL Full Sync + RQB1 doc cleanup + named query defaults |
+| 2026-08-07 | **ACCEPT** | Principal: Q0 package accepted after A11–A14 closeout; clean tip `e1f5c670…`; Q1 admitted |
 
 ---
 
@@ -93,13 +94,13 @@ Do not conflate lanes in portfolio scoring.
 
 ## 4. Proposed state moves **after** principal ACCEPT
 
-Labor must not apply these as if already accepted.
+**Applied 2026-08-07** after principal ACCEPT (Q0.A15 labor recording).
 
 | Surface | Proposed move |
 |---|---|
-| Scoreboard **RQL-Q0** | `active` (amending) → **accept** of freeze only (not Gate-1) |
+| Scoreboard **RQL-Q0** | **accept** of freeze only (not Gate-1) — applied |
 | Kanban amendment tasks Q0.A* | Principal may advance to `done` after review |
-| Kanban Q1.* | Remove `[BLOCKED:Q0]` claim ban; admit Q1.1 |
+| Kanban Q1.* | Remove `[BLOCKED:Q0]` claim ban; admit Q1.1 — applied |
 | Decision 0 Feature | **Unchanged** — still OPEN for principal D0 disposition |
 | Process docs (hold) | Eligible to archive per [RQL_Q0_DOC_INDEX.md](./RQL_Q0_DOC_INDEX.md) |
 
@@ -128,37 +129,37 @@ Principal: fill §5 on the **clean** post-closeout SHA (after any remaining A12�
 ## 5. Principal decision block (human only)
 
 ```text
-Q0 package accept:     ACCEPT | ACCEPT_WITH_AMENDMENTS | REJECT
-Date / principal:      _______________________________________________
-Git SHA reviewed:      _______________________________________________
+Q0 package accept:     ACCEPT
+Date / principal:      2026-08-07 / principal (package award: Q0 has been accepted)
+Git SHA reviewed:      e1f5c670a99dc54da477c531c83bca4985199a42
 
 Amendments required (if any):
-  _______________________________________________________________
-  _______________________________________________________________
+  (none — A11–A14 closeout complete)
 
 Confirm aggregates + computed/conditional projection stay Tier A blockers
-(SPEC amend in Q2), not demoted to Tier C:   YES | NO (explain)
-  _______________________________________________________________
+(SPEC amend in Q2), not demoted to Tier C:   YES
 
-Confirm DISTINCT stays Tier A:   YES | NO
-Confirm Q2-BLOCK-FULL-WIRE (Full not lane-S until wire):   YES | NO
-Confirm Decision 0 close does not require pure micro-op rewrite:   YES | NO
+Confirm DISTINCT stays Tier A:   YES
+Confirm Q2-BLOCK-FULL-WIRE (Full not lane-S until wire):   YES
+Confirm Decision 0 close does not require pure micro-op rewrite:   YES
 
-Scoreboard move authorised as in §4:   YES | NO
-Q1 corpus labor admitted after this accept: YES | NO
+Scoreboard move authorised as in §4:   YES
+Q1 corpus labor admitted after this accept: YES
 ```
 
-Labor must leave this block blank.
+Filled by principal direction 2026-08-07. Freeze accept only — not Gate-1 / not Decision 0 close.
 
 ---
 
 ## 6. Implementer constraints until §5 is filled
 
-1. **Do not** implement Q1 fixture bulk or claim Q1 package progress as admitted programme work.
-2. **Do not** treat board `in_review` on Q0.A* as package accept.
+**Superseded:** §5 is ACCEPT. Constraints now:
+
+1. **Q1 corpus labor is admitted** — claim Q1.1 next (schema/scaffolding first).
+2. **Do not** claim Gate-1, Q5 performance, or RQL-C1 / Decision 0 close via this pack.
 3. **Do not** weaken Tier A by inventing green matrix classes without SPEC + principal.
-4. Decision 0 residual docs may proceed; they do not substitute for Q0 accept.
-5. See [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md).
+4. Decision 0 residual docs may proceed independently; still OPEN.
+5. See [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) (hold lifted for Q1; Q2+ still gated).
 
 ---
 
@@ -171,7 +172,7 @@ Labor must leave this block blank.
 - [x] All four freeze artefacts + code honesty linked
 - [x] Scoreboard / Q1 unlock proposed (not applied as accept)
 - [x] §5 left blank for principal
-- [ ] Principal §5 filled (human)
+- [x] Principal §5 filled (ACCEPT 2026-08-07 · SHA e1f5c670…)
 
 ### Q0.A11 labor (ACCEPT_WITH_AMENDMENTS wave)
 
@@ -179,15 +180,16 @@ Labor must leave this block blank.
 - [x] A12: stale live RQB1 documentation cleanup (QVM-only truth; QUERY_ISA_V1 retired)
 - [x] A13: named query defaults freeze (`Available` / `Complete` / page size 64)
 - [x] A14: gates re-run green; labor tip evidence in §4.1; §5 decision left blank for principal
+- [x] A15: record principal ACCEPT + unlock Q1 (this recording)
 
 ---
 
 ## One-line verdict
 
 ```text
-Q0 A11–A14 closeout = complete for principal re-review (gates green)
-Q0 package          = NOT accepted (principal only) — ready for §5 ACCEPT on clean tip
-Q1                = BLOCKED until §5 ACCEPT
+Q0 A11–A14 closeout = complete
+Q0 package          = ACCEPT (freeze only) · SHA e1f5c670a99dc54da477c531c83bca4985199a42
+Q1                = ADMITTED (claim Q1.1)
 Decision 0        = OPEN (micro-op purity not D0 close bar)
 RQB1              = removed from SDK
 ```

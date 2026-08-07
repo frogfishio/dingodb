@@ -33,7 +33,7 @@ convergence claims stay rejected.
 
 ```text
 Verdict     = Decision 0 OPEN; RQL-C1 must NOT be accepted
-NEXT        = Q0 amendments A1–A14 then principal §5; Q1 still blocked
+NEXT        = Q0 ACCEPT done; claim Q1.1 corpus schema; Decision 0 still OPEN
 D0 close bar= A1–A8 product QVM path (A9 micro-op purity NOT required — Q0.A7)
 ```
 

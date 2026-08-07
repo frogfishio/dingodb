@@ -452,8 +452,8 @@ does Atomics become the active critical-path programme.
 
 | Package | State | Principal exit decision |
 |---|---|---|
-| RQL-Q0 Target freeze | `labor_complete` (amendments A1–A14 closeout; principal §5 pending) | Tier and comparator profile accepted |
-| RQL-Q1 Practical corpus | `backlog` | Immutable corpus accepted |
+| RQL-Q0 Target freeze | **`accept`** (2026-08-07; SHA e1f5c670…) | Tier and comparator profile accepted |
+| RQL-Q1 Practical corpus | `todo` (admitted) | Immutable corpus accepted |
 | RQL-Q2 Capability closure | `backlog` | Tier A 100%; one QVM runtime |
 | RQL-Q3 Semantic qualification | `backlog` | Oracle/equivalence/damage green |
 | RQL-Q4 Harness | `backlog` | Cross-engine harness accepted |
@@ -472,8 +472,8 @@ Product project: `019fda36-f8f4-7f40-9a9b-a86cfae1466e`
 |---|---|---|
 | Decision-0 residual (pre-Q2 honesty) | `019fda4c-a6f2-7932-a9d7-6e04400fd3df` | D0.1–D0.2 labor cards board `done`; **Decision 0 still OPEN** (principal disposition required); blocks Q2 one-runtime exit claim |
 | RQL-Q0 Target freeze (first freeze) | `019fda4b-d981-7980-a283-549a7312f2a9` | Q0.1–Q0.8 labor complete/`in_review`; **not package accept** |
-| RQL-Q0 Amendment package | `019fdac4-1408-7321-8edc-a09851c9e656` | **Q0.A1–A10 landed; A11–A14 closeout ADMITTED** — claim before re-accept |
-| RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | Q1.1–Q1.4 titles `[BLOCKED:Q0]` (stage still `todo`; host forbids demote); **do not claim** — see [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) |
+| RQL-Q0 Amendment package | `019fdac4-1408-7321-8edc-a09851c9e656` | A1–A15 complete; package ACCEPT recorded |
+| RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | Q1.1–Q1.4 **admitted** — claim Q1.1 first |
 | RQL-Q2 Capability closure | `019fda4c-1227-7c93-b7e6-292141ec7a78` | backlog; spawn gap packages after audit |
 | RQL-Q3 Semantic qualification | `019fda4c-5994-77e2-a2c9-aaa0c3097b29` | backlog |
 | RQL-Q4 Harness | `019fda4c-59bf-7320-a0cb-35f92c50fc45` | backlog (scaffold allowed; no competitive claims pre-Q3) |
@@ -487,15 +487,12 @@ scoreboard honesty landed. Principal advanced those **labor cards** to board
 `done`. **That is not package accept.** Package exit still requires principal
 to fill accept pack **§5**. Do not implement Q1 until §5 records ACCEPT.
 
-**Principal review (2026-08-07):** Q0 **not accepted yet**. Material holes
-(first wave A1–A10 closed in substance). Review 2: **ACCEPT_WITH_AMENDMENTS** —
-CBL Full Sync, live RQB1 docs, named query defaults, gates+§5 SHA (A11–A14).
-RQB1 is **deleted from code**; do not restore. Amendment Feature
-`019fdac4-1408-7321-8edc-a09851c9e656` schedules A11–A14 closeout in `todo`.
+**Principal ACCEPT (2026-08-07):** Q0 freeze package **accepted** after A11–A14
+closeout. Clean tip `e1f5c670a99dc54da477c531c83bca4985199a42`. Q1 corpus **admitted**.
+RQB1 remains **deleted**; do not restore. Not Gate-1 pass; Decision 0 still OPEN.
 
-**Labor hold (updated):** [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) — admit
-**amendment** todos only; Q1 remains `[BLOCKED:Q0]` until post-amendment §5
-ACCEPT (host still forbids `todo`→`backlog` demote on Q1 cards).
+**Labor hold (updated):** [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) — Q0 hold
+**lifted** for Q1; claim Q1.1 next.
 
 **D0 residual labor (2026-08-07):** [RQL_D0_RESIDUAL_INVENTORY.md](./RQL_D0_RESIDUAL_INVENTORY.md)
 (D0.1) + [RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md) (D0.2) labor

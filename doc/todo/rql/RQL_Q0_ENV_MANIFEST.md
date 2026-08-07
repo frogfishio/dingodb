@@ -1,6 +1,6 @@
 # RQL-Q0 — Environment and engine manifest
 
-Status: **Q0.A13 named query defaults freeze · principal freeze re-accept pending**
+Status: **Q0 package ACCEPT (2026-08-07) · freeze normative**
 
 Package: RQL-Q0 deliverable 1 (amended)
 Authority: [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §3 ·
@@ -361,7 +361,7 @@ Aligns with performance harness environment honesty
 - [x] Exact CBL Full Sync on (`DatabaseConfiguration.fullSync = true`) + fingerprint `cbl_full_sync=true` (Q0.A11)
 - [x] Native-default CBL residual class `native_default_non_equivalent` excluded from competitive aggregates (Q0.A11)
 - [x] Named query defaults: Available / Complete / page size 64 (Q0.A13) — not bare `Default()`
-- [ ] Principal accept of amended freeze (package-level Q0 after A11–A14 closeout)
+- [x] Principal accept of amended freeze (package-level Q0 ACCEPT 2026-08-07 · SHA e1f5c670…)
 
 ---
 
