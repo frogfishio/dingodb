@@ -212,7 +212,7 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 
 | Priority | Action / card | Stage | Note |
 |---:|---|---|---|
-| **1** | **Q0.A1** [P0] Comparator pins + full config | `todo` | Claim next — obsolete Mongo 8.0.4 / CBL 3.2.1 |
+| **1** | **Q0.A1** [P0] Comparator pins + full config | `in_review` | Mongo **8.2.12** + driver 3.8.0; CBL **4.1.0** + full config (env manifest) |
 | **2** | **Q0.A2** [P0] Tighten equivalence laws | `todo` | Collation, ints, missing/null, agg, arrays, cursor writes |
 | **3** | **Q0.A3–A6** [P1] Matrix / Full-wire / RQB1 / durable ids | `todo` | Docs + code; A5/A6 may parallel |
 | **4** | **Q0.A7–A8** [P2] D0 micro-op policy + doc consolidate | `todo` | After or parallel P1 docs |

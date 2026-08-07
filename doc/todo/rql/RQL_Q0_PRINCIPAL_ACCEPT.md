@@ -66,8 +66,8 @@ Related (not Q0 exit criteria):
 
 | Lane | Residiuum side | Comparator pin |
 |---|---|---|
-| **E** Embedded | SDK / store in-process | Couchbase Lite **3.2.1** embedded |
-| **S** Local client/server | `residiuum serve` + client (loopback) | MongoDB Community **8.0.4** localhost |
+| **E** Embedded | SDK / store in-process | Couchbase Lite **4.1.0** embedded |
+| **S** Local client/server | `residiuum serve` + client (loopback) | MongoDB Community **8.2.12** localhost |
 
 Residiuum package pin: **0.2.2**, MSRV **1.88.0**, evidence `git_sha` = full HEAD.  
 Do not conflate lanes in portfolio scoring (see lanes file).
