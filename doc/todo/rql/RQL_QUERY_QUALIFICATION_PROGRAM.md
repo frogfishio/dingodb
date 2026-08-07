@@ -453,7 +453,7 @@ does Atomics become the active critical-path programme.
 | Package | State | Principal exit decision |
 |---|---|---|
 | RQL-Q0 Target freeze | **`accept`** (2026-08-07; SHA e1f5c670…) | Tier and comparator profile accepted |
-| RQL-Q1 Practical corpus | `todo` (admitted) | Immutable corpus accepted |
+| RQL-Q1 Practical corpus | `active` (Q1.1 scaffold; Q1.2–Q1.4 open) | Immutable corpus accepted |
 | RQL-Q2 Capability closure | `backlog` | Tier A 100%; one QVM runtime |
 | RQL-Q3 Semantic qualification | `backlog` | Oracle/equivalence/damage green |
 | RQL-Q4 Harness | `backlog` | Cross-engine harness accepted |
@@ -473,7 +473,7 @@ Product project: `019fda36-f8f4-7f40-9a9b-a86cfae1466e`
 | Decision-0 residual (pre-Q2 honesty) | `019fda4c-a6f2-7932-a9d7-6e04400fd3df` | D0.1–D0.2 labor cards board `done`; **Decision 0 still OPEN** (principal disposition required); blocks Q2 one-runtime exit claim |
 | RQL-Q0 Target freeze (first freeze) | `019fda4b-d981-7980-a283-549a7312f2a9` | Q0.1–Q0.8 labor complete/`in_review`; **not package accept** |
 | RQL-Q0 Amendment package | `019fdac4-1408-7321-8edc-a09851c9e656` | A1–A15 complete; package ACCEPT recorded |
-| RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | Q1.1–Q1.4 **admitted** — claim Q1.1 first |
+| RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | Q1.1 scaffold `in_review`; claim Q1.2 next |
 | RQL-Q2 Capability closure | `019fda4c-1227-7c93-b7e6-292141ec7a78` | backlog; spawn gap packages after audit |
 | RQL-Q3 Semantic qualification | `019fda4c-5994-77e2-a2c9-aaa0c3097b29` | backlog |
 | RQL-Q4 Harness | `019fda4c-59bf-7320-a0cb-35f92c50fc45` | backlog (scaffold allowed; no competitive claims pre-Q3) |
@@ -511,17 +511,14 @@ features are archived or package stages change after principal accept.
 
 ## 12. Immediate marching order
 
-1. **Labor:** claim Q0.A1–Q0.A9 amendment todos (P0 first) — Feature
-   `019fdac4-1408-7321-8edc-a09851c9e656`.
-2. **Labor:** re-issue accept pack (Q0.A9); leave §5 blank.
-3. **Principal:** ACCEPT (or further amend) via re-issued pack §5.
-4. After Q0 ACCEPT: build RQL-Q1 as **machine-readable corpus data + one report**,
-   not another document series.
-5. Run the capability audit and generate Q2 from actual failures (include
+1. **Done:** Q0 ACCEPT (2026-08-07); Q1.1 corpus schema scaffold landed
+   (`spec/rql/qualification/corpus-v1/` + [RQL_Q1_CORPUS.md](./RQL_Q1_CORPUS.md)).
+2. **Labor next:** Q1.2 Commerce + Messaging fixtures (then Q1.3, Q1.4 floors).
+3. After Q1 package accept: capability audit → Q2 from actual failures (include
    Full-over-wire blocker from Q0.A4).
-6. Decision 0 residual: one product QVM path is the close test (Q0.A7 may drop
-   pure micro-op as a hard blocker); still principal-only for C1.
-7. Do not benchmark a semantic family until it passes Q3.
+4. Decision 0 residual: one product QVM path is the close test; still
+   principal-only for C1; blocks Q2 one-runtime *exit claim*.
+5. Do not benchmark a semantic family until it passes Q3.
 
 ## 13. Non-claims
 

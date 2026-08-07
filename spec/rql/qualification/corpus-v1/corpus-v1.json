@@ -1,0 +1,43 @@
+{
+  "format": "residiuum-rql-q1-corpus-v1",
+  "profile": "rql-gate1-practical-corpus-v1",
+  "corpus_version": "rql-q1-corpus-v0.1.0",
+  "authority": {
+    "programme": "doc/todo/rql/RQL_QUERY_QUALIFICATION_PROGRAM.md",
+    "section": "4",
+    "package": "RQL-Q1",
+    "q0_freeze_tip": "e1f5c670a99dc54da477c531c83bca4985199a42"
+  },
+  "equivalence_profile": "rql-q0-result-equivalence-v1",
+  "case_schema": "corpus-case-v1.schema.json",
+  "amendment_policy": {
+    "requires_principal_review": true,
+    "process_doc": "doc/todo/rql/RQL_Q1_CORPUS.md",
+    "semver_rules": "MAJOR: remove/redefine frozen case meaning or floor policy. MINOR: add cases or non-breaking fields after principal accept. PATCH: typos, notes, generator params that do not change intention/result. Never silently edit a frozen case_id in place — archive + replace under amendment log."
+  },
+  "floor_policy": {
+    "measure": "count_cases_with_family_tag",
+    "floors": {
+      "selection_key_eq_range_compound": 20,
+      "predicate_missing_null_type_nested_array": 20,
+      "projection_computed_conditional": 15,
+      "order_topk_cursor": 15,
+      "enrichment_cardinality": 15,
+      "group_aggregate": 15,
+      "budget_coverage_damage_refusal": 10
+    },
+    "enforce_floors": false
+  },
+  "amendment_log": [
+    {
+      "corpus_version": "rql-q1-corpus-v0.1.0",
+      "date": "2026-08-07",
+      "summary": "Q1.1 scaffold: schema, empty case set, amendment + floor policy. No domain bulk.",
+      "principal_disposition": "scaffold",
+      "case_ids_added": [],
+      "case_ids_changed": [],
+      "case_ids_archived": []
+    }
+  ],
+  "cases": []
+}

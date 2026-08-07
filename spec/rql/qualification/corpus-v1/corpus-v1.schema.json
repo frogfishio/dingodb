@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://residiuumdb.org/schemas/residiuum-rql-q1-corpus-v1.json",
+  "title": "residiuum-rql-q1-corpus-v1",
+  "description": "Versioned RQL-Q1 practical query corpus document (programme §4).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "profile",
+    "corpus_version",
+    "authority",
+    "equivalence_profile",
+    "amendment_policy",
+    "floor_policy",
+    "cases"
+  ],
+  "properties": {
+    "format": {
+      "const": "residiuum-rql-q1-corpus-v1"
+    },
+    "profile": {
+      "const": "rql-gate1-practical-corpus-v1"
+    },
+    "corpus_version": {
+      "type": "string",
+      "pattern": "^rql-q1-corpus-v[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semver under rql-q1-corpus-v prefix. Bump on every principal-accepted amendment."
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["programme", "section", "package"],
+      "properties": {
+        "programme": {
+          "type": "string",
+          "const": "doc/todo/rql/RQL_QUERY_QUALIFICATION_PROGRAM.md"
+        },
+        "section": {
+          "type": "string",
+          "const": "4"
+        },
+        "package": {
+          "type": "string",
+          "const": "RQL-Q1"
+        },
+        "q0_freeze_tip": {
+          "type": "string",
+          "description": "Git tip of accepted Q0 freeze when corpus is first frozen."
+        }
+      }
+    },
+    "equivalence_profile": {
+      "type": "string",
+      "const": "rql-q0-result-equivalence-v1"
+    },
+    "case_schema": {
+      "type": "string",
+      "const": "corpus-case-v1.schema.json"
+    },
+    "amendment_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requires_principal_review",
+        "process_doc",
+        "semver_rules"
+      ],
+      "properties": {
+        "requires_principal_review": {
+          "type": "boolean",
+          "const": true
+        },
+        "process_doc": {
+          "type": "string",
+          "const": "doc/todo/rql/RQL_Q1_CORPUS.md"
+        },
+        "semver_rules": {
+          "type": "string",
+          "minLength": 8
+        }
+      }
+    },
+    "floor_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["measure", "floors"],
+      "properties": {
+        "measure": {
+          "type": "string",
+          "const": "count_cases_with_family_tag",
+          "description": "A case contributes 1 to each family_tags entry it lists."
+        },
+        "floors": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "selection_key_eq_range_compound",
+            "predicate_missing_null_type_nested_array",
+            "projection_computed_conditional",
+            "order_topk_cursor",
+            "enrichment_cardinality",
+            "group_aggregate",
+            "budget_coverage_damage_refusal"
+          ],
+          "properties": {
+            "selection_key_eq_range_compound": {
+              "type": "integer",
+              "const": 20
+            },
+            "predicate_missing_null_type_nested_array": {
+              "type": "integer",
+              "const": 20
+            },
+            "projection_computed_conditional": {
+              "type": "integer",
+              "const": 15
+            },
+            "order_topk_cursor": {
+              "type": "integer",
+              "const": 15
+            },
+            "enrichment_cardinality": {
+              "type": "integer",
+              "const": 15
+            },
+            "group_aggregate": {
+              "type": "integer",
+              "const": 15
+            },
+            "budget_coverage_damage_refusal": {
+              "type": "integer",
+              "const": 10
+            }
+          }
+        },
+        "enforce_floors": {
+          "type": "boolean",
+          "description": "false during Q1.1–Q1.3 scaffolding; true for Q1.4 / package exit."
+        }
+      }
+    },
+    "amendment_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "corpus_version",
+          "date",
+          "summary",
+          "principal_disposition"
+        ],
+        "properties": {
+          "corpus_version": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "principal_disposition": {
+            "type": "string",
+            "enum": [
+              "scaffold",
+              "pending",
+              "accepted",
+              "accepted_with_amendments",
+              "rejected"
+            ]
+          },
+          "git_tip": {
+            "type": "string"
+          },
+          "case_ids_added": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "case_ids_changed": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "case_ids_archived": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "description": "Corpus cases. Empty allowed for Q1.1 scaffold; Q1.2+ populate domains.",
+      "items": {
+        "$ref": "corpus-case-v1.schema.json"
+      }
+    }
+  }
+}

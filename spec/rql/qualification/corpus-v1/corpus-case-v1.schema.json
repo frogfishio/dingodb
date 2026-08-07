@@ -1,0 +1,384 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://residiuumdb.org/schemas/residiuum-rql-q1-corpus-case-v1.json",
+  "title": "residiuum-rql-q1-corpus-case-v1",
+  "description": "One practical query intention for RQL-Q1 (programme §4.2). Intention + expected result are authority; RQL/Mongo/CBL are implementations.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "case_id",
+    "tier",
+    "domain",
+    "family_tags",
+    "plain_english_intent",
+    "fixture",
+    "expected",
+    "ordering_and_multiplicity",
+    "implementations",
+    "indexes",
+    "selectivity_class",
+    "cardinality_class",
+    "variants",
+    "exclusion_or_refusal"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9_.-]*$",
+      "description": "Stable id; never reuse after amendment archive."
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["A", "B", "C"]
+    },
+    "domain": {
+      "type": "string",
+      "enum": [
+        "commerce",
+        "messaging",
+        "directory",
+        "telemetry",
+        "project_management"
+      ]
+    },
+    "family_tags": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "selection_key_eq_range_compound",
+          "predicate_missing_null_type_nested_array",
+          "projection_computed_conditional",
+          "order_topk_cursor",
+          "enrichment_cardinality",
+          "group_aggregate",
+          "budget_coverage_damage_refusal"
+        ]
+      },
+      "description": "§4.3 distribution floor families. Overlap allowed; count floors by tag presence."
+    },
+    "capability_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Optional links to RQL_Q0_CAPABILITY_MATRIX row ids (e.g. TA-SEL-EQ)."
+    },
+    "plain_english_intent": {
+      "type": "string",
+      "minLength": 8,
+      "description": "Human-readable intention; authority with expected result."
+    },
+    "dogfood": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "origin": {
+          "type": "string",
+          "enum": ["dogfood", "invented_honest_label", "unknown"]
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generator_id", "seed"],
+      "properties": {
+        "generator_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Named fixture generator (Q1.2+ implements generators)."
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "params": {
+          "type": "object",
+          "description": "Generator parameters; shape is generator-owned."
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "literal_result",
+            "oracle_rule",
+            "stable_refusal",
+            "deferred_q2"
+          ]
+        },
+        "literal": {
+          "description": "Canonical result document(s) when kind=literal_result; optimiser-independent."
+        },
+        "oracle_rule_id": {
+          "type": "string",
+          "description": "Named independent oracle rule (Q3 owns execution; id frozen here)."
+        },
+        "oracle_rule_text": {
+          "type": "string",
+          "description": "Human rule when no shared id yet."
+        },
+        "result_digest_hex": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Optional blake3-256 of canonical result (when frozen)."
+        },
+        "equivalence_profile": {
+          "type": "string",
+          "const": "rql-q0-result-equivalence-v1",
+          "description": "Pins RQL_Q0_RESULT_EQUIVALENCE laws."
+        }
+      }
+    },
+    "ordering_and_multiplicity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["order", "multiplicity"],
+      "properties": {
+        "order": {
+          "type": "string",
+          "enum": [
+            "unordered_multiset",
+            "total_order",
+            "partial_order_with_tie_break",
+            "refusal_unordered"
+          ]
+        },
+        "multiplicity": {
+          "type": "string",
+          "enum": ["set", "bag", "singleton", "empty_ok"]
+        },
+        "tie_break": {
+          "type": "string",
+          "description": "Required when order needs stable ties (e.g. key asc)."
+        },
+        "nulls": {
+          "type": "string",
+          "enum": ["first", "last", "refuse", "case_frozen"]
+        }
+      }
+    },
+    "implementations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rql", "mongo", "cbl"],
+      "properties": {
+        "rql": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "source",
+                "pending",
+                "stable_refusal",
+                "deliberate_exclusion"
+              ]
+            },
+            "source": {
+              "type": "string",
+              "description": "RQL source text when status=source."
+            },
+            "canonical_qvm_hash_hex": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "blake3-256 of canonical QVM vector when frozen (Q2+)."
+            },
+            "canonical_qvm_vector_ref": {
+              "type": "string",
+              "description": "Path or id of frozen QVM vector artifact."
+            },
+            "refusal_code": { "type": "string" }
+          }
+        },
+        "mongo": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "pipeline",
+                "find",
+                "pending",
+                "stable_refusal",
+                "deliberate_exclusion",
+                "lane_local_only"
+              ]
+            },
+            "pipeline": {
+              "type": "array",
+              "description": "Mongo aggregation pipeline stages."
+            },
+            "find": {
+              "type": "object",
+              "description": "find filter/projection/sort form when not aggregation."
+            },
+            "notes": { "type": "string" },
+            "refusal_code": { "type": "string" }
+          }
+        },
+        "cbl": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "sqlpp",
+                "query_builder",
+                "pending",
+                "stable_refusal",
+                "deliberate_exclusion",
+                "lane_local_only"
+              ]
+            },
+            "sqlpp": { "type": "string" },
+            "query_builder_notes": { "type": "string" },
+            "notes": { "type": "string" },
+            "refusal_code": { "type": "string" }
+          }
+        }
+      }
+    },
+    "indexes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "optional"],
+      "properties": {
+        "required": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Index specs the case assumes present (may be empty for scan cells)."
+        },
+        "optional": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "selectivity_class": {
+      "type": "string",
+      "enum": [
+        "point",
+        "very_low",
+        "low",
+        "medium",
+        "high",
+        "broad",
+        "not_applicable"
+      ]
+    },
+    "cardinality_class": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "not_applicable"
+      ]
+    },
+    "variants": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["missing_null_type", "cursor_page"],
+      "properties": {
+        "missing_null_type": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["applies"],
+          "properties": {
+            "applies": { "type": "boolean" },
+            "kinds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "missing",
+                  "null",
+                  "wrong_type",
+                  "nested",
+                  "array_empty",
+                  "array_dup"
+                ]
+              }
+            },
+            "notes": { "type": "string" }
+          }
+        },
+        "cursor_page": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["applies"],
+          "properties": {
+            "applies": { "type": "boolean" },
+            "page_size": { "type": "integer", "minimum": 1 },
+            "kinds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "first_page",
+                  "deep_page",
+                  "resume_after",
+                  "empty_tail",
+                  "tie_span"
+                ]
+              }
+            },
+            "notes": { "type": "string" }
+          }
+        }
+      }
+    },
+    "exclusion_or_refusal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "none",
+            "deliberate_exclusion",
+            "stable_refusal",
+            "lane_local_only",
+            "predeclared_native_diff"
+          ]
+        },
+        "code": {
+          "type": "string",
+          "description": "Stable refusal or exclusion code (Q0 lanes/exclusions)."
+        },
+        "reason": { "type": "string" },
+        "lanes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["embedded", "local_client_server", "residiuum_only", "mongo_only", "cbl_only"]
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["scaffold", "draft", "ready", "frozen", "amended_archived"],
+      "description": "scaffold=schema example only; frozen requires principal corpus accept."
+    }
+  }
+}

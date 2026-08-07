@@ -137,7 +137,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APP-7 | active | 2026-08-02 | APP-6, HAR-4 | **T6**: op **118** `rql_query` **active** in heap+baseline ops; server dispatch + `RemoteHeap::rql_query` + façade remote `rql` wire path; dual pack remote green; gates `har4_query_remote_gate` **7/7** | package accept residual; plan-only args residual | remote query |
 | APP-8 | not_started | — | APP-1…APP-7 | — | release evidence pack | application journey |
 | RQL-Q0 | accept | 2026-08-07 | — | §5 ACCEPT on [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md); clean tip `e1f5c670a99dc54da477c531c83bca4985199a42`; A1–A14 closeout complete | freeze accept only — **not** Gate-1 | Gate-1 target/profile freeze |
-| RQL-Q1 | active | 2026-08-07 | RQL-Q0 accept | Q1.1–Q1.4 **unblocked** (claim Q1.1 first); programme §4 corpus | schema/fixtures admitted | practical query corpus |
+| RQL-Q1 | active | 2026-08-07 | RQL-Q0 accept | Q1.1 scaffold: `spec/rql/qualification/corpus-v1/` + [RQL_Q1_CORPUS.md](../../todo/rql/RQL_Q1_CORPUS.md); `bash scripts/verify-rql-q1-corpus.sh` exit 0; empty cases until Q1.2–Q1.3; floors not enforced | domain bulk + floors (Q1.2–Q1.4); **no package accept** | practical query corpus |
 | RQL-Q2 | not_started | — | RQL-Q1 accept; Decision-0 honesty for one-runtime *exit claim* | — | Tier A gaps not closed as Gate-1 programme package | capability closure |
 | RQL-Q3 | not_started | — | RQL-Q2 family expressibility | — | independent oracle / differential matrix absent as programme package | semantic qualification |
 | RQL-Q4 | not_started | — | RQL-Q0 lanes; Q1 corpus (scaffold may precede Q3 claims) | — | cross-engine harness not accepted | qualification harness |
@@ -213,10 +213,10 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 
 | Priority | Action / card | Stage | Note |
 |---:|---|---|---|
-| **1** | **RQL-Q1.1** corpus schema + versioning | `todo` | Q0 ACCEPT unlocks claim; scaffold only first |
+| **1** | **RQL-Q1.1** corpus schema + versioning | labor `in_review` | Scaffold landed; see `spec/rql/qualification/corpus-v1/` |
 | — | Q0 package | **accept** | freeze only; SHA e1f5c670… |
 | — | Normative freeze set | accepted | [RQL_Q0_DOC_INDEX.md](../../todo/rql/RQL_Q0_DOC_INDEX.md) |
-| — | Q1.2–Q1.4 domain/floors | `todo` | After Q1.1 |
+| — | Q1.2–Q1.4 domain/floors | `todo` | After Q1.1 scaffold |
 | later | Q2…Q7 | `backlog` | Q2-BLOCK-FULL-WIRE until Full on wire |
 
 Admitted Gate-1 implementer labor = **Q1 corpus** (start Q1.1). Not Gate-1 pass.
@@ -245,8 +245,8 @@ Admitted Gate-1 implementer labor = **Q1 corpus** (start Q1.1). Not Gate-1 pass.
 
 | Order | Package | Note |
 |---:|---|---|
-| **now** | **RQL-Q1** corpus | Q0 ACCEPT; claim **Q1.1** schema first |
-| next | Q1.2–Q1.4 domains + floors | After Q1.1 scaffold |
+| **now** | **RQL-Q1** corpus | Q1.1 scaffold landed; claim **Q1.2** Commerce+Messaging next |
+| next | Q1.3–Q1.4 domains + floors | After Q1.2 |
 | later | RQL-Q2… | After Q1 accept; Decision 0 honesty for one-runtime *exit* |
 | 1 | DEF-098…DEF-104 | Accepted; permanent regression authorities |
 | 2 | **CSQ-12 / A2** | Scoreboard **accept** 2026-08-01; A3 residuals deferred |

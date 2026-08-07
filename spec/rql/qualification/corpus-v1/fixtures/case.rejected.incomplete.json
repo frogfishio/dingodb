@@ -1,0 +1,6 @@
+{
+  "case_id": "bad.incomplete",
+  "tier": "A",
+  "domain": "commerce",
+  "plain_english_intent": "Missing most required §4.2 fields — must fail validation."
+}

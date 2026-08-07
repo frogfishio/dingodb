@@ -39,6 +39,12 @@ Programme package **RQL-Q1 Practical corpus** is:
 
 Not: another multi-document freeze family named Q0-style.
 
+**Q1.1 scaffold (2026-08-07):**  
+Machine: [`spec/rql/qualification/corpus-v1/`](../../../spec/rql/qualification/corpus-v1/)  
+Report: [RQL_Q1_CORPUS.md](./RQL_Q1_CORPUS.md)  
+Validate: `bash scripts/verify-rql-q1-corpus.sh`  
+Live cases still empty until Q1.2–Q1.3; package **not** accepted.
+
 **Name collision:** gap-ledger historical row is **`RQL-PERF-1`** (query perf
 campaign). Programme **RQL-Q1** = practical corpus only.
 
