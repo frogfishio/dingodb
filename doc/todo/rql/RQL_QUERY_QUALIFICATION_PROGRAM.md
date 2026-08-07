@@ -472,7 +472,7 @@ Product project: `019fda36-f8f4-7f40-9a9b-a86cfae1466e`
 |---|---|---|
 | Decision-0 residual (pre-Q2 honesty) | `019fda4c-a6f2-7932-a9d7-6e04400fd3df` | D0.1 inventory + D0.2 checklist labor `in_review`; **principal disposition required**; blocks Q2 one-runtime exit claim |
 | RQL-Q0 Target freeze | `019fda4b-d981-7980-a283-549a7312f2a9` | Q0.1–Q0.5 labor `in_review`; **principal package accept pending** |
-| RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | board tasks staged `todo` but **implementation blocked** until Q0 principal accept |
+| RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | Q1.1–Q1.4 titles `[BLOCKED:Q0]` (stage still `todo`; host forbids demote); **do not claim** — see [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) |
 | RQL-Q2 Capability closure | `019fda4c-1227-7c93-b7e6-292141ec7a78` | backlog; spawn gap packages after audit |
 | RQL-Q3 Semantic qualification | `019fda4c-5994-77e2-a2c9-aaa0c3097b29` | backlog |
 | RQL-Q4 Harness | `019fda4c-59bf-7320-a0cb-35f92c50fc45` | backlog (scaffold allowed; no competitive claims pre-Q3) |
@@ -484,6 +484,10 @@ Product project: `019fda36-f8f4-7f40-9a9b-a86cfae1466e`
 ([RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md)) landed; board
 `in_review`. **Principal package accept still required.** Do not implement Q1
 corpus until §5 of the accept pack is filled.
+
+**Labor hold (2026-08-07, Q0.6):** [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) —
+no admitted critical-path implementer todo while Q0 §5 is blank. Q1 cards
+marked `[BLOCKED:Q0]` (could not demote `todo`→`backlog` on host).
 
 **D0 residual labor (2026-08-07):** [RQL_D0_RESIDUAL_INVENTORY.md](./RQL_D0_RESIDUAL_INVENTORY.md)
 (D0.1) + [RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md) (D0.2) landed;
@@ -498,11 +502,13 @@ features are archived or package stages change after principal accept.
 
 ## 12. Immediate marching order
 
-1. Close current canonical-QVM convergence review blockers.
-2. Implement and principal-accept RQL-Q0.
-3. Build RQL-Q1 as data and executable cases, not prose examples.
+1. **Principal:** accept or amend RQL-Q0 via [RQL_Q0_PRINCIPAL_ACCEPT.md](./RQL_Q0_PRINCIPAL_ACCEPT.md) §5.
+2. **Labor hold** until then: [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) (no Q1 claim).
+3. After Q0 ACCEPT: build RQL-Q1 as data and executable cases, not prose examples.
 4. Run the capability audit and generate Q2 from actual failures.
-5. Do not benchmark a semantic family until it passes Q3.
+5. Decision 0 residual remains open for Q2 one-runtime *exit claim* honesty
+   ([RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md)).
+6. Do not benchmark a semantic family until it passes Q3.
 
 ## 13. Non-claims
 

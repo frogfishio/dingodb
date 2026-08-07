@@ -124,6 +124,7 @@ Labor must leave this block blank.
 2. **Do not** treat board `in_review` on Q0.1–Q0.5 as package accept.
 3. **Do not** weaken Tier A by inventing green matrix classes without SPEC + principal.
 4. Decision 0 residual docs may proceed in parallel; they do not substitute for Q0 accept.
+5. See [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) for the active hold and Q1 `[BLOCKED:Q0]` claim policy.
 
 If principal rejects or amends: rework named artefacts; re-issue this pack; keep Q1 blocked.
 
@@ -146,4 +147,5 @@ Q0 labor pack = complete for principal review
 Q0 package    = NOT accepted (principal only)
 Q1            = BLOCKED until §5 ACCEPT
 Decision 0    = OPEN (separate pack)
+Labor hold    = RQL_LABOR_HOLD.md (Q0.6)
 ```

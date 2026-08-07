@@ -33,7 +33,7 @@ convergence claims stay rejected.
 
 ```text
 Verdict     = Decision 0 OPEN; RQL-C1 must NOT be accepted
-NEXT        = D0 residual labor closed (D0.1+D0.2 in_review); Decision 0 remains open
+NEXT        = Q0 package accept pending; labor hold active (RQL_LABOR_HOLD.md)
 ```
 
 ---
@@ -89,8 +89,8 @@ Raw SDA → explicitly raw SDA APIs only (dialect `sda` / Collection::sda)
 ## One-line status
 
 ```text
-NEXT        = Q0 package accept + Decision 0 residual disposition; Decision 0 remains open
-FORBIDDEN   = Decision 0 close; RQL-C1 accept; claim prior VM1/P1c converged
-LANDED      = D0R; P0b; P1b; VM0 vocab; VM2–VM4 intermediate; R1; QVM1; VM1R; DQ1; WIRE1; DEL1; D0.1; D0.2
-HONESTY     = IR residual + open A9–A11; Decision 0 OPEN — see D0.1 inventory + D0.2 checklist
+NEXT        = Q0 package accept (RQL_Q0_PRINCIPAL_ACCEPT §5); labor hold active
+FORBIDDEN   = Decision 0 close; RQL-C1 accept; claim prior VM1/P1c converged; claim Q1 under hold
+LANDED      = D0R; P0b; P1b; VM0 vocab; VM2–VM4 intermediate; R1; QVM1; VM1R; DQ1; WIRE1; DEL1; D0.1; D0.2; Q0 pack; Q0.6 hold
+HONESTY     = IR residual + open A9–A11; Decision 0 OPEN; Q1 [BLOCKED:Q0] — see RQL_LABOR_HOLD.md
 ```
