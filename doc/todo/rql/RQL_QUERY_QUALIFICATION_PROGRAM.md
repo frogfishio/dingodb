@@ -1,10 +1,21 @@
 # RQL Query Qualification Programme
 
-Status: **principal-approved strategy; implementation not started**
+Status: **principal-approved strategy; delivery plan accepted; Q0 freeze docs in_review (principal package accept pending)**
 
 Effective: 2026-08-05
 
+Plan accept: **2026-08-07** — principal accepted Features + tasks materialisation for
+RQL-Q0…Q7 and Decision-0 residual (see §11.1). This is **not** package exit for
+Q0–Q7 and **not** Gate-1 pass.
+
 Authority: [CRITICAL_PATH.md](../../../CRITICAL_PATH.md) §4
+
+Q0 freeze artefacts (labor):
+
+- [RQL_Q0_ENV_MANIFEST.md](./RQL_Q0_ENV_MANIFEST.md)
+- [RQL_Q0_CAPABILITY_MATRIX.md](./RQL_Q0_CAPABILITY_MATRIX.md)
+- [RQL_Q0_RESULT_EQUIVALENCE.md](./RQL_Q0_RESULT_EQUIVALENCE.md)
+- [RQL_Q0_LANES_EXCLUSIONS.md](./RQL_Q0_LANES_EXCLUSIONS.md)
 
 Semantic specification: [RQL_SPEC.md](../../wip/query/RQL_SPEC.md)
 
@@ -451,6 +462,29 @@ does Atomics become the active critical-path programme.
 
 Only the next dependency-satisfied package may move to `todo`. Current QVM
 convergence blockers must close before Q2 can claim its one-runtime exit.
+
+### 11.1 Kanban delivery plan (accepted)
+
+Product project: `019fda36-f8f4-7f40-9a9b-a86cfae1466e`
+
+| Package | Feature id | Task stage policy |
+|---|---|---|
+| Decision-0 residual (pre-Q2 honesty) | `019fda4c-a6f2-7932-a9d7-6e04400fd3df` | backlog until principal promotes; blocks Q2 one-runtime exit claim |
+| RQL-Q0 Target freeze | `019fda4b-d981-7980-a283-549a7312f2a9` | **todo** (Q0.1–Q0.4 admitted) |
+| RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | backlog until Q0 principal exit |
+| RQL-Q2 Capability closure | `019fda4c-1227-7c93-b7e6-292141ec7a78` | backlog; spawn gap packages after audit |
+| RQL-Q3 Semantic qualification | `019fda4c-5994-77e2-a2c9-aaa0c3097b29` | backlog |
+| RQL-Q4 Harness | `019fda4c-59bf-7320-a0cb-35f92c50fc45` | backlog (scaffold allowed; no competitive claims pre-Q3) |
+| RQL-Q5 Baseline | `019fda4c-59e4-76c3-9f24-ce13fbdbbd4e` | backlog |
+| RQL-Q6 Optimisation | `019fda4c-a695-7ff1-8fbf-f4d407b0ba87` | backlog; concrete opts only from Q5 queue |
+| RQL-Q7 Final / Gate-1 | `019fda4c-a6c4-7b40-b15a-f8190ca62d03` | backlog |
+
+**Q0 labor (2026-08-07):** Q0.1–Q0.4 freeze docs landed; board stage `in_review`.
+Principal package accept still required before Q1 promotion. Implementers claim
+from `todo` only → `doing` → `in_review`. Principal accepts package exits.
+
+Labor SoT is the Kanban board, not this table alone. Amend this section when
+features are archived or package stages change after principal accept.
 
 ## 12. Immediate marching order
 
