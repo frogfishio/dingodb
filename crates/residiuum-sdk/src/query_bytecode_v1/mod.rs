@@ -5,8 +5,7 @@
 //!
 //! **RQL-WIRE1 / QVM sole public authority:** [`QueryBytecodeV1`] holds **QVM1**
 //! durable bytes. Execution is `decode_qvm` → `verify_vm_program` → `run_vm`.
-//! Legacy `RQB1` is **not** a public product encode/execute surface (Q0.A5).
-//! Offline migration may use [`QueryBytecodeV1::from_isa_bytes`] (RQB1→QVM lower).
+//! **Q0.A10:** RQB1 is fully removed. Public product path is QVM1 only.
 //!
 //! **RQL-VM1R:** Core and Full run through one [`vm_exec::run_vm`] loop.
 //! See [QUERY_IR_RESIDUAL.md](../../../../doc/todo/rql/QUERY_IR_RESIDUAL.md) and
@@ -20,11 +19,11 @@
 mod core_page;
 mod core_phases;
 mod full_attach;
+mod full_imm_json;
 mod ir_attach;
 mod ir_order;
 mod ir_page;
 mod ir_project;
-mod isa;
 mod kernel;
 mod qvm;
 mod vm;
@@ -43,19 +42,11 @@ pub use full_attach::{
     DIAG_RQL_PROJECTION_CONFLICT, DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE,
     FULL_EXPLAIN_HASH_DOMAIN, MAX_PROJECT_DEPTH, MAX_WITHIN_DEPTH, RQL_FULL_PROFILE,
 };
-// Legacy RQB1 Full import: crate-private quarantine (Q0.A5) — not product surface.
-pub(crate) use full_attach::execute_full_isa_with;
 // IR / attach orchestration: crate-private (RQL-P0b) — profiles remain public stamps.
 pub use ir_attach::ATTACH_IR_PROFILE;
 pub use ir_order::ORDER_IR_PROFILE;
 pub use ir_page::PAGE_IR_PROFILE;
 pub use ir_project::PROJECT_IR_PROFILE;
-// RQB1 codec: crate-private. Offline migration: QueryBytecodeV1::from_isa_bytes (RQB1→QVM).
-pub(crate) use isa::{
-    decode_isa, decode_isa_canonical, encode_core_program, encode_full_program, isa_hash,
-    QueryIsaFullSection, QueryIsaProgram, ISA_MAGIC, ISA_MAX_SECTION_BYTES, ISA_MAX_TOTAL_BYTES,
-    ISA_PROFILE, ISA_VERSION,
-};
 pub use kernel::{compile_where, lower_predicate, CompiledKernelWhere, KERNEL_PROFILE};
 pub use qvm::{
     qvm_hash, validate_qvm, QVM_MAGIC, QVM_MAX_BLOB_BYTES, QVM_MAX_OPS, QVM_MAX_TOTAL_BYTES,
@@ -107,8 +98,6 @@ pub trait HostCapabilities {
 /// Compiled query bytecode envelope — **QVM1 bytes only** (public authority).
 ///
 /// Fields are private so callers cannot pair a Rust plan with unrelated bytes.
-/// Legacy RQB1 may be accepted via [`Self::from_isa_bytes`] and is immediately
-/// lowered to QVM1.
 #[derive(Debug, Clone)]
 pub struct QueryBytecodeV1 {
     profile: String,
@@ -182,24 +171,6 @@ impl QueryBytecodeV1 {
             profile: BYTECODE_PROFILE.to_string(),
             qvm,
         })
-    }
-
-    /// Construct from QVM1 **or** legacy RQB1 Core ISA bytes.
-    ///
-    /// RQB1 is lowered to QVM1 immediately; Full RQB1 is refused (use Full entry).
-    pub fn from_isa_bytes(bytes: Vec<u8>) -> Result<Self, Error> {
-        if bytes.len() >= 4 && &bytes[0..4] == qvm::QVM_MAGIC.as_slice() {
-            return Self::from_qvm_bytes(bytes);
-        }
-        // Legacy RQB1 carrier → QVM1.
-        let prog = decode_isa_canonical(&bytes)?;
-        if prog.full.is_some() {
-            return Err(Error::QueryInvalid(
-                "QueryBytecodeV1::from_isa_bytes: Core envelope cannot carry full pipeline"
-                    .into(),
-            ));
-        }
-        Self::from_core_plan(prog.core, prog.budget)
     }
 }
 
@@ -302,47 +273,10 @@ pub fn execute_core_rql<H: HostCapabilities>(
     )
 }
 
-/// Core entry for QVM1 **or** legacy RQB1 Core ISA bytes.
+/// Shared Core page entry used by Full lower paths (RQL-VM1R → one Query VM).
 ///
-/// QVM1 is preferred; RQB1 is lowered to QVM then executed. Full RQB1 is refused.
-pub(crate) fn execute_isa_bytes<H: HostCapabilities>(
-    host: &mut H,
-    isa_bytes: &[u8],
-    params: &BTreeMap<String, JsonValue>,
-    options: &QueryRunOptions,
-    heap_id: HeapId,
-    collection_id: CollectionId,
-) -> Result<QueryPage, Error> {
-    if isa_bytes.len() >= 4 && &isa_bytes[0..4] == qvm::QVM_MAGIC.as_slice() {
-        return execute_qvm_bytes(host, isa_bytes, params, options, heap_id, collection_id);
-    }
-    let prog = decode_isa_canonical(isa_bytes)?;
-    if prog.full.is_some() {
-        return Err(Error::QueryInvalid(
-            "execute_isa_bytes: full-language ISA requires execute_full_isa_with".into(),
-        ));
-    }
-    if prog.profile != ISA_PROFILE {
-        return Err(Error::QueryInvalid(format!(
-            "isa profile mismatch: got {:?}, want {ISA_PROFILE}",
-            prog.profile
-        )));
-    }
-    execute_decoded_core(
-        host,
-        &prog.core,
-        prog.budget,
-        params,
-        options,
-        heap_id,
-        collection_id,
-    )
-}
-
-/// Shared Core page after ISA decode (RQL-VM1R → one Query VM).
-///
-/// Crate-private (RQL-P0b): not a public bypass of validated ISA.
-/// Core product path after `decode_isa`. Lowers to a VM program and runs
+/// Crate-private (RQL-P0b): not a public bypass of validated QVM.
+/// Lowers a Core plan to a VM program and runs
 /// [`vm_exec::run_vm`] (`CoreFrame` phases; RQL-VM2). Full path also calls
 /// `run_vm` directly on `lower_full` (no second dispatcher).
 /// Not Decision 0 closed.
@@ -517,14 +451,14 @@ mod tests {
     }
 
     #[test]
-    fn execute_decoded_core_is_shared_core_entry() {
+    fn execute_qvm_bytes_matches_execute_bytecode() {
         let id = CollectionId::from_bytes(uuidish(12)).expect("id");
         let heap = HeapId::from_bytes(uuidish(1)).expect("heap");
         let mut host = MapHost {
             docs: BTreeMap::from([("k1".into(), json!({"n": 1}))]),
         };
         let bc = lower_core_source("from items page size 8", id, "items").expect("lower");
-        let via_qvm = execute_bytecode(
+        let via_bc = execute_bytecode(
             &mut host,
             &bc,
             &BTreeMap::new(),
@@ -532,8 +466,8 @@ mod tests {
             heap,
             id,
         )
-        .expect("qvm");
-        let via_isa = execute_isa_bytes(
+        .expect("bytecode");
+        let via_qvm = execute_qvm_bytes(
             &mut host,
             bc.qvm_bytes(),
             &BTreeMap::new(),
@@ -541,13 +475,13 @@ mod tests {
             heap,
             id,
         )
-        .expect("isa");
-        assert_eq!(via_qvm.rows, via_isa.rows);
-        assert_eq!(via_qvm.rows.len(), 1);
+        .expect("qvm");
+        assert_eq!(via_bc.rows, via_qvm.rows);
+        assert_eq!(via_bc.rows.len(), 1);
     }
 
     #[test]
-    fn corrupted_isa_refuses_execute() {
+    fn corrupted_qvm_refuses_execute() {
         let id = CollectionId::from_bytes(uuidish(4)).expect("id");
         let heap = HeapId::from_bytes(uuidish(1)).expect("heap");
         let mut host = MapHost {

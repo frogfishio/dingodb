@@ -1,12 +1,12 @@
 //! Durable Query VM bytecode (**RQL-QVM1**).
 //!
-//! Profile: **`residiuum-query-vm-v1`** · magic **`QVM1`** (distinct from `RQB1`).
+//! Profile: **`residiuum-query-vm-v1`** · magic **`QVM1`** (sole durable form).
 //! Normative: [QUERY_VM_V1.md](../../../../../doc/todo/rql/QUERY_VM_V1.md)
 //!
 //! This is the **public executable** authority: opcode stream + typed immediates
 //! + policy pool (coverage / consistency). Cursor identity is the domain hash
 //! of the **complete canonical QVM bytes** ([`qvm_hash`]) — not an embedded
-//! trusted field. `RQB1` is legacy import only.
+//! trusted field. Legacy `RQB1` is not accepted (Q0.A10).
 //! Decision 0 remains OPEN; **RQL-C1 must not be accepted.**
 
 use crate::app_v1::{ConsistencyMode, CoveragePolicy, QueryBudget};
@@ -18,7 +18,7 @@ use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
 
 use super::full_attach::FullPipelineStepV1;
-use super::isa::{
+use super::full_imm_json::{
     parse_pipeline_step, parse_project_item, pipeline_step_json, project_item_json,
 };
 use super::vm::{OpCode, VM_PROFILE, VM_VERSION};

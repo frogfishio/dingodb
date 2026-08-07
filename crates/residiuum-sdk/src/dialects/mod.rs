@@ -207,7 +207,7 @@ impl BuiltinDialect {
             Self::Rql => Err(Error::QueryInvalid(
                 "dialect 'rql' no longer compiles to SDA (RQL-R1): the parallel \
                  RQL→SDA executor is retired. Use CollectionClient::rql / \
-                 execute_rql_full (Query VM / RQB1), or pure SDA via dialect \
+                 execute_rql_full (Query VM / QVM1), or pure SDA via dialect \
                  'sda' / Collection::sda. See doc/todo/rql/RQL_WHAT_IS_LEFT.md"
                     .into(),
             )),

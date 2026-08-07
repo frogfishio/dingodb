@@ -20,7 +20,7 @@ Residiuum against MongoDB TCP as a single undifferentiated contest.
 
 | Side | Engine | Transport |
 |---|---|---|
-| A | Residiuum embedded (`residiuum-sdk` / store in-process) | In-process API |
+| A | Residiuum embedded **`CollectionClient::rql`** (Heap product; not legacy-flat façade) | In-process API |
 | B | Couchbase Lite **4.1.0** embedded | In-process library API |
 
 Use for: local document query latency/throughput without network stack.
@@ -29,7 +29,7 @@ Use for: local document query latency/throughput without network stack.
 
 | Side | Engine | Transport |
 |---|---|---|
-| A | Residiuum server protocol (`residiuum serve` + client / op path under test) | Localhost framed RPC |
+| A | Residiuum server protocol (`residiuum serve` + **`CollectionClient::rql` / op 118**) | Localhost framed RPC |
 | B | MongoDB Community **8.2.12** | Localhost MongoDB wire |
 
 Use for: protocol-inclusive operational comparison. Both sides use loopback only.

@@ -1,11 +1,11 @@
 # RQL-Q0 — Principal accept pack (re-issue after amendments)
 
-Status: **amendments labor complete · awaiting principal package accept**  
+Status: **Q0.A10 closeout complete · awaiting principal package accept**  
 Package: RQL-Q0 Target and profile freeze  
 Board Features: first freeze `019fda4b-d981-7980-a283-549a7312f2a9` · amendment `019fdac4-1408-7321-8edc-a09851c9e656`  
 Authority: [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §3 exit · §11  
-Labor re-issue date: 2026-08-07 (Q0.A9)  
-Tree baseline at re-issue: git `83df06469abe156b23e1bbb9930dd3ec17b859ca` · VERSION **0.2.2**
+Labor re-issue date: 2026-08-07 (Q0.A9 + **Q0.A10** closeout)  
+Tree baseline at re-issue: git `PENDING_COMMIT` · VERSION **0.2.2** · **requires `git_dirty=false`**
 
 **This file does not accept Q0.** Only the principal fills §5.  
 **Q1 corpus labor must not start until §5 records ACCEPT.**  
@@ -51,7 +51,7 @@ Related honesty (not Q0 freeze exit criteria):
 - [RQL_Q0_DOC_INDEX.md](./RQL_Q0_DOC_INDEX.md) — normative vs process (A8)
 - [RQL_LABOR_HOLD.md](./RQL_LABOR_HOLD.md) — Q1 claim policy until §5
 - [RQL_D0_CLOSE_READINESS.md](./RQL_D0_CLOSE_READINESS.md) / [RQL_D0_RESIDUAL_INVENTORY.md](./RQL_D0_RESIDUAL_INVENTORY.md) — Decision 0 (**A7**: micro-op purity not close blocker)
-- Product code: public **RQB1 quarantine** (A5); dialect **store-scoped durable ids** (A6)
+- Product code: **RQB1 fully removed** (A10; supersedes A5 quarantine claim); dialect **store-scoped durable ids** (A6; not Heap catalog); primary lane E = **`CollectionClient::rql`**
 
 ---
 
@@ -64,7 +64,9 @@ Related honesty (not Q0 freeze exit criteria):
 | **E** Embedded | SDK / store in-process | Couchbase Lite **4.1.0** (C binding primary; core recorded) |
 | **S** Local client/server | `residiuum serve` + client (loopback) | MongoDB Community **8.2.12** + Rust driver **3.8.0**; `w:1,j:true`; read `local` |
 
-Residiuum package pin: **0.2.2**, MSRV **1.88.0**, evidence `git_sha` = full HEAD.  
+Residiuum package pin: **0.2.2**, MSRV **1.88.0**, evidence `git_sha` = full HEAD (`git_dirty=false`).
+Residiuum writes: **`DurabilityMode::Durable`** ack before next step; product API **`CollectionClient::rql`** (not legacy-flat).
+CBL: autocommit single-doc saves; **sync off**; query compile outside timed windows.  
 Do not conflate lanes in portfolio scoring.
 
 ### 3.2 Capability law
@@ -145,9 +147,12 @@ Labor must leave this block blank.
 
 ---
 
-## 7. Exit (Q0.A9 labor)
+## 7. Exit (Q0.A9 + Q0.A10 labor)
 
-- [x] Re-issue after A1–A8 amendments
+- [x] Re-issue after A1–A8 amendments (A9)
+- [x] A10: RQB1 fully removed from SDK; arch gate forbids
+- [x] A10: exact Residiuum/CBL durability + product APIs frozen
+- [x] A10: clean tree SHA + `git_dirty=false` required for accept
 - [x] All four freeze artefacts + code honesty linked
 - [x] Scoreboard / Q1 unlock proposed (not applied as accept)
 - [x] §5 left blank for principal
@@ -158,8 +163,9 @@ Labor must leave this block blank.
 ## One-line verdict
 
 ```text
-Q0 amendment pack = complete for principal re-review
-Q0 package        = NOT accepted (principal only)
+Q0 A10 closeout   = complete for principal re-review
+Q0 package        = NOT accepted (principal only) — ready for §5 ACCEPT if review ok
 Q1                = BLOCKED until §5 ACCEPT
-Decision 0        = OPEN (A9 micro-op purity not required for D0 close bar)
+Decision 0        = OPEN (micro-op purity not D0 close bar)
+RQB1              = removed from SDK
 ```

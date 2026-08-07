@@ -113,8 +113,7 @@ pub use cursor_v1::{
     PROFILE as CURSOR_V1_PROFILE, SKEW_SECONDS as CURSOR_SKEW_SECONDS,
     TTL_SECONDS as CURSOR_TTL_SECONDS, VECTOR_LOCK_SEED,
 };
-// Product query runtime: QVM1 only (Q0.A5). RQB1 encode/decode/execute is crate-private.
-// Offline RQB1→QVM import: QueryBytecodeV1::from_isa_bytes.
+// Product query runtime: QVM1 only (Q0.A10). RQB1 removed from the SDK.
 pub use query_bytecode_v1::{
     compile_rql_full, compile_where, execute_bytecode, execute_core_rql, execute_full_qvm_with,
     execute_qvm_bytes, execute_rql_full, execute_rql_full_with, explain_core_source,

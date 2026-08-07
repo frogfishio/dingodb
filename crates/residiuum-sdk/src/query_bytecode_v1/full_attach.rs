@@ -37,7 +37,6 @@ use residiuum_heap::CollectionId;
 use serde_json::{Map, Value as JsonValue};
 use std::collections::BTreeMap;
 
-use super::isa::{decode_isa_canonical, encode_full_program, ISA_PROFILE};
 use super::vm_exec::{lower_full, run_vm};
 use super::HostCapabilities;
 
@@ -1745,7 +1744,7 @@ pub fn execute_rql_full(
 /// [`execute_rql_full`] with differential-oracle controls.
 ///
 /// Authority is **QVM1**: compile lowers Core+Full to QVM bytes, then
-/// [`execute_full_qvm_with`] decodes/verifies and runs. RQB1 is not on the
+/// [`execute_full_qvm_with`] decodes/verifies and runs. RQB1 is removed (Q0.A10);
 /// product path. [`CompiledRqlFull`] is not an executable sidecar.
 pub fn execute_rql_full_with(
     client: &mut HeapClient,
@@ -1792,68 +1791,6 @@ pub fn execute_full_qvm_with(
     let heap_id = client.id();
     // Recover attach pipeline/project for response diagnostics only (not authority).
     let (pipeline, project) = reconstruct_attach_from_ops(&vm.ops)?;
-    let out = run_vm(
-        client,
-        &vm,
-        &parameters.values,
-        &options.query,
-        heap_id,
-        collection_id,
-        options.force_enrich_scan,
-    )?;
-
-    Ok(RqlFullPage {
-        profile: RQL_FULL_PROFILE,
-        rows: out.rows,
-        base: out.page,
-        pipeline,
-        project,
-        enrich_loads: out.enrich_loads,
-    })
-}
-
-/// Legacy RQB1 Full import: decode RQB1 → lower → QVM → run.
-///
-/// Prefer [`execute_full_qvm_with`] / [`execute_rql_full_with`] for product paths.
-pub(crate) fn execute_full_isa_with(
-    client: &mut HeapClient,
-    isa_bytes: &[u8],
-    parameters: &Parameters,
-    options: RqlFullExecuteOptions,
-) -> Result<RqlFullPage, Error> {
-    // Accept QVM1 directly (shared ingress for callers still naming "isa").
-    if isa_bytes.len() >= 4 && &isa_bytes[0..4] == super::qvm::QVM_MAGIC.as_slice() {
-        return execute_full_qvm_with(client, isa_bytes, parameters, options);
-    }
-    let prog = decode_isa_canonical(isa_bytes)?;
-    if prog.profile != ISA_PROFILE {
-        return Err(Error::QueryInvalid(format!(
-            "execute_full_isa: profile mismatch: got {:?}, want {ISA_PROFILE}",
-            prog.profile
-        )));
-    }
-    let full = prog.full.as_ref().ok_or_else(|| {
-        Error::QueryInvalid(
-            "execute_full_isa: Core-only ISA; use execute_isa_bytes".into(),
-        )
-    })?;
-
-    let collection_id = prog.core.from.collection_id;
-    let heap_id = client.id();
-    let from_name = prog.core.from.source_name.as_str();
-    if !from_name.is_empty() {
-        let _ = open_collection_bound(client, from_name, collection_id)?;
-    }
-
-    let pipeline = full.pipeline.clone();
-    let project = full.project.clone();
-    let vm = lower_full(
-        prog.core.clone(),
-        prog.budget,
-        pipeline.clone(),
-        project.clone(),
-    );
-    let vm = super::qvm::materialize_qvm(&vm)?;
     let out = run_vm(
         client,
         &vm,

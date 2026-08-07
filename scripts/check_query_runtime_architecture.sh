@@ -15,7 +15,6 @@ IR_DOC="$ROOT/doc/todo/rql/QUERY_IR_RESIDUAL.md"
 [[ -f "$MOD" ]] || fail "missing query_bytecode_v1/mod.rs"
 [[ -f "$SDK_SRC/query_bytecode_v1/core_page.rs" ]] || fail "missing core_page.rs"
 [[ -f "$FULL" ]] || fail "missing full_attach.rs"
-[[ -f "$SDK_SRC/query_bytecode_v1/isa.rs" ]] || fail "missing isa.rs"
 [[ -f "$SDK_SRC/query_bytecode_v1/kernel.rs" ]] || fail "missing kernel.rs"
 [[ -f "$SDK_SRC/query_bytecode_v1/ir_project.rs" ]] || fail "missing ir_project.rs (RQL-IR1)"
 [[ -f "$SDK_SRC/query_bytecode_v1/ir_order.rs" ]] || fail "missing ir_order.rs (RQL-IR2)"
@@ -33,8 +32,6 @@ IR_DOC="$ROOT/doc/todo/rql/QUERY_IR_RESIDUAL.md"
 [[ ! -e "$SDK_SRC/query_exec_v1.rs" ]] || fail "query_exec_v1.rs shim must be deleted"
 [[ ! -e "$SDK_SRC/rql_full_v1.rs" ]] || fail "rql_full_v1.rs shim must be deleted"
 
-rg -q 'residiuum-query-isa-v1' "$SDK_SRC/query_bytecode_v1/isa.rs" \
-  || fail "ISA_PROFILE missing"
 rg -q 'residiuum-query-kernel-sda-v1' "$SDK_SRC/query_bytecode_v1/kernel.rs" \
   || fail "KERNEL_PROFILE missing"
 rg -q 'residiuum-query-ir-project-v1' "$SDK_SRC/query_bytecode_v1/ir_project.rs" \
@@ -96,24 +93,19 @@ rg -n 'fn execute_full_qvm_with' -A 50 "$FULL" | rg -q 'decode_qvm' \
   || fail "execute_full_qvm_with must decode_qvm"
 rg -n 'fn execute_full_qvm_with' -A 50 "$FULL" | rg -q 'run_vm\b' \
   || fail "execute_full_qvm_with must call run_vm"
-# Q0.A5: RQB1 is crate-private quarantine, not public product surface.
+# Q0.A10: RQB1 fully removed from SDK (no import/encode/execute path).
 LIB_RS="$SDK_SRC/lib.rs"
-if rg -n 'pub use query_bytecode_v1::' -A 20 "$LIB_RS" | rg -q 'decode_isa|encode_core_program|encode_full_program|execute_isa_bytes|execute_full_isa_with'; then
-  fail "lib.rs must not re-export RQB1 product surfaces (Q0.A5)"
+if [[ -f "$SDK_SRC/query_bytecode_v1/isa.rs" ]]; then
+  fail "isa.rs must be deleted (RQB1 retired Q0.A10)"
 fi
-if ! rg -q 'pub\(crate\) fn execute_full_isa_with' "$FULL" && ! rg -q 'pub\(crate\) use full_attach::execute_full_isa_with' "$MOD"; then
-  fail "execute_full_isa_with must remain crate-private quarantine"
+# Allow historical mention only in comments that say removed — re-check hard symbols:
+if rg -q 'fn from_isa_bytes|fn execute_isa_bytes|fn execute_full_isa_with|fn decode_isa|fn encode_core_program|fn encode_full_program' \
+  "$SDK_SRC/query_bytecode_v1"; then
+  fail "RQB1 functions must not exist under query_bytecode_v1 (Q0.A10)"
 fi
-rg -n 'fn execute_full_isa_with' -A 40 "$FULL" | rg -q 'decode_isa_canonical|decode_qvm' \
-  || fail "execute_full_isa_with must decode RQB1 or QVM"
-rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'lower_full|execute_full_qvm' \
-  || fail "execute_full_isa_with must lower or hand off to QVM"
-if rg -n 'fn execute_full_isa_with' -A 100 "$FULL" | rg -q 'run_vm_attach|execute_decoded_core'; then
-  fail "execute_full_isa_with must not dual-dispatch (RQL-VM1R)"
+if rg -n 'pub use query_bytecode_v1::' -A 25 "$LIB_RS" | rg -q 'decode_isa|encode_core|execute_isa|from_isa'; then
+  fail "lib.rs must not re-export RQB1 (Q0.A10)"
 fi
-# Public migration ingress only via QueryBytecodeV1::from_isa_bytes (RQB1→QVM).
-rg -q 'fn from_isa_bytes' "$MOD" \
-  || fail "missing QueryBytecodeV1::from_isa_bytes (offline RQB1→QVM import)"
 rg -q 'execute_full_qvm_enrich_within_project_nonempty' \
   crates/residiuum-sdk/tests/rql_full_isa_execute.rs \
   || fail "missing full QVM non-empty E2E test"
@@ -177,9 +169,6 @@ rg -q 'program_hash' "$SDK_SRC/query_bytecode_v1/vm_exec.rs" \
   || fail "VmProgram must carry program_hash (cursor identity)"
 rg -n 'fn decode_qvm' -A 25 "$SDK_SRC/query_bytecode_v1/qvm.rs" | rg -q 'non-canonical|encode_qvm' \
   || fail "decode_qvm must enforce canonical re-encode"
-if rg -n 'fn execute_full_isa_with' -A 55 "$FULL" | rg -q 'attach_enrich_rows|for step in'; then
-  fail "execute_full_isa_with must not inline Enrich pipeline loop (moved to VM/IR)"
-fi
 
 # IR residual honesty.
 rg -qi 'Rust IR residual' "$IR_DOC" || fail "IR residual doc must name Rust IR residual"
@@ -208,13 +197,8 @@ fi
 rg -qi 'CoreFrame' doc/todo/rql/QUERY_VM_V1.md   || fail "QUERY_VM_V1 must name CoreFrame (VM2)"
 rg -qi 'P1c' doc/todo/rql/QUERY_VM_V1.md \
   || fail "QUERY_VM_V1 must name P1c residual after VM2"
-rg -q 'decode_isa_canonical' "$SDK_SRC/query_bytecode_v1/isa.rs" \
-  || fail "isa must define decode_isa_canonical (D0R)"
 rg -q 'open_collection_bound' "$FULL" \
   || fail "full_attach must bind collections by immutable id (D0R)"
-rg -n 'fn execute_isa_bytes' -A 40 "$MOD" | rg -q 'decode_isa_canonical|decode_qvm|execute_qvm'   || fail "execute_isa_bytes must handle QVM and/or RQB1"
-rg -n 'fn execute_full_isa_with' -A 40 "$FULL" | rg -q 'decode_isa_canonical|decode_qvm|QVM_MAGIC' \
-  || fail "execute_full_isa_with must handle legacy RQB1 or QVM"
 # SoT must not claim NEXT is principal C1 acceptance while VM unfinished.
 if rg -n '^NEXT' doc/todo/rql/RQL_WHAT_IS_LEFT.md | rg -qi 'principal.*C1'; then
   fail "SoT must not set NEXT to principal C1 while Query VM unfinished"
@@ -347,8 +331,6 @@ rg -n 'impl<.*> ViewBoundCollection' -A 80 "$APP" | rg -n 'pub fn rql' -A 20 | h
   || fail "ViewBoundCollection::rql must delegate to CollectionClient::rql"
 
 # Full RQL → one run_vm (RQL-VM1R)
-rg -n 'fn execute_full_isa_with' -A 80 "$FULL" | rg -q 'run_vm\b' \
-  || fail "execute_full_isa_with must call run_vm"
 rg -qi 'VM1R labor closed|one run_vm' doc/todo/rql/RQL_WHAT_IS_LEFT.md \
   || fail "SoT must mark VM1R labor closed / one run_vm"
 

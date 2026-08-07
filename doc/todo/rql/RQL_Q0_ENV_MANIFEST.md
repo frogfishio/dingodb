@@ -1,12 +1,12 @@
 # RQL-Q0 — Environment and engine manifest
 
-Status: **Q0.A1 amendment · principal freeze re-accept pending**
+Status: **Q0.A10 closeout · principal freeze re-accept pending**
 
-Package: RQL-Q0 deliverable 1 (amended)  
+Package: RQL-Q0 deliverable 1 (amended)
 Authority: [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §3 ·
-principal review finding #1 (obsolete comparator pins)  
-Board: Q0.1 (first freeze) · **Q0.A1** (this amendment)  
-Feature: `019fdac4-1408-7321-8edc-a09851c9e656`  
+principal review finding #1 (obsolete comparator pins)
+Board: Q0.1 (first freeze) · **Q0.A1** (this amendment)
+Feature: `019fdac4-1408-7321-8edc-a09851c9e656`
 Effective: 2026-08-07 (A1 pin bump)
 
 This file freezes **what is compared** and **how environment is fingerprinted**.
@@ -133,28 +133,57 @@ must not mix bindings within a campaign without a named residual.
 | Alternate bindings | Java **4.1.0**, .NET **4.1.0**, etc. are **same product line** but **not** interchangeable in a single primary-profile cell without principal note (different wrapper cost) |
 | Rust FFI residual | If Residiuum harness uses a sys crate, pin the **exact crate version + git SHA** of the binding **and** the linked CBL 4.1.0 core; do not treat “any CBL” as equal |
 
-#### 2.2.3 Database open / durability / concurrency
+#### 2.2.3 Database open / durability / concurrency (exact)
 
 | Field | Pin |
 |---|---|
 | Database path | Local FS on same volume class as Residiuum data dir in the cell |
-| Encryption | **Off** for primary baseline |
-| Full sync / revs | Product defaults for 4.1.0 Community embedded; record any non-default `DatabaseConfiguration` fields |
+| Encryption | **Off** (`DatabaseConfiguration.encryption_key` unset / null) |
+| Auto-commit / transactions | **No multi-statement transaction API** for baseline cells. Each mutation is an individual CBL document save that **auto-commits** to the local database file before the next harness step. Explicit `beginTransaction` / multi-doc transactions are **out of primary profile** unless the cell freezes them on both sides |
+| Sync / replication | **Off** — no replicator, no Sync Gateway, no peer sync, no continuous pull/push |
+| Full sync / revs | Default CBL 4.1.0 Community revision storage; do not enable experimental flags; record any non-default `DatabaseConfiguration` fields in fingerprint |
 | Concurrency | Single writer thread for load phase unless cell names multi-writer; record thread model |
-| Index build | Explicit indexes required by corpus only; record index definitions in evidence |
-| Query API | **SQL++** and/or **QueryBuilder** as declared per corpus case — both must target the same CBL 4.1.0 open database |
+| Index build | Explicit indexes required by corpus only; build **outside** timed query windows; record definitions |
+| Query API | **SQL++** via CBL Query API and/or **QueryBuilder** as declared per corpus case — both target the same open CBL 4.1.0 database |
+| Query compile vs timed window | **Compile/prepare outside** measurement window; timed window is execute + result materialisation only (same law as Residiuum §2.3.2) |
 
 **Why 4.1.0:** current C/Java/C# embedded line at labor date (principal review);
 replaces retired **3.2.1**. Not mobile-platform matrix coverage.
 
 ---
 
-### 2.3 Residiuum side of each lane (config honesty)
+### 2.3 Residiuum product API and durability (exact)
 
-| Lane | Residiuum process | Transport | Durability class |
-|---|---|---|---|
-| **E** Embedded | In-process SDK / store | None (API) | Store default durable open/seal for the product path under test; record store features |
-| **S** Local c/s | `residiuum serve` + `residiuum-client` / façade on **loopback** | Framed RPC over loopback TCP | Server single-node development path; record listen address + auth off for baseline |
+Primary-profile Residiuum surfaces are **Heap product**, not the legacy-flat
+store façade. (Q0.A6 / A10 boundary: flat `Collection` portable dialect is a
+compatibility façade; **lane E qualification uses `CollectionClient`**.)
+
+#### 2.3.1 Product API by lane
+
+| Lane | Residiuum product API (exact) | Transport |
+|---|---|---|
+| **E** Embedded | `HeapClient` / `residiuum_sdk::app_v1::CollectionClient` — create/open collection by durable id; query via **`CollectionClient::rql`** (Application Core RQL → QVM → `run_vm`). Full local path: **`execute_rql_full` / `execute_rql_full_with`** when corpus requires Full (not lane S). | In-process |
+| **S** Local c/s | `residiuum serve` single-node + client: **`RemoteHeap` / façade `CollectionClient::rql`** over framed RPC **op 118** (`rql_query`) on **loopback**. Auth **off** for baseline. Full language **refused** on op 118 (**Q2-BLOCK-FULL-WIRE**). | Loopback TCP framed RPC |
+
+**Forbidden as primary qualification surface (lane E competitive cells):**
+
+- `legacy-flat-sdk` / raw `residiuum_store::Store` collection façade as the
+  Residiuum side of a Gate-1 comparative cell
+- Treating DX `Collection::find_dialect` as identical to Heap
+  `CollectionClient` frontend identity (A6 residual)
+
+#### 2.3.2 Durability and acknowledgement
+
+| Field | Pin |
+|---|---|
+| Write API | `CollectionClient::put` / `put_with` / equivalent mutate APIs used by harness loaders |
+| Default write options | [`PutOptions::default()`](../../crates/residiuum-sdk/src/receipt.rs) → **`DurabilityMode::Durable`** |
+| Acknowledgement boundary | Loader step completes only after Durable ack is returned (store durable barrier for that put). No “write then query before ack” in baseline cells |
+| Buffered / Memory durability | **Out of primary profile** for comparative write cells (`DurabilityMode::Buffered` / `Memory` forbidden unless cell freezes a residual class) |
+| Query consistency | Product default consistency mode of `QueryRunOptions::default()` for Core RQL cells; record mode in fingerprint |
+| Query compile vs timed window | **Compile/lower to QVM outside** measurement window; timed window is execute + page materialisation only |
+
+#### 2.3.3 Lane rules (repeat)
 
 Do **not** compare Residiuum embedded against MongoDB TCP in one undifferentiated
 score (see [RQL_Q0_LANES_EXCLUSIONS.md](./RQL_Q0_LANES_EXCLUSIONS.md)).
@@ -235,6 +264,12 @@ ram_bytes
 fs_type, volume_encryption_if_known
 storage_device_class       # local_ssd | local_hdd | other
 lane_id                    # embedded | local_client_server
+residiuum_product_api      # CollectionClient::rql | remote op 118 | (forbidden: legacy-flat)
+residiuum_durability       # Durable (required for primary write cells)
+residiuum_ack_boundary     # durable_ack_before_next_step
+cbl_autocommit             # true (baseline)
+cbl_sync_enabled           # false
+query_compile_in_window    # false (compile outside timed window)
 seed
 campaign_id
 host_class                 # primary_apple_silicon | secondary_linux | other
@@ -307,7 +342,10 @@ Aligns with performance harness environment honesty
 - [x] Couchbase Lite primary pin **4.1.0** (retired 3.2.1)
 - [x] C binding + core recording policy frozen for lane E
 - [x] Fingerprint fields extended for full comparator config
-- [ ] Principal accept of amended freeze (package-level Q0 after remaining A* work)
+- [x] Exact Residiuum product API (`CollectionClient::rql` / op 118) frozen (Q0.A10)
+- [x] Exact Residiuum durability `DurabilityMode::Durable` + ack boundary (Q0.A10)
+- [x] Exact CBL autocommit + sync-off + compile-outside-window (Q0.A10)
+- [ ] Principal accept of amended freeze (package-level Q0 after A10 closeout)
 
 ---
 
