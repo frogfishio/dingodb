@@ -14,7 +14,7 @@ Accept pack §5: [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_AC
 **Decision 0 OPEN**; RQL-C1 **forbidden**
 ([RQL_D0_CLOSE_READINESS.md](../../todo/rql/RQL_D0_CLOSE_READINESS.md); A7 micro-op
 purity not required for D0 close).
-**RQL-Q1 admitted** — Q1.1–**Q1.3** domain bulk landed (`rql-q1-corpus-v0.3.0`, 143 draft cases, five domains); claim Q1.4 floors/comparator next. CRITICAL_PATH RQL→Atomics→Cluster.
+**RQL-Q1 active** — Q1.1–**Q1.4** landed (`rql-q1-corpus-v0.4.0`, 153 cases ready, `enforce_floors=true`, comparator review + Tier B/C); package **not accepted** (principal). CRITICAL_PATH RQL→Atomics→Cluster.
 Prior: RQL-I1/0/F1/F2; P0 packaging 0.2.2; CSE-3 ~21–23K SoT.
 **ETQ-2 paused.** **AWO paused.**
 Labor hold: [RQL_LABOR_HOLD.md](../../todo/rql/RQL_LABOR_HOLD.md) — Q0 hold **lifted** for Q1.
@@ -137,7 +137,7 @@ Current verification includes the completed Residiuum rebrand through REB-12.
 | APP-7 | active | 2026-08-02 | APP-6, HAR-4 | **T6**: op **118** `rql_query` **active** in heap+baseline ops; server dispatch + `RemoteHeap::rql_query` + façade remote `rql` wire path; dual pack remote green; gates `har4_query_remote_gate` **7/7** | package accept residual; plan-only args residual | remote query |
 | APP-8 | not_started | — | APP-1…APP-7 | — | release evidence pack | application journey |
 | RQL-Q0 | accept | 2026-08-07 | — | §5 ACCEPT on [RQL_Q0_PRINCIPAL_ACCEPT.md](../../todo/rql/RQL_Q0_PRINCIPAL_ACCEPT.md); clean tip `e1f5c670a99dc54da477c531c83bca4985199a42`; A1–A14 closeout complete | freeze accept only — **not** Gate-1 | Gate-1 target/profile freeze |
-| RQL-Q1 | active | 2026-08-07 | RQL-Q0 accept | Q1.1–**Q1.3**: `rql-q1-corpus-v0.3.0` **143** draft cases (commerce 33 / messaging 21 / directory 27 / telemetry 29 / project_management 33); generators for all five domains + `tools/rql_q1/materialise_fixture.py`; [RQL_Q1_CORPUS.md](../../todo/rql/RQL_Q1_CORPUS.md); `bash scripts/verify-rql-q1-corpus.sh` exit 0; §4.3 tag counts meet floors (enforce still false) | Q1.4 enforce floors + comparator review; **no package accept** | practical query corpus |
+| RQL-Q1 | active | 2026-08-07 | RQL-Q0 accept | Q1.1–**Q1.4**: `rql-q1-corpus-v0.4.0` **153** cases status `ready` (A147/B2/C4); `enforce_floors=true`; comparator native-diff honesty; Tier B/C non-blocking tags; generators five domains + `tools/rql_q1/materialise_fixture.py`; [RQL_Q1_CORPUS.md](../../todo/rql/RQL_Q1_CORPUS.md); `bash scripts/verify-rql-q1-corpus.sh` exit 0 | principal package accept; dogfood ≥2 domains residual; QVM hashes residual; **no package accept** | practical query corpus |
 | RQL-Q2 | not_started | — | RQL-Q1 accept; Decision-0 honesty for one-runtime *exit claim* | — | Tier A gaps not closed as Gate-1 programme package | capability closure |
 | RQL-Q3 | not_started | — | RQL-Q2 family expressibility | — | independent oracle / differential matrix absent as programme package | semantic qualification |
 | RQL-Q4 | not_started | — | RQL-Q0 lanes; Q1 corpus (scaffold may precede Q3 claims) | — | cross-engine harness not accepted | qualification harness |

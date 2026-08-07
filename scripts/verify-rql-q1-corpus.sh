@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# RQL-Q1.1: validate practical query corpus schema, live document, and fixture self-tests.
-# Exit 0 = structural integrity only. Does not accept the package or claim floors met.
+# RQL-Q1: validate practical query corpus schema, live document, floors, and fixture self-tests.
+# Exit 0 = structural integrity + floors when enforce_floors=true. Does not accept the package.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CORPUS="$ROOT/spec/rql/qualification/corpus-v1"
@@ -358,8 +358,49 @@ else:
         for t, need in FLOOR_DEFAULTS.items():
             if counts[t] < need:
                 fail(f"floor not met for {t}: {counts[t]} < {need}")
+        print("verify-rql-q1-corpus: enforce_floors=true (floors required)")
     else:
         print("verify-rql-q1-corpus: enforce_floors=false (scaffold/domain bulk OK)")
+
+    # Comparator honesty: predeclared_native_diff / deliberate exclusion must not
+    # present Mongo/CBL as competitive find/pipeline/sqlpp/query_builder forms.
+    COMPETITIVE = {
+        "mongo": {"find", "pipeline"},
+        "cbl": {"sqlpp", "query_builder"},
+    }
+    tier_counts = {"A": 0, "B": 0, "C": 0}
+    for i, case in enumerate(cases or []):
+        if not isinstance(case, dict):
+            continue
+        tier = case.get("tier")
+        if tier in tier_counts:
+            tier_counts[tier] += 1
+        excl = case.get("exclusion_or_refusal") or {}
+        kind = excl.get("kind")
+        if kind not in ("predeclared_native_diff", "deliberate_exclusion", "stable_refusal"):
+            continue
+        # stable_refusal on expected may still document competitor offset forms
+        # for awareness — only enforce demotion for native_diff + deliberate_exclusion
+        if kind not in ("predeclared_native_diff", "deliberate_exclusion"):
+            continue
+        # Tier B cases may keep competitor forms as "what they would do" while RQL excludes;
+        # only require demotion when exclusion kind is predeclared_native_diff (no equivalence).
+        if kind != "predeclared_native_diff":
+            continue
+        cid = case.get("case_id") or f"cases[{i}]"
+        impl = case.get("implementations") or {}
+        for eng, competitive in COMPETITIVE.items():
+            st = (impl.get(eng) or {}).get("status")
+            if st in competitive:
+                fail(
+                    f"{cid}: exclusion_or_refusal.kind=predeclared_native_diff but "
+                    f"implementations.{eng}.status={st!r} is competitive; use "
+                    f"lane_local_only / deliberate_exclusion / stable_refusal"
+                )
+    print(
+        "verify-rql-q1-corpus: tier counts: "
+        f"A={tier_counts['A']} B={tier_counts['B']} C={tier_counts['C']}"
+    )
 
 alog = doc.get("amendment_log")
 if not isinstance(alog, list) or not alog:

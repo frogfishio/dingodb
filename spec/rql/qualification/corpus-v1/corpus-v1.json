@@ -1,7 +1,7 @@
 {
   "format": "residiuum-rql-q1-corpus-v1",
   "profile": "rql-gate1-practical-corpus-v1",
-  "corpus_version": "rql-q1-corpus-v0.3.0",
+  "corpus_version": "rql-q1-corpus-v0.4.0",
   "authority": {
     "programme": "doc/todo/rql/RQL_QUERY_QUALIFICATION_PROGRAM.md",
     "section": "4",
@@ -13,7 +13,7 @@
   "amendment_policy": {
     "requires_principal_review": true,
     "process_doc": "doc/todo/rql/RQL_Q1_CORPUS.md",
-    "semver_rules": "MAJOR: remove/redefine frozen case meaning or floor policy. MINOR: add cases or non-breaking fields after principal accept. PATCH: typos, notes, generator params that do not change intention/result. Never silently edit a frozen case_id in place \u2014 archive + replace under amendment log."
+    "semver_rules": "MAJOR: remove/redefine frozen case meaning or floor policy. MINOR: add cases or non-breaking fields after principal accept. PATCH: typos, notes, generator params that do not change intention/result. Never silently edit a frozen case_id in place — archive + replace under amendment log."
   },
   "floor_policy": {
     "measure": "count_cases_with_family_tag",
@@ -26,7 +26,7 @@
       "group_aggregate": 15,
       "budget_coverage_damage_refusal": 10
     },
-    "enforce_floors": false
+    "enforce_floors": true
   },
   "amendment_log": [
     {
@@ -105,7 +105,7 @@
     {
       "corpus_version": "rql-q1-corpus-v0.3.0",
       "date": "2026-08-07",
-      "summary": "Q1.3 Directory + Telemetry + Project management: seeded generators + Tier-A intention cases (draft). Dogfood: invented_honest_label. All \u00a74.3 family floors met by tag count (still unenforced until Q1.4).",
+      "summary": "Q1.3 Directory + Telemetry + Project management: seeded generators + Tier-A intention cases (draft). Dogfood: invented_honest_label. All §4.3 family floors met by tag count (still unenforced until Q1.4).",
       "principal_disposition": "pending",
       "case_ids_added": [
         "directory.entries.eq_kind_person",
@@ -200,6 +200,32 @@
       ],
       "case_ids_changed": [],
       "case_ids_archived": []
+    },
+    {
+      "corpus_version": "rql-q1-corpus-v0.4.0",
+      "date": "2026-08-07",
+      "summary": "Q1.4: enforce_floors=true (all §4.3 floors already met by tag count); comparator review — demote Mongo/CBL competitive forms on predeclared_native_diff budget/consistency cells to lane_local_only; promote case status draft→ready; add intentional Tier-A gap cases (explain, within, str prefix, damage coverage) and Tier B/C non-blocking classifications (array xform, named component, FTS, vector, geo, change stream). Amendment process unchanged (RQL_Q1_CORPUS.md). Package accept still principal-owned.",
+      "principal_disposition": "pending",
+      "case_ids_added": [
+        "commerce.orders.explain_eq_status",
+        "messaging.messages.within_conversation_unread",
+        "directory.entries.str_prefix_display_name",
+        "telemetry.events.damage_coverage_incomplete",
+        "telemetry.events.array_transform_tag_upper",
+        "project_management.tasks.named_component_open_by_owner",
+        "messaging.messages.fulltext_body_search",
+        "telemetry.devices.vector_knn_embedding",
+        "directory.locations.geo_near_point",
+        "commerce.orders.change_stream_watch"
+      ],
+      "case_ids_changed": [
+        "commerce.orders.budget_documents",
+        "directory.entries.budget_documents",
+        "messaging.messages.consistency_available",
+        "project_management.tasks.budget_documents",
+        "telemetry.events.consistency_available"
+      ],
+      "case_ids_archived": []
     }
   ],
   "cases": [
@@ -208,7 +234,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -278,7 +304,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -346,7 +372,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -423,7 +449,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -494,7 +520,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -569,7 +595,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -641,7 +667,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -712,7 +738,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -785,7 +811,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -859,7 +885,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -930,7 +956,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -1006,7 +1032,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -1077,7 +1103,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -1149,7 +1175,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -1224,7 +1250,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -1299,7 +1325,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -1373,11 +1399,11 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "deferred_q2",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
-        "oracle_rule_text": "amount_band = low if amount<100 else mid if amount<500 else high; wrong-type amount => null band or stable refusal \u2014 freeze in Q2/SPEC."
+        "oracle_rule_text": "amount_band = low if amount<100 else mid if amount<500 else high; wrong-type amount => null band or stable refusal — freeze in Q2/SPEC."
       },
       "exclusion_or_refusal": {
         "kind": "none"
@@ -1473,7 +1499,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -1547,7 +1573,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -1621,7 +1647,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -1699,7 +1725,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -1781,7 +1807,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -1857,7 +1883,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "deferred_q2",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -1957,7 +1983,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "deferred_q2",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -2032,7 +2058,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "deferred_q2",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -2114,7 +2140,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "deferred_q2",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -2198,7 +2224,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "deferred_q2",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -2284,7 +2310,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "deferred_q2",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -2371,7 +2397,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "deferred_q2",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -2458,7 +2484,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -2496,17 +2522,14 @@
           "source": "from orders budget { documents: 10, bytes: 1048576, result_bytes: 65536 }"
         },
         "mongo": {
-          "status": "find",
-          "find": {
-            "filter": {},
-            "limit": 10
-          },
-          "notes": "Mongo limit is not Residiuum budget coverage; lane-local approximation"
+          "status": "lane_local_only",
+          "refusal_code": "Q0-BUDGET-NATIVE",
+          "notes": "Mongo limit is not Residiuum budget coverage; lane-local approximation Former find approx (status=find): {\"filter\":{},\"limit\":10}"
         },
         "cbl": {
-          "status": "sqlpp",
-          "sqlpp": "SELECT META().id, * FROM orders LIMIT 10",
-          "notes": "CBL lacks Residiuum budget/coverage; approximate"
+          "status": "lane_local_only",
+          "refusal_code": "Q0-BUDGET-NATIVE",
+          "notes": "CBL lacks Residiuum budget/coverage; approximate Former SQL++ approx (status=sqlpp): SELECT META().id, * FROM orders LIMIT 10"
         }
       },
       "indexes": {
@@ -2529,7 +2552,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -2597,7 +2620,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "stable_refusal",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -2677,7 +2700,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -2747,7 +2770,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -2818,7 +2841,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -2903,7 +2926,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -2974,7 +2997,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -3047,7 +3070,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -3122,7 +3145,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -3205,7 +3228,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -3288,7 +3311,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -3367,7 +3390,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -3438,7 +3461,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -3513,7 +3536,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -3584,7 +3607,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -3655,7 +3678,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -3726,7 +3749,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "deferred_q2",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -3807,11 +3830,11 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "deferred_q2",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
-        "oracle_rule_text": "Attach participants array where conversation_id matches; 2\u20134 members per fixture."
+        "oracle_rule_text": "Attach participants array where conversation_id matches; 2–4 members per fixture."
       },
       "exclusion_or_refusal": {
         "kind": "none"
@@ -3883,7 +3906,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "deferred_q2",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -3978,7 +4001,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "deferred_q2",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -4054,7 +4077,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -4122,7 +4145,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -4160,16 +4183,14 @@
           "source": "from messages consistency available"
         },
         "mongo": {
-          "status": "find",
-          "find": {
-            "filter": {}
-          },
-          "notes": "readConcern local ~ Available approx"
+          "status": "lane_local_only",
+          "refusal_code": "Q0-CONSISTENCY-MODE",
+          "notes": "readConcern local ~ Available approx Former find approx (status=find): {\"filter\":{}}"
         },
         "cbl": {
-          "status": "sqlpp",
-          "sqlpp": "SELECT META().id, * FROM messages",
-          "notes": "embedded local read"
+          "status": "lane_local_only",
+          "refusal_code": "Q0-CONSISTENCY-MODE",
+          "notes": "embedded local read Former SQL++ approx (status=sqlpp): SELECT META().id, * FROM messages"
         }
       },
       "indexes": {
@@ -4192,7 +4213,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -4266,7 +4287,7 @@
         "origin": "invented_honest_label",
         "notes": "No in-tree dogfood dataset; programme domain shape + app-core orders dialect."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -4339,9 +4360,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -4409,9 +4430,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -4477,9 +4498,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -4547,9 +4568,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -4618,9 +4639,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -4690,9 +4711,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -4758,9 +4779,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -4831,9 +4852,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -4902,9 +4923,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -4975,9 +4996,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -5050,9 +5071,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -5121,9 +5142,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -5192,9 +5213,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -5265,9 +5286,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -5342,9 +5363,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -5425,9 +5446,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -5498,9 +5519,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -5570,9 +5591,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -5646,9 +5667,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -5725,9 +5746,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -5806,9 +5827,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -5887,9 +5908,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -5969,9 +5990,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -6043,9 +6064,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "predeclared_native_diff",
         "code": "Q0-BUDGET-NATIVE",
@@ -6097,26 +6118,23 @@
           "source": "from entries budget { documents: 12, bytes: 1048576, result_bytes: 65536 }"
         },
         "mongo": {
-          "status": "find",
-          "find": {
-            "filter": {},
-            "limit": 12
-          },
-          "notes": "Mongo limit \u2260 Residiuum budget coverage"
+          "status": "lane_local_only",
+          "refusal_code": "Q0-BUDGET-NATIVE",
+          "notes": "Mongo limit ≠ Residiuum budget coverage Former find approx (status=find): {\"filter\":{},\"limit\":12}"
         },
         "cbl": {
-          "status": "sqlpp",
-          "sqlpp": "SELECT META().id, * FROM entries LIMIT 12",
-          "notes": "CBL lacks budget/coverage"
+          "status": "lane_local_only",
+          "refusal_code": "Q0-BUDGET-NATIVE",
+          "notes": "CBL lacks budget/coverage Former SQL++ approx (status=sqlpp): SELECT META().id, * FROM entries LIMIT 12"
         }
       }
     },
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -6184,9 +6202,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -6252,9 +6270,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -6322,9 +6340,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -6390,9 +6408,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -6461,9 +6479,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -6529,9 +6547,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -6600,9 +6618,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -6674,9 +6692,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -6748,9 +6766,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -6820,9 +6838,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -6894,9 +6912,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -6966,9 +6984,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -7038,9 +7056,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -7111,9 +7129,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -7182,9 +7200,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -7257,9 +7275,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -7344,9 +7362,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -7440,9 +7458,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -7513,9 +7531,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -7594,9 +7612,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -7675,9 +7693,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -7756,9 +7774,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -7829,9 +7847,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -7909,9 +7927,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -7984,9 +8002,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -8059,9 +8077,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -8134,9 +8152,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -8212,9 +8230,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "predeclared_native_diff",
         "code": "Q0-BUDGET-NATIVE",
@@ -8281,9 +8299,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "predeclared_native_diff",
         "code": "Q0-COVERAGE-NATIVE",
@@ -8350,9 +8368,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "predeclared_native_diff",
         "code": "Q0-CONSISTENCY-MODE",
@@ -8405,25 +8423,23 @@
           "source": "from events consistency available"
         },
         "mongo": {
-          "status": "find",
-          "find": {
-            "filter": {}
-          },
-          "notes": "readConcern local ~ Available approx"
+          "status": "lane_local_only",
+          "refusal_code": "Q0-CONSISTENCY-MODE",
+          "notes": "readConcern local ~ Available approx Former find approx (status=find): {\"filter\":{}}"
         },
         "cbl": {
-          "status": "sqlpp",
-          "sqlpp": "SELECT META().id, * FROM events",
-          "notes": "embedded local read"
+          "status": "lane_local_only",
+          "refusal_code": "Q0-CONSISTENCY-MODE",
+          "notes": "embedded local read Former SQL++ approx (status=sqlpp): SELECT META().id, * FROM events"
         }
       }
     },
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -8491,9 +8507,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -8561,9 +8577,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -8632,9 +8648,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -8704,9 +8720,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -8774,9 +8790,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -8846,9 +8862,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -8918,9 +8934,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -8989,9 +9005,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -9062,9 +9078,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -9135,9 +9151,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -9210,9 +9226,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -9283,9 +9299,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -9354,9 +9370,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -9429,9 +9445,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -9505,9 +9521,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -9594,9 +9610,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -9668,9 +9684,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -9745,9 +9761,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -9823,9 +9839,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -9903,9 +9919,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -9985,9 +10001,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -10058,9 +10074,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -10131,9 +10147,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -10211,9 +10227,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -10287,9 +10303,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -10363,9 +10379,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -10439,9 +10455,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -10513,9 +10529,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -10584,9 +10600,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "none"
       },
@@ -10655,9 +10671,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "predeclared_native_diff",
         "code": "Q0-BUDGET-NATIVE",
@@ -10711,26 +10727,23 @@
           "source": "from tasks budget { documents: 20, bytes: 1048576, result_bytes: 65536 }"
         },
         "mongo": {
-          "status": "find",
-          "find": {
-            "filter": {},
-            "limit": 20
-          },
-          "notes": "limit \u2260 budget"
+          "status": "lane_local_only",
+          "refusal_code": "Q0-BUDGET-NATIVE",
+          "notes": "limit ≠ budget Former find approx (status=find): {\"filter\":{},\"limit\":20}"
         },
         "cbl": {
-          "status": "sqlpp",
-          "sqlpp": "SELECT META().id, * FROM tasks LIMIT 20",
-          "notes": "no budget"
+          "status": "lane_local_only",
+          "refusal_code": "Q0-BUDGET-NATIVE",
+          "notes": "no budget Former SQL++ approx (status=sqlpp): SELECT META().id, * FROM tasks LIMIT 20"
         }
       }
     },
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "exclusion_or_refusal": {
         "kind": "stable_refusal",
         "code": "rql_offset_discard_unsupported",
@@ -10808,9 +10821,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "oracle_rule",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -10886,9 +10899,9 @@
     {
       "dogfood": {
         "origin": "invented_honest_label",
-        "notes": "No in-tree dogfood dataset; programme \u00a74.1 domain shapes for Directory/Telemetry/Project management."
+        "notes": "No in-tree dogfood dataset; programme §4.1 domain shapes for Directory/Telemetry/Project management."
       },
-      "status": "draft",
+      "status": "ready",
       "expected": {
         "kind": "deferred_q2",
         "equivalence_profile": "rql-q0-result-equivalence-v1",
@@ -10965,6 +10978,773 @@
         }
       },
       "notes": "Q0 enrich residual; intention frozen for Q2."
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "Q1.4 intentional fill; invented domain shape (no in-tree dogfood)."
+      },
+      "status": "ready",
+      "indexes": {
+        "required": [],
+        "optional": [
+          "orders(status)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "not_applicable",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "exclusion_or_refusal": {
+        "kind": "predeclared_native_diff",
+        "code": "Q0-EXPLAIN-SHAPE",
+        "reason": "Explain text/shape is engine-native; competitive equality is programme honesty (what ran), not cross-engine plan JSON identity."
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "singleton"
+      },
+      "case_id": "commerce.orders.explain_eq_status",
+      "tier": "A",
+      "domain": "commerce",
+      "family_tags": [
+        "selection_key_eq_range_compound",
+        "budget_coverage_damage_refusal"
+      ],
+      "capability_ids": [
+        "TA-EXPLAIN",
+        "TA-SEL-EQ"
+      ],
+      "plain_english_intent": "Explain the programme actually executed for equality selection status=paid (plan + physical strategy honesty; not a result-set claim).",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 101,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Explain reports the programme that would execute for status=paid selection (filter + optional index eligibility + scan fallback honesty). Must not claim an index path that was not used. Result rows are out of scope for this case."
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "explain from orders where status = \"paid\"",
+          "notes": "Explain surface partial on product path; Q2 may freeze syntax."
+        },
+        "mongo": {
+          "status": "lane_local_only",
+          "refusal_code": "Q0-EXPLAIN-SHAPE",
+          "notes": "Mongo explain is engine-local; not competitive plan equality."
+        },
+        "cbl": {
+          "status": "lane_local_only",
+          "refusal_code": "Q0-EXPLAIN-SHAPE",
+          "notes": "CBL explain tools are platform-local; not competitive plan equality."
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "Q1.4 intentional fill; invented domain shape (no in-tree dogfood)."
+      },
+      "status": "ready",
+      "indexes": {
+        "required": [],
+        "optional": [
+          "messages(conversation_id)",
+          "messages(read)"
+        ]
+      },
+      "selectivity_class": "medium",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "case_id": "messaging.messages.within_conversation_unread",
+      "tier": "A",
+      "domain": "messaging",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array",
+        "enrichment_cardinality"
+      ],
+      "capability_ids": [
+        "TA-WITHIN",
+        "TA-PRED-NESTED"
+      ],
+      "plain_english_intent": "From each conversation, within its messages carrier select unread messages (nested within semantics; no implicit flatten of unrelated arrays).",
+      "fixture": {
+        "generator_id": "messaging.messages_v1",
+        "seed": 102,
+        "params": {
+          "n_messages": 64,
+          "n_conversations": 16
+        }
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "For each conversation, evaluate nested messages where read=false under within carrier; cardinality and nesting preserved; no cross-conversation leakage. Wire/op118 residual → Q2."
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from conversations within messages where read = false project conversation_id, message_id",
+          "notes": "within wire refuse residual; corpus keeps pending until Q2 expressibility."
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$lookup": {
+                "from": "messages",
+                "localField": "_id",
+                "foreignField": "conversation_id",
+                "as": "messages"
+              }
+            },
+            {
+              "$project": {
+                "conversation_id": "$_id",
+                "messages": {
+                  "$filter": {
+                    "input": "$messages",
+                    "as": "m",
+                    "cond": {
+                      "$eq": [
+                        "$$m.read",
+                        false
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT c AS conversation, m AS message FROM conversations AS c UNNEST (SELECT RAW m FROM messages AS m WHERE m.conversation_id = META(c).id AND m.read = false) AS m",
+          "notes": "SQL++ UNNEST approximates nested within; quantifier frozen as filter-unread."
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "Q1.4 intentional fill; invented domain shape (no in-tree dogfood)."
+      },
+      "status": "ready",
+      "indexes": {
+        "required": [],
+        "optional": [
+          "entries(display_name)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "low",
+      "variants": {
+        "missing_null_type": {
+          "applies": true,
+          "kinds": [
+            "missing",
+            "wrong_type"
+          ],
+          "notes": "Non-string display_name must not match prefix."
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "exclusion_or_refusal": {
+        "kind": "none"
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "case_id": "directory.entries.str_prefix_display_name",
+      "tier": "A",
+      "domain": "directory",
+      "family_tags": [
+        "selection_key_eq_range_compound",
+        "predicate_missing_null_type_nested_array"
+      ],
+      "capability_ids": [
+        "TA-STR-PREFIX"
+      ],
+      "plain_english_intent": "Return directory entries whose display_name starts with prefix \"Acme\" (binary string prefix; case-sensitive primary profile).",
+      "fixture": {
+        "generator_id": "directory.entries_v1",
+        "seed": 103,
+        "params": {
+          "n_entries": 40
+        }
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "All entries where display_name is a string and starts with ASCII \"Acme\"; missing/wrong-type display_name excluded; binary prefix (not locale collation)."
+      },
+      "implementations": {
+        "rql": {
+          "status": "pending",
+          "source": "from entries where starts_with(display_name, \"Acme\")",
+          "notes": "Prefix may map to range on indexed strings; freeze syntax in Q2 if not Core."
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "display_name": {
+                "$regex": "^Acme"
+              }
+            }
+          },
+          "notes": "Regex ^Acme is document-native equivalent to binary prefix for ASCII."
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM entries WHERE display_name LIKE 'Acme%'"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "Q1.4 intentional fill; invented domain shape (no in-tree dogfood)."
+      },
+      "status": "ready",
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "broad",
+      "cardinality_class": "high",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "exclusion_or_refusal": {
+        "kind": "predeclared_native_diff",
+        "code": "Q0-COVERAGE-NATIVE",
+        "reason": "Coverage/damage honesty is Residiuum-native; comparators excluded from competitive equality."
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "case_id": "telemetry.events.damage_coverage_incomplete",
+      "tier": "A",
+      "domain": "telemetry",
+      "family_tags": [
+        "budget_coverage_damage_refusal"
+      ],
+      "capability_ids": [
+        "TA-COVERAGE"
+      ],
+      "plain_english_intent": "Scan events when media/coverage is incomplete due to damage; results may be partial but must never claim complete coverage or invent absences as verified empty.",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 104,
+        "params": {
+          "n_events": 128
+        }
+      },
+      "expected": {
+        "kind": "oracle_rule",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Under declared damage/incomplete coverage, returned events are a subset of salvageable live values; coverage incomplete is part of the answer; holes are explicit — never false complete empty page."
+      },
+      "implementations": {
+        "rql": {
+          "status": "source",
+          "source": "from events coverage incomplete"
+        },
+        "mongo": {
+          "status": "deliberate_exclusion",
+          "refusal_code": "Q0-COVERAGE-NATIVE",
+          "notes": "No damage/coverage channel comparable to Residiuum salvage honesty."
+        },
+        "cbl": {
+          "status": "deliberate_exclusion",
+          "refusal_code": "Q0-COVERAGE-NATIVE",
+          "notes": "No damage/coverage channel."
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "Q1.4 intentional fill; invented domain shape (no in-tree dogfood)."
+      },
+      "status": "ready",
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "broad",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "exclusion_or_refusal": {
+        "kind": "deliberate_exclusion",
+        "code": "TB-ARRAY-XFORM",
+        "reason": "Programme §2.2 Tier B — measured/classified; non-blocking unless promoted."
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "case_id": "telemetry.events.array_transform_tag_upper",
+      "tier": "B",
+      "domain": "telemetry",
+      "family_tags": [
+        "predicate_missing_null_type_nested_array",
+        "projection_computed_conditional"
+      ],
+      "capability_ids": [
+        "TB-ARRAY-XFORM"
+      ],
+      "plain_english_intent": "Project each event with tags array transformed to uppercase elements (array transformation pipeline — Tier B expansion, non-blocking for Gate-1).",
+      "fixture": {
+        "generator_id": "telemetry.events_v1",
+        "seed": 110,
+        "params": {
+          "n_events": 64
+        }
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "For each event, tags_upper[i] = upper(tags[i]) for string elements; non-strings null or refuse per case freeze. Tier B — does not block Gate-1."
+      },
+      "implementations": {
+        "rql": {
+          "status": "deliberate_exclusion",
+          "refusal_code": "rql_tier_b_array_xform",
+          "source": "from events project _key, tags_upper = map(tags, upper)",
+          "notes": "Tier B deliberate exclusion until promoted; stable classification for harness."
+        },
+        "mongo": {
+          "status": "pipeline",
+          "pipeline": [
+            {
+              "$project": {
+                "_id": 1,
+                "tags_upper": {
+                  "$map": {
+                    "input": "$tags",
+                    "as": "t",
+                    "in": {
+                      "$toUpper": "$$t"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, ARRAY UPPER(t) FOR t IN tags END AS tags_upper FROM events"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "Q1.4 intentional fill; invented domain shape (no in-tree dogfood)."
+      },
+      "status": "ready",
+      "indexes": {
+        "required": [],
+        "optional": [
+          "tasks(status,owner)"
+        ]
+      },
+      "selectivity_class": "low",
+      "cardinality_class": "medium",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "exclusion_or_refusal": {
+        "kind": "deliberate_exclusion",
+        "code": "TB-NAMED-COMP",
+        "reason": "Programme §2.2 Tier B named reusable components — non-blocking."
+      },
+      "ordering_and_multiplicity": {
+        "order": "unordered_multiset",
+        "multiplicity": "bag"
+      },
+      "case_id": "project_management.tasks.named_component_open_by_owner",
+      "tier": "B",
+      "domain": "project_management",
+      "family_tags": [
+        "selection_key_eq_range_compound",
+        "group_aggregate"
+      ],
+      "capability_ids": [
+        "TB-NAMED-COMP",
+        "TA-SEL-EQ"
+      ],
+      "plain_english_intent": "Invoke a named reusable query component open_tasks_by_owner($owner) returning open tasks for that owner (library/subplan — Tier B).",
+      "fixture": {
+        "generator_id": "project_management.tasks_v1",
+        "seed": 111,
+        "params": {
+          "n_tasks": 80
+        }
+      },
+      "expected": {
+        "kind": "deferred_q2",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Equivalent to from tasks where status = \"open\" and owner = $owner; named component is sugar for composition. Tier B non-blocking."
+      },
+      "implementations": {
+        "rql": {
+          "status": "deliberate_exclusion",
+          "refusal_code": "rql_tier_b_named_component",
+          "source": "call open_tasks_by_owner($owner)",
+          "notes": "Named library components are Tier B until promoted."
+        },
+        "mongo": {
+          "status": "find",
+          "find": {
+            "filter": {
+              "status": "open",
+              "owner": {
+                "$eq": "OWNER_PARAM"
+              }
+            }
+          },
+          "notes": "Mongo has no named RQL component; inline filter is document-native equivalent of expansion."
+        },
+        "cbl": {
+          "status": "sqlpp",
+          "sqlpp": "SELECT META().id, * FROM tasks WHERE status = 'open' AND owner = $owner"
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "Q1.4 intentional fill; invented domain shape (no in-tree dogfood)."
+      },
+      "status": "ready",
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "not_applicable",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "exclusion_or_refusal": {
+        "kind": "deliberate_exclusion",
+        "code": "TC-FTS",
+        "reason": "Programme §2.3 Tier C full-text — named backlog, not unspoken deficiency."
+      },
+      "ordering_and_multiplicity": {
+        "order": "refusal_unordered",
+        "multiplicity": "empty_ok"
+      },
+      "case_id": "messaging.messages.fulltext_body_search",
+      "tier": "C",
+      "domain": "messaging",
+      "family_tags": [
+        "selection_key_eq_range_compound",
+        "budget_coverage_damage_refusal"
+      ],
+      "capability_ids": [
+        "TC-FTS"
+      ],
+      "plain_english_intent": "Full-text search messages body for token \"invoice\" (Tier C — explicitly deferred; stable refusal).",
+      "fixture": {
+        "generator_id": "messaging.messages_v1",
+        "seed": 120,
+        "params": {
+          "n_messages": 64
+        }
+      },
+      "expected": {
+        "kind": "stable_refusal",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Stable refusal: full-text search is Tier C deferred (TC-FTS)."
+      },
+      "implementations": {
+        "rql": {
+          "status": "stable_refusal",
+          "refusal_code": "rql_fulltext_deferred_tier_c",
+          "source": "from messages where fulltext(body, \"invoice\")"
+        },
+        "mongo": {
+          "status": "deliberate_exclusion",
+          "refusal_code": "TC-FTS",
+          "notes": "Mongo text indexes exist but are outside Gate-1 competitive profile."
+        },
+        "cbl": {
+          "status": "deliberate_exclusion",
+          "refusal_code": "TC-FTS",
+          "notes": "CBL Full Text Search exists but is Tier C for Residiuum Gate-1."
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "Q1.4 intentional fill; invented domain shape (no in-tree dogfood)."
+      },
+      "status": "ready",
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "not_applicable",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "exclusion_or_refusal": {
+        "kind": "deliberate_exclusion",
+        "code": "TC-VEC",
+        "reason": "Programme §2.3 Tier C vector search."
+      },
+      "ordering_and_multiplicity": {
+        "order": "refusal_unordered",
+        "multiplicity": "empty_ok"
+      },
+      "case_id": "telemetry.devices.vector_knn_embedding",
+      "tier": "C",
+      "domain": "telemetry",
+      "family_tags": [
+        "selection_key_eq_range_compound",
+        "budget_coverage_damage_refusal"
+      ],
+      "capability_ids": [
+        "TC-VEC"
+      ],
+      "plain_english_intent": "k-NN vector search over device embedding field (Tier C — explicitly deferred).",
+      "fixture": {
+        "generator_id": "telemetry.devices_v1",
+        "seed": 121,
+        "params": {
+          "n_devices": 32
+        }
+      },
+      "expected": {
+        "kind": "stable_refusal",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Stable refusal: vector search is Tier C deferred (TC-VEC)."
+      },
+      "implementations": {
+        "rql": {
+          "status": "stable_refusal",
+          "refusal_code": "rql_vector_deferred_tier_c",
+          "source": "from devices order by knn(embedding, $q) limit 10"
+        },
+        "mongo": {
+          "status": "deliberate_exclusion",
+          "refusal_code": "TC-VEC",
+          "notes": "Mongo vector search not in Gate-1 competitive profile."
+        },
+        "cbl": {
+          "status": "deliberate_exclusion",
+          "refusal_code": "TC-VEC",
+          "notes": "Vector search Tier C for Residiuum Gate-1."
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "Q1.4 intentional fill; invented domain shape (no in-tree dogfood)."
+      },
+      "status": "ready",
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "not_applicable",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": false
+        }
+      },
+      "exclusion_or_refusal": {
+        "kind": "deliberate_exclusion",
+        "code": "TC-GEO",
+        "reason": "Programme §2.3 Tier C geospatial."
+      },
+      "ordering_and_multiplicity": {
+        "order": "refusal_unordered",
+        "multiplicity": "empty_ok"
+      },
+      "case_id": "directory.locations.geo_near_point",
+      "tier": "C",
+      "domain": "directory",
+      "family_tags": [
+        "selection_key_eq_range_compound",
+        "budget_coverage_damage_refusal"
+      ],
+      "capability_ids": [
+        "TC-GEO"
+      ],
+      "plain_english_intent": "Find locations near a geo point within radius (Tier C — explicitly deferred).",
+      "fixture": {
+        "generator_id": "directory.locations_v1",
+        "seed": 122,
+        "params": {
+          "n_locations": 24
+        }
+      },
+      "expected": {
+        "kind": "stable_refusal",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Stable refusal: geospatial search is Tier C deferred (TC-GEO)."
+      },
+      "implementations": {
+        "rql": {
+          "status": "stable_refusal",
+          "refusal_code": "rql_geo_deferred_tier_c",
+          "source": "from locations where geo_near(point, $origin, $radius_m)"
+        },
+        "mongo": {
+          "status": "deliberate_exclusion",
+          "refusal_code": "TC-GEO",
+          "notes": "Mongo geo indexes outside Gate-1 competitive profile."
+        },
+        "cbl": {
+          "status": "deliberate_exclusion",
+          "refusal_code": "TC-GEO",
+          "notes": "Geospatial Tier C for Residiuum Gate-1."
+        }
+      }
+    },
+    {
+      "dogfood": {
+        "origin": "invented_honest_label",
+        "notes": "Q1.4 intentional fill; invented domain shape (no in-tree dogfood)."
+      },
+      "status": "ready",
+      "indexes": {
+        "required": [],
+        "optional": []
+      },
+      "selectivity_class": "not_applicable",
+      "cardinality_class": "not_applicable",
+      "variants": {
+        "missing_null_type": {
+          "applies": false
+        },
+        "cursor_page": {
+          "applies": true,
+          "kinds": [
+            "resume_after"
+          ],
+          "notes": "Change tokens are not Gate-1 cursors; case documents refusal only."
+        }
+      },
+      "exclusion_or_refusal": {
+        "kind": "deliberate_exclusion",
+        "code": "TC-CHANGE",
+        "reason": "Programme §2.3 Tier C change streams / live queries."
+      },
+      "ordering_and_multiplicity": {
+        "order": "refusal_unordered",
+        "multiplicity": "empty_ok"
+      },
+      "case_id": "commerce.orders.change_stream_watch",
+      "tier": "C",
+      "domain": "commerce",
+      "family_tags": [
+        "budget_coverage_damage_refusal",
+        "order_topk_cursor"
+      ],
+      "capability_ids": [
+        "TC-CHANGE"
+      ],
+      "plain_english_intent": "Watch a live change stream of order mutations (Tier C — explicitly deferred; not Gate-1 query).",
+      "fixture": {
+        "generator_id": "commerce.orders_v1",
+        "seed": 123,
+        "params": {
+          "n_orders": 32
+        }
+      },
+      "expected": {
+        "kind": "stable_refusal",
+        "equivalence_profile": "rql-q0-result-equivalence-v1",
+        "oracle_rule_text": "Stable refusal: change streams / live queries are Tier C deferred (TC-CHANGE)."
+      },
+      "implementations": {
+        "rql": {
+          "status": "stable_refusal",
+          "refusal_code": "rql_change_stream_deferred_tier_c",
+          "source": "watch orders after $token"
+        },
+        "mongo": {
+          "status": "deliberate_exclusion",
+          "refusal_code": "TC-CHANGE",
+          "notes": "Mongo change streams exist; outside Gate-1 RQL profile."
+        },
+        "cbl": {
+          "status": "deliberate_exclusion",
+          "refusal_code": "TC-CHANGE",
+          "notes": "CBL replication/change feeds are not Gate-1 query competitive cells."
+        }
+      }
     }
   ]
 }

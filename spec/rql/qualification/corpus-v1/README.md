@@ -9,14 +9,14 @@ Equivalence laws: [`doc/todo/rql/RQL_Q0_RESULT_EQUIVALENCE.md`](../../../../doc/
 ## Non-claims
 
 - This is **not** the APP-5 `rql_app_core` or Phase-3 full surface corpus under `spec/app/v1/`.
-- Draft cases (Q1.2+) ≠ package accept ≠ Gate-1 pass. Floors not enforced until Q1.4.
+- Cases status `ready` (Q1.4) ≠ package accept ≠ Gate-1 pass. Floors **enforced** (`enforce_floors=true`).
 - Decision 0 remains OPEN; this corpus does not close RQL-C1.
 
 ## Layout
 
 | Path | Role |
 |---|---|
-| `corpus-v1.json` | Live versioned corpus document (`cases` grow in Q1.2–Q1.4) |
+| `corpus-v1.json` | Live versioned corpus document (`rql-q1-corpus-v0.4.0`, 153 cases) |
 | `corpus-v1.schema.json` | Document wrapper schema (version, floors, amendment policy) |
 | `corpus-case-v1.schema.json` | Per-case record contract (programme §4.2) |
 | `fixtures/case.accepted.min.json` | Minimum complete case (validator positive control) |
@@ -48,8 +48,8 @@ Measured as: count of cases that list each family tag (overlap allowed).
 | `group_aggregate` | 15 |
 | `budget_coverage_damage_refusal` | 10 |
 
-`floor_policy.enforce_floors` is **`false`** until Q1.4 / package exit (tag counts
-already meet floors after Q1.3 bulk; enforcement still off).
+`floor_policy.enforce_floors` is **`true`** as of Q1.4 (`rql-q1-corpus-v0.4.0`).
+Validator fails if any family tag falls below its floor.
 
 ## Amendment
 
@@ -64,8 +64,15 @@ already meet floors after Q1.3 bulk; enforcement still off).
 bash scripts/verify-rql-q1-corpus.sh
 ```
 
-Exit 0 means structural schema + fixture self-tests pass. It does **not** mean
-floors are met or Q1 is accepted.
+Exit 0 means structural schema + fixture self-tests pass, floors are met under
+`enforce_floors=true`, and predeclared_native_diff cases are not competitive on
+Mongo/CBL. It does **not** mean Q1 package accept or Gate-1 pass.
+
+## Tiers (Q1.4)
+
+- **A** — Gate-1 mandatory intentions (may be `deferred_q2` until Q2 expressibility).
+- **B** — important expansion; non-blocking unless promoted (2 cases in v0.4.0).
+- **C** — explicitly deferred with stable refusal (4 cases in v0.4.0).
 
 ## Generators (Q1.2–Q1.3)
 
