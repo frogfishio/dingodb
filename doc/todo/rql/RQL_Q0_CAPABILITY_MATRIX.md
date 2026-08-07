@@ -1,6 +1,6 @@
 # RQL-Q0 — Tier A/B/C capability matrix
 
-Status: **labor complete · principal freeze pending**
+Status: **Q0.A3 amendment · principal freeze re-accept pending**
 
 Package: RQL-Q0 deliverable 2
 Authority: [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §2–§3
@@ -41,7 +41,21 @@ syntax lands).
 | TA-NULL | Total absent / null / value semantics | `exact` | partial | RESIDIUUM_PREDICATE_SPEC; SDA | Must not collapse holes to empty complete pages |
 | TA-TYPE | Type-aware predicates | `exact` | partial | Predicate profile | Wrong-type adversarial cases required in Q3 |
 | TA-NESTED | Nested-field predicates | `exact` | partial | RQL_SPEC; SDA path | |
-| TA-ARRAY | Array predicates | `exact` | partial | RQL_SPEC; ENR/SDA | Completeness residual → Q2 |
+| TA-ARRAY | Array predicates (bucket — prefer specific rows below) | `exact` | partial | RQL_SPEC; ENR/SDA | Prefer TA-ARR-* for corpus; residual completeness → Q2 |
+| TA-ARR-ELEM | Array element match (any/all quantifier frozen on case) | `exact` | partial | RQL_SPEC; §2.5 equivalence | Quantifier must be case-frozen (A2 `arr.bag_pred`) |
+| TA-ARR-NEST | Nested array predicates (no implicit flatten) | `exact` | partial | RQL_SPEC; A2 `arr.nested` | Flatten only if case freezes flatten |
+| TA-ARR-DUP | Duplicate array elements / multikey bag semantics | `exact` | partial | Index/multikey; A2 `arr.dupes`/`arr.multikey` | Dropping dupes is fail |
+| TA-UNWIND | Unwind / unnest array to rows | `blocker` | absent | RQL_SPEC amend + Q2 | Ordinary Mongo `$unwind` / SQL++ UNNEST class |
+| TA-IN | `IN` / set membership | `exact` | partial | Predicate / Core | Parameterised lists; empty-set law on case |
+| TA-DISTINCT | `DISTINCT` result rows | `exact` | absent | RQL_SPEC amend + Q2 | **Promoted from Tier B** (principal: ordinary Mongo/SQL++ work) |
+| TA-STR-PREFIX | String prefix / starts-with | `exact` | partial | Predicate / index | Binary string profile (A2 `str.*`) |
+| TA-STR-REGEX | Regex / pattern match | `blocker` | absent | RQL_SPEC amend + Q2 | Engine regex dialects differ — freeze dialect on case when implemented |
+| TA-STR-EXPR | String expressions (concat, lower/upper, length, …) | `blocker` | absent | RQL_SPEC amend + Q2 | Case-fold algorithm frozen when case-insensitive |
+| TA-ARITH | Arithmetic expressions in filter/project | `blocker` | absent | RQL_SPEC amend + Q2 | i64 overflow = refuse (A2 `int.overflow.*`) |
+| TA-DATE | Date/time expressions and comparisons | `blocker` | absent | RQL_SPEC amend + Q2 | Timezone policy must freeze on case |
+| TA-AGG-COUNT-DISTINCT | `COUNT DISTINCT` | `blocker` | absent | RQL_SPEC amend; APB-8 | Distinct from TA-AGG-COUNT |
+| TA-COLLATION | Explicit collation on order/compare | `deliberate-exclusion` | absent | A2 `str.collation`; env | Primary profile = binary; locale collations out unless case freezes all engines |
+| TA-PIPE-COMPOSE | Aggregation / query pipeline composition (multi-stage) | `blocker` | partial | Plan compose; Mongo pipeline class | Not only SQL GROUP BY — staged pipeline shape |
 | TA-BOOL | Boolean composition (and/or/not) | `exact` | implemented | Predicate / Core where | |
 | TA-PARAM | Named parameter binding `$` | `exact` | implemented | Core | Cursor param MAC residual separate |
 | TA-PROJ-FLAT | Flat projection | `exact` | implemented | Core project | On wire op 118 |
@@ -73,8 +87,10 @@ syntax lands).
 | TA-SQL-SUBSET | Deterministic SQL subset → RQL/QVM | `document-native-equivalent` | partial | SQL_TO_RQL_SPEC; sql+ scaffold | Emit or refuse; never guess; joins currently refuse |
 
 **Tier A blocker summary (must close before Q2 exit):** TA-PROJ-COMP, TA-PROJ-COND,
-TA-GROUP, TA-AGG-*, TA-COMPOSE (to corpus bar), plus elevating all `partial` rows
-to expressible-without-app-scan for their Tier-A cases.
+TA-GROUP, TA-AGG-*, TA-AGG-COUNT-DISTINCT, TA-UNWIND, TA-STR-REGEX, TA-STR-EXPR,
+TA-ARITH, TA-DATE, TA-PIPE-COMPOSE, TA-DISTINCT (impl), TA-COMPOSE (to corpus bar),
+plus elevating all `partial` rows to expressible-without-app-scan for their Tier-A cases.
+**Full-over-wire** for enrich/within/full project on lane S is a separate Q2 blocker (Q0.A4).
 
 ---
 
@@ -85,7 +101,7 @@ to expressible-without-app-scan for their Tier-A cases.
 | TB-AGG-RICH | Richer accumulators beyond count/sum/min/max/avg | `deliberate-exclusion` until promoted | absent | Future SPEC | Measured only if promoted |
 | TB-ARRAY-XFORM | Array transformation pipelines | `deliberate-exclusion` until promoted | partial | ENR/SDA | |
 | TB-ENRICH-FANOUT | Larger / multi-hop enrich fan-out | `deliberate-exclusion` until promoted | partial | Full attach | |
-| TB-DISTINCT | Distinct | `deliberate-exclusion` until promoted | absent | SPEC | |
+| TB-DISTINCT | *(promoted → TA-DISTINCT)* | — | — | — | See Tier A |
 | TB-NAMED-COMP | Named reusable query components (library) | `deliberate-exclusion` until promoted | absent | DX / plan | |
 | TB-COVERING-IDX | Partial/covering index improvements | `deliberate-exclusion` until promoted | partial | Index planner | |
 | TB-SQL-AGG | SQL++/Mongo aggregation conveniences beyond subset | `deliberate-exclusion` until promoted | absent | SQL_TO_RQL | |
@@ -129,13 +145,26 @@ Tier C is named product backlog, not an unspoken deficiency.
 
 ---
 
-## 5. Exit (Q0.2)
+## 5. Exit
+
+### Q0.2 (first freeze)
 
 - [x] Every §2.1 programme surface has a row and class
 - [x] Tier B and C named
 - [x] No Tier A `TBD`
 - [x] Blockers called out for Q2 ordering
-- [ ] Principal accept of classifications (especially aggregate blockers vs SPEC v1)
+
+### Q0.A3 (this amendment)
+
+- [x] DISTINCT as Tier A (`TA-DISTINCT`), not Tier B bucket
+- [x] IN / set membership (`TA-IN`)
+- [x] Prefix, regex, string expressions (split rows)
+- [x] Array element / nested / dupes / unwind rows (not only TA-ARRAY bucket)
+- [x] Arithmetic and date expression rows
+- [x] COUNT DISTINCT row
+- [x] Explicit collation policy row
+- [x] Pipeline composition row
+- [ ] Principal accept of classifications (especially aggregate + DISTINCT + computed blockers vs SPEC v1)
 
 **Principal decision needed:** confirm Tier A includes grouping/aggregates and
 computed/conditional projection (programme text) despite RQL_SPEC v1 exclusion

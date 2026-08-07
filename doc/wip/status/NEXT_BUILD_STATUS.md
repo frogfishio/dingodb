@@ -213,8 +213,9 @@ Labor **must not** deliver product features ad-hoc. Sequence:
 | Priority | Action / card | Stage | Note |
 |---:|---|---|---|
 | **1** | **Q0.A1** [P0] Comparator pins + full config | `in_review` | Mongo **8.2.12** + driver 3.8.0; CBL **4.1.0** + full config (env manifest) |
-| **2** | **Q0.A2** [P0] Tighten equivalence laws | `todo` | Collation, ints, missing/null, agg, arrays, cursor writes |
-| **3** | **Q0.A3–A6** [P1] Matrix / Full-wire / RQB1 / durable ids | `todo` | Docs + code; A5/A6 may parallel |
+| **2** | **Q0.A2** [P0] Tighten equivalence laws | `in_review` | §2 str/int/mn/agg/arr/cur laws; ban post-hoc type_incomparable |
+| **3** | **Q0.A3** [P1] Expand capability matrix | `in_review` | DISTINCT/IN/string/array/arith/date/COUNT DISTINCT/collation/pipeline rows |
+| **3b** | **Q0.A4–A6** [P1] Full-wire / RQB1 / durable ids | `todo` | Docs + code; A5/A6 may parallel |
 | **4** | **Q0.A7–A8** [P2] D0 micro-op policy + doc consolidate | `todo` | After or parallel P1 docs |
 | **5** | **Q0.A9** Re-issue accept pack | `todo` | After A1–A8; then principal §5 |
 | — | Q0.1–Q0.8 first freeze labor | board `done` / `in_review` | **≠** package accept |
