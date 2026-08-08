@@ -35,8 +35,9 @@ adversarial) and asserts machine-report floors. Exit 0 = labor evidence only —
 | Partial / stale index | `q33_stale_partial_index_*` | force_scan full truth; partial under-return **detected** (not silent equal) |
 | Mutated QVM | `q33_mutated_qvm_refuses_validate` | `validate_qvm` refuses |
 | Mutated continuation | `q33_mutated_continuation_token_fails_closed` | resume fails closed |
+| Continuation replay / cross-query | `q33_continuation_token_replay_and_cross_query_misuse` | valid token reuse idempotent or fail-closed; cross-query plan mismatch fail-closed |
 | Reopen | `q33_reopen_preserves_results` | pre-close = post-open multiset |
-| Inter-page writes | `q33_inter_page_write_under_available_consistency` | Available: no crash; first page stable |
+| Inter-page writes | `q33_inter_page_write_under_available_consistency` | Available declared; non-vacuous page2 rows; complete⇒no holes; no SI freeze claim |
 | Damage / holes | `q33_holey_complete_*` / `q33_holey_incomplete_*` | Complete fail-closed; IncompleteAllowed reports holes (no false complete) |
 | Budget / cancel / deadline | `q33_budget_cancel_deadline_*` + soft-stop | ResourceLimit / DeadlineExceeded; soft-stop no false world |
 | Seeded property (24) | `q33_seeded_property_sparse_*` | force_scan = index = status oracle |
@@ -46,7 +47,7 @@ adversarial) and asserts machine-report floors. Exit 0 = labor evidence only —
 
 | Metric | Value |
 |---:|---:|
-| Adversarial unit + property tests | **16/16** |
+| Adversarial unit + property tests | **17+** (F7 replay case) |
 | Property seeds | **24** |
 | False absence / false completeness defects | **0** |
 | Unresolved force_scan↔index diverge (complete index) | **0** |

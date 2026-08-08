@@ -24,7 +24,7 @@ updated; implementers claim **F1–F9 first** (priority titles).
 | F4 | P1 | Fix 0.01% selectivity generator at campaign scale | **labor in_review**: exact target hits; tests 64/10k/1e6 |
 | F5 | P2 | Distinct logical-harness identity in machine evidence | **labor in_review**: `LogicalHarness` + `execution_kind` |
 | F6 | P2 | Stop `\|\|true` metric completeness; explicit residual states | **labor in_review**: `MetricPresenceState`; competitive fails on residual |
-| F7 | P2 | Fix vacuous Q3 inter-page-write + token replay coverage | `rql_q3_adversarial.rs` ~628 |
+| F7 | P2 | Fix vacuous Q3 inter-page-write + token replay coverage | **labor in_review**: non-vacuous Available contract; token replay+cross-query |
 | F8 | P2 | Verification must not rewrite checked-in evidence nondeterministically | verify scripts + tests |
 | F9 | P3 | Q3.4 rustfmt + restore `verify-rql-q3.sh` executable bit | page_concat test; script mode |
 

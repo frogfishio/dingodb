@@ -8,6 +8,7 @@
     "partial_stale_index_detection",
     "mutated_qvm_refuse",
     "mutated_continuation_refuse",
+    "continuation_token_replay_and_cross_query",
     "reopen_equality",
     "inter_page_write_available",
     "holey_complete_fail_closed",
@@ -28,7 +29,7 @@
   "package": "RQL-Q3",
   "profile": "residiuum-rql-q3-adversarial-v1",
   "summary": {
-    "dimensions_covered": 15,
+    "dimensions_covered": 16,
     "false_absence_defects": 0,
     "false_completeness_defects": 0,
     "force_scan_index_smoke_equal": true,

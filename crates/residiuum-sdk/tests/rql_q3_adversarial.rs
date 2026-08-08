@@ -10,7 +10,7 @@
 //! - order ties with immutable-key break
 //! - index partial / stale candidate honesty (force_scan == index when usable)
 //! - mutated QVM structure refuses validate
-//! - mutated / replayed continuation tokens fail closed
+//! - mutated / replayed continuation tokens fail closed (incl. reuse + cross-query)
 //! - reopen equality
 //! - writes between pages under declared Available consistency
 //! - holey media: Complete fails closed; IncompleteAllowed reports holes (no false completeness)
@@ -27,8 +27,8 @@ use residiuum_heap::{
 };
 use residiuum_sdk::{
     compile_app_core, execute_bytecode, validate_qvm, AppQueryBudget, CancelToken, CollectionBindings,
-    CoveragePolicy, Error, ErrorCode, HostCapabilities, Parameters, PlanBuilder, QueryBytecodeV1,
-    QueryPage, QueryRunOptions, ResidiuumDeployment,
+    ConsistencyMode, CoveragePolicy, Error, ErrorCode, HostCapabilities, Parameters, PlanBuilder,
+    QueryBytecodeV1, QueryPage, QueryRunOptions, ResidiuumDeployment,
 };
 use residiuum_store::{publish_staged_genesis, stage_heap_genesis, HeapMetaLayout};
 use serde_json::{json, Map, Value};
@@ -626,39 +626,192 @@ fn q33_reopen_preserves_results() {
 
 #[test]
 fn q33_inter_page_write_under_available_consistency() {
-    // Declared Available: second page may observe concurrent writes (no SI claim).
-    // Law under test: no crash; no false complete when page concat differs from
-    // a frozen snapshot — we only require fail-open honesty (query succeeds)
-    // and that first-page keys are stable for the first materialisation.
+    // cur.writes.declared (RQL_Q0_RESULT_EQUIVALENCE §2.6):
+    //   consistency_mode = Available
+    //   write_schedule = between page1 and page2
+    //   visibility_expectation = engine_native_residual (NOT snapshot_stable / SI)
+    //
+    // Coverage.complete is page-local hole honesty, not "frozen SI world complete".
+    // Prior defect: assertion succeeded whenever coverage.mode==Complete (default),
+    // so empty/bogus page2 could not be detected.
     let (_dir, mut client, _, _) = open_heap_client();
     let mut col = client.create_collection("docs").unwrap().collection;
     for i in 0..5 {
         col.put(&format!("k{i}"), &json!({"i": i})).unwrap();
     }
+
+    // Pre-write unpaged multiset — SI freeze baseline we must NOT require after writes.
+    let pre = col
+        .rql(
+            "from docs",
+            &Parameters::default(),
+            QueryRunOptions::default(),
+        )
+        .expect("pre unpaged");
+    let pre_keys: BTreeSet<_> = page_keys(&pre).into_iter().collect();
+    assert_eq!(pre_keys.len(), 5, "fixture cardinality");
+
     let mut opts = QueryRunOptions::default();
     opts.page_size = Some(2);
-    opts.consistency = residiuum_sdk::ConsistencyMode::Available;
+    opts.consistency = ConsistencyMode::Available;
+    opts.coverage = CoveragePolicy::Complete;
+
     let p1 = col
         .rql("from docs", &Parameters::default(), opts.clone())
         .expect("page1");
-    assert_eq!(p1.rows.len(), 2);
-    let cont = p1.next.expect("cont");
-    // Write between pages.
+    assert_eq!(p1.rows.len(), 2, "page1 must materialise two rows");
+    let p1_keys = page_keys(&p1);
+    assert_eq!(p1.coverage.mode, CoveragePolicy::Complete);
+    assert!(
+        p1.coverage.complete && p1.coverage.hole_count == 0,
+        "page-local Complete honesty on page1: complete implies no holes"
+    );
+    let cont = p1.next.clone().expect("continuation after page1");
+
+    // Concurrent writes between pages under Available.
     col.put("k99", &json!({"i": 99})).unwrap();
     col.put("k0", &json!({"i": 0, "mutated": true})).unwrap();
+
     opts.after = Some(cont);
     let p2 = col
-        .rql("from docs", &Parameters::default(), opts)
+        .rql("from docs", &Parameters::default(), opts.clone())
         .expect("page2 under Available after inter-page write");
-    // Must not invent false completeness over a frozen world — Available is honest.
+
+    // Non-vacuous remainder: 5 docs, page_size=2 ⇒ page2 must return rows.
     assert!(
-        p2.coverage.mode == CoveragePolicy::Complete || !p2.coverage.complete || p2.rows.len() >= 1,
-        "page2 should return some evidence; got cov={:?} rows={}",
-        p2.coverage,
-        p2.rows.len()
+        !p2.rows.is_empty(),
+        "page2 must return rows for non-empty remainder (vacuous Complete-mode pass closed)"
     );
-    // First page snapshot keys unchanged (already materialised).
-    assert_eq!(p1.rows.len(), 2);
+    assert_eq!(p2.coverage.mode, CoveragePolicy::Complete);
+    if p2.coverage.complete {
+        assert_eq!(
+            p2.coverage.hole_count, 0,
+            "complete=true must not hide holes (false completeness)"
+        );
+    }
+
+    // First page already materialised — keys stable regardless of later writes.
+    assert_eq!(page_keys(&p1), p1_keys);
+
+    // Fresh Available query observes the write (cell is not a frozen SI walk).
+    let mut opts_post = QueryRunOptions::default();
+    opts_post.consistency = ConsistencyMode::Available;
+    let post = col
+        .rql("from docs", &Parameters::default(), opts_post)
+        .expect("post unpaged");
+    let post_keys: BTreeSet<_> = page_keys(&post).into_iter().collect();
+    assert!(
+        post_keys.contains("k99"),
+        "inter-page write k99 must be visible to a fresh Available query"
+    );
+
+    // Available ≠ SI: page walk is not required to equal pre-write freeze.
+    // (Asserting walk == pre_keys would be an illegal SI claim under this cell.)
+    let mut walk: BTreeSet<String> = p1_keys.iter().cloned().collect();
+    walk.extend(page_keys(&p2));
+    // Keep walk/pre_keys in scope so the SI non-claim is explicit in review.
+    assert!(
+        walk.len() >= p1_keys.len(),
+        "walk includes at least page1 keys"
+    );
+    let _si_freeze_not_required = pre_keys;
+    assert_eq!(
+        opts.consistency,
+        ConsistencyMode::Available,
+        "declared cell remains Available — no SI freeze claim"
+    );
+}
+
+#[test]
+fn q33_continuation_token_replay_and_cross_query_misuse() {
+    // Beyond XOR-byte mutation (§6.4): (1) reuse a valid token twice;
+    // (2) cross-query misuse of the same token must fail closed.
+    let (_dir, mut client, _, _) = open_heap_client();
+    let mut col = client.create_collection("docs").unwrap().collection;
+    for i in 0..8 {
+        let g = if i < 4 { "a" } else { "b" };
+        col.put(&format!("k{i}"), &json!({"i": i, "g": g})).unwrap();
+    }
+
+    let mut opts = QueryRunOptions::default();
+    opts.page_size = Some(2);
+    let p1 = col
+        .rql("from docs", &Parameters::default(), opts.clone())
+        .expect("page1");
+    let cont = p1.next.expect("continuation after page1");
+    assert!(!cont.token.is_empty(), "continuation token must be non-empty");
+
+    // First resume with valid token.
+    let mut opts_r1 = opts.clone();
+    opts_r1.after = Some(cont.clone());
+    let p2a = col
+        .rql("from docs", &Parameters::default(), opts_r1)
+        .expect("first resume with valid token");
+    assert!(
+        !p2a.rows.is_empty(),
+        "first resume must return page2 rows"
+    );
+    let keys_a = page_keys(&p2a);
+
+    // Second resume with the *same* token (replay).
+    // Honest product: either idempotent same page, or fail-closed — never silent corruption.
+    let mut opts_r2 = opts.clone();
+    opts_r2.after = Some(cont.clone());
+    match col.rql("from docs", &Parameters::default(), opts_r2) {
+        Ok(p2b) => {
+            assert_eq!(
+                page_keys(&p2b),
+                keys_a,
+                "idempotent token replay must return the same page keys"
+            );
+        }
+        Err(err) => {
+            let code = err.code();
+            assert!(
+                matches!(
+                    code,
+                    ErrorCode::ConsistencyViolation
+                        | ErrorCode::QueryInvalid
+                        | ErrorCode::ValidationFailed
+                        | ErrorCode::PermissionDenied
+                        | ErrorCode::AuthenticationFailed
+                        | ErrorCode::DataDamaged
+                        | ErrorCode::Internal
+                ) || err.to_string().to_ascii_lowercase().contains("cursor")
+                    || err.to_string().to_ascii_lowercase().contains("token")
+                    || err.to_string().to_ascii_lowercase().contains("continuation"),
+                "token replay must fail closed if not idempotent; got {err:?} code={code:?}"
+            );
+        }
+    }
+
+    // Cross-query misuse: token bound to `from docs` used with a different plan.
+    let mut opts_x = opts.clone();
+    opts_x.after = Some(cont);
+    let err = col
+        .rql(
+            r#"from docs where g = "a""#,
+            &Parameters::default(),
+            opts_x,
+        )
+        .expect_err("cross-query continuation reuse must fail closed");
+    let code = err.code();
+    let msg = err.to_string().to_ascii_lowercase();
+    assert!(
+        matches!(
+            code,
+            ErrorCode::ConsistencyViolation
+                | ErrorCode::QueryInvalid
+                | ErrorCode::ValidationFailed
+                | ErrorCode::PermissionDenied
+                | ErrorCode::AuthenticationFailed
+        ) || msg.contains("plan")
+            || msg.contains("cursor")
+            || msg.contains("token")
+            || msg.contains("continuation")
+            || msg.contains("mismatch"),
+        "expected fail-closed on cross-query token misuse, got {err:?} code={code:?}"
+    );
 }
 
 #[test]
@@ -972,6 +1125,7 @@ fn q33_write_adversarial_report() {
         "partial_stale_index_detection",
         "mutated_qvm_refuse",
         "mutated_continuation_refuse",
+        "continuation_token_replay_and_cross_query",
         "reopen_equality",
         "inter_page_write_available",
         "holey_complete_fail_closed",
