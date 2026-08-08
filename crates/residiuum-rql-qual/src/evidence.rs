@@ -137,7 +137,12 @@ pub struct CellEvidence {
     pub case_id: Option<String>,
     pub lane: LaneId,
     pub pairing: LanePairing,
+    /// Plan-requested concurrency (§7.2 matrix).
     pub concurrency: u32,
+    /// Peak simultaneous workers observed at execution (F10). Equals `concurrency`
+    /// when real multi-worker path ran; must not stay at 1 when plan asks for >1.
+    #[serde(default = "default_achieved_concurrency")]
+    pub achieved_concurrency: u32,
     pub side_a: EngineRunOutcome,
     pub side_b: EngineRunOutcome,
     pub equivalent: Option<bool>,
@@ -146,6 +151,10 @@ pub struct CellEvidence {
     pub metrics_b: Option<CellMetrics>,
     /// True when this record is structural scaffold only (not competitive).
     pub scaffold_only: bool,
+}
+
+fn default_achieved_concurrency() -> u32 {
+    1
 }
 
 /// Top-level evidence bundle.
@@ -220,12 +229,24 @@ pub fn compare_ready_outcomes(
     }
 }
 
-/// Build a scaffold cell evidence row (not competitive).
+/// Build a scaffold cell evidence row (not competitive). Concurrency defaults to 1.
 pub fn scaffold_cell(
     cell_id: &str,
     pairing: LanePairing,
     side_a: EngineRunOutcome,
     side_b: EngineRunOutcome,
+) -> CellEvidence {
+    scaffold_cell_with_concurrency(cell_id, pairing, side_a, side_b, 1, 1)
+}
+
+/// Scaffold cell with explicit requested + achieved concurrency (F10).
+pub fn scaffold_cell_with_concurrency(
+    cell_id: &str,
+    pairing: LanePairing,
+    side_a: EngineRunOutcome,
+    side_b: EngineRunOutcome,
+    requested_concurrency: u32,
+    achieved_concurrency: u32,
 ) -> CellEvidence {
     let (equivalent, equivalence_detail) = compare_ready_outcomes(&side_a, &side_b);
     CellEvidence {
@@ -233,7 +254,8 @@ pub fn scaffold_cell(
         case_id: None,
         lane: pairing.lane,
         pairing,
-        concurrency: 1,
+        concurrency: requested_concurrency.max(1),
+        achieved_concurrency: achieved_concurrency.max(1),
         side_a,
         side_b,
         equivalent,

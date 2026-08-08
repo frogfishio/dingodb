@@ -28,7 +28,16 @@
         "side_b": { "type": "string" }
       }
     },
-    "concurrency": { "type": "integer", "minimum": 1 },
+    "concurrency": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Plan-requested concurrency (§7.2 matrix)"
+    },
+    "achieved_concurrency": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Peak simultaneous workers observed at execution (F10). Must equal concurrency when multi-worker path ran; must not stay 1 when plan asks for >1."
+    },
     "side_a": {
       "type": "object",
       "description": "EngineRunOutcome; must include engine + execution_kind (product|logical_simulator|not_configured)"

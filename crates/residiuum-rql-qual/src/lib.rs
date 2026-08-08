@@ -12,6 +12,7 @@
 pub mod canonicalize;
 pub mod cell_plan;
 pub mod cells;
+pub mod concurrent;
 pub mod dataset;
 pub mod engine;
 pub mod evidence;

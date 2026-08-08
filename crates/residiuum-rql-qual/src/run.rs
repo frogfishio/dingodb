@@ -7,12 +7,13 @@
 //! Publishes hashed evidence bundles. **Not competitive** / not Gate-1.
 
 use crate::cell_plan::{section_7_2_expanded_portfolio, smoke_portfolio, MeasuredCellPlan};
+use crate::concurrent::{run_logical_concurrent, ConcurrentError};
 use crate::engine::{
-    AdapterStatus, CblEmbeddedAdapter, EngineAdapter, EngineRunOutcome, LogicalHarnessEngine,
-    MongoLocalAdapter,
+    AdapterStatus, CblEmbeddedAdapter, EngineAdapter, EngineRunOutcome, MongoLocalAdapter,
 };
 use crate::evidence::{
-    compare_ready_outcomes, scaffold_cell, EnvFingerprint, EvidenceBundle, EvidenceError,
+    compare_ready_outcomes, scaffold_cell_with_concurrency, EnvFingerprint, EvidenceBundle,
+    EvidenceError,
 };
 use crate::generator::generate_dataset;
 use crate::lane::LanePairing;
@@ -27,6 +28,8 @@ pub enum RunError {
     Evidence(#[from] EvidenceError),
     #[error("adapter: {0}")]
     Adapter(String),
+    #[error("concurrency: {0}")]
+    Concurrency(#[from] ConcurrentError),
     #[error("io: {0}")]
     Io(String),
 }
@@ -38,6 +41,10 @@ pub struct SmokeCellResult {
     pub side_a: EngineRunOutcome,
     pub side_b: EngineRunOutcome,
     pub shared_hash: String,
+    /// Plan-requested concurrency (§7.2).
+    pub requested_concurrency: u32,
+    /// Peak simultaneous logical workers observed (F10).
+    pub achieved_concurrency: u32,
 }
 
 /// Run smoke portfolio: logical harness (A) + CBL adapter (B) with shared work.
@@ -65,13 +72,9 @@ fn run_one_embedded_pair(plan: &MeasuredCellPlan) -> Result<SmokeCellResult, Run
     let work = SharedLogicalWork::from_dataset(ds);
     let hash = work.content_hash.clone();
 
-    let mut logical = LogicalHarnessEngine::new();
-    logical
-        .load_shared_work(&work)
-        .map_err(|e| RunError::Adapter(e.to_string()))?;
-    let side_a = logical
-        .execute_plan(plan)
-        .map_err(|e| RunError::Adapter(e.to_string()))?;
+    // F10: real concurrent workers when plan.concurrency > 1 (not metadata-only).
+    let concurrent = run_logical_concurrent(&work, plan)?;
+    let side_a = concurrent.primary;
 
     let mut cbl = CblEmbeddedAdapter::default();
     cbl.load_shared_work(&work)
@@ -99,6 +102,8 @@ fn run_one_embedded_pair(plan: &MeasuredCellPlan) -> Result<SmokeCellResult, Run
         side_a,
         side_b,
         shared_hash: hash,
+        requested_concurrency: concurrent.requested_concurrency,
+        achieved_concurrency: concurrent.achieved_concurrency,
     })
 }
 
@@ -152,11 +157,13 @@ pub fn publish_smoke_evidence(
         if r.side_b.shared_work_hash.is_some() {
             configured_b += 1;
         }
-        let mut cell = scaffold_cell(
+        let mut cell = scaffold_cell_with_concurrency(
             &r.plan_id,
             LanePairing::SCAFFOLD_LOGICAL_VS_CBL,
             r.side_a.clone(),
             r.side_b.clone(),
+            r.requested_concurrency,
+            r.achieved_concurrency,
         );
         cell.case_id = Some(r.plan_id.clone());
         cell.metrics_a = r.side_a.metrics.clone();
@@ -277,6 +284,19 @@ mod tests {
         let mut saw_writes = false;
         for r in &results {
             assert!(r.side_a.result.is_some(), "{}", r.plan_id);
+            // F10: achieved concurrency must match requested (real workers, not metadata).
+            assert_eq!(
+                r.achieved_concurrency, r.requested_concurrency,
+                "plan {} requested={} achieved={}",
+                r.plan_id, r.requested_concurrency, r.achieved_concurrency
+            );
+            if r.requested_concurrency > 1 {
+                assert!(
+                    r.achieved_concurrency >= 2,
+                    "concurrency>1 must not run serial-only: {}",
+                    r.plan_id
+                );
+            }
             let d = r.side_a.detail.as_deref().unwrap_or("");
             if d.contains("cursor pages=") && d.contains("deep_start=") {
                 saw_deep = true;
@@ -303,6 +323,29 @@ mod tests {
             results.iter().any(|r| r.plan_id.contains("_c8")),
             "expected concurrency 8 plan executed"
         );
+        // F10: multi-worker plans must report achieved == requested (not stuck at 1).
+        let multi: Vec<_> = results
+            .iter()
+            .filter(|r| r.requested_concurrency > 1)
+            .collect();
+        assert!(
+            multi.len() >= 4,
+            "expected concurrency matrix slots >1, got {}",
+            multi.len()
+        );
+        for r in multi {
+            assert_eq!(
+                r.achieved_concurrency, r.requested_concurrency,
+                "F10 real concurrency failed for {}",
+                r.plan_id
+            );
+            let d = r.side_a.detail.as_deref().unwrap_or("");
+            assert!(
+                d.contains("concurrency_achieved="),
+                "missing achieved stamp on {}",
+                r.plan_id
+            );
+        }
         assert!(
             results.iter().any(|r| r.plan_id.contains("high_band")
                 || r.side_a
@@ -312,6 +355,68 @@ mod tests {
                     .contains("conditional high_band")),
             "expected conditional computed"
         );
+    }
+
+    #[test]
+    fn real_concurrency_not_metadata_only() {
+        use crate::cell_plan::concurrency_matrix;
+        use crate::cells::MandatoryCell;
+        use crate::evidence::EvidenceBundle;
+
+        let base = MeasuredCellPlan::smoke_for(MandatoryCell::KeyGet, 11);
+        let plans = concurrency_matrix(&base, 2);
+        let mut saw_c8 = false;
+        for plan in plans {
+            let r = run_one_embedded_pair(&plan).expect("pair");
+            assert_eq!(r.requested_concurrency, plan.concurrency);
+            assert_eq!(
+                r.achieved_concurrency, plan.concurrency,
+                "achieved must equal plan concurrency for {}",
+                plan.plan_id
+            );
+            if plan.concurrency == 8 {
+                saw_c8 = true;
+            }
+            // Evidence row must carry both fields (not hard-coded 1).
+            let cell = scaffold_cell_with_concurrency(
+                &r.plan_id,
+                LanePairing::SCAFFOLD_LOGICAL_VS_CBL,
+                r.side_a.clone(),
+                r.side_b.clone(),
+                r.requested_concurrency,
+                r.achieved_concurrency,
+            );
+            assert_eq!(cell.concurrency, plan.concurrency);
+            assert_eq!(cell.achieved_concurrency, plan.concurrency);
+            if plan.concurrency > 1 {
+                assert_ne!(
+                    cell.concurrency, 1,
+                    "evidence must not collapse multi-worker plan to concurrency=1"
+                );
+            }
+        }
+        assert!(saw_c8);
+
+        // Bundle round-trip preserves achieved_concurrency.
+        let root = workspace_root();
+        let env = EnvFingerprint::capture(&root).unwrap();
+        let mut bundle = EvidenceBundle::new(env, "f10-concurrency");
+        let plan = MeasuredCellPlan::smoke_for(MandatoryCell::KeyGet, 3).with_concurrency(4, false);
+        let r = run_one_embedded_pair(&plan).unwrap();
+        bundle.push_cell(scaffold_cell_with_concurrency(
+            &r.plan_id,
+            LanePairing::SCAFFOLD_LOGICAL_VS_CBL,
+            r.side_a,
+            r.side_b,
+            r.requested_concurrency,
+            r.achieved_concurrency,
+        ));
+        let path = root.join("target/rql-q4/f10_concurrency_bundle.json");
+        bundle.write_json(&path).unwrap();
+        let raw = fs::read_to_string(&path).unwrap();
+        let v: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(v["cells"][0]["concurrency"], 4);
+        assert_eq!(v["cells"][0]["achieved_concurrency"], 4);
     }
 
     #[test]

@@ -1,6 +1,6 @@
 # Q4 §7.2 faithfulness findings (block Q5 competitive)
 
-Status: **board filled** (2026-08-08) · labor not started  
+Status: **board filled** (2026-08-08) · **F10 labor `in_review`** (real concurrency)  
 Feature: `019fe054-1091-7c43-8db0-25394545d377`  
 Authority: principal review wave 2 (same day); programme §7–§8  
 Prior wave: [RQL_Q34_PREACCEPT_FINDINGS.md](./RQL_Q34_PREACCEPT_FINDINGS.md) F1–F9 labor `in_review`
@@ -19,7 +19,7 @@ addresses **specification faithfulness** for §7.2 / §7.4.
 
 | ID | Pri | Board title | Primary paths |
 |---|---|---|---|
-| F10 | P1 | Execute real concurrency (not metadata-only) | `run.rs` ~54; `evidence.rs` scaffold concurrency=1 |
+| F10 | P1 | Execute real concurrency (not metadata-only) | **labor `in_review`**: `concurrent.rs` dual-barrier workers; evidence `concurrency`+`achieved_concurrency` |
 | F11 | P1 | Complete mandatory §7.2 plan variants | `cell_plan.rs` expanded portfolio ~329 |
 | F12 | P1 | 1:N enrich must produce multiple matches | `engine.rs` enrich ~423–452 |
 | F13 | P1 | Deep cursor must drive multi-page product API | `engine.rs` ~271–305; product adapter |
