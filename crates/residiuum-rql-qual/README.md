@@ -24,7 +24,7 @@ env: `doc/todo/rql/RQL_Q0_ENV_MANIFEST.md`
 | `fixture` | Corpus case load + logical fixture handles |
 | `engine` | `EngineAdapter` trait + status |
 | `canonicalize` | Result digests per Q0 equivalence dimensions |
-| `metrics` | §7.4 metric envelopes (types only in Q4.1) |
+| `metrics` | §7.4 envelopes + collectors; structured residual presence (F6) |
 | `evidence` | Env fingerprint + evidence bundle writer |
 | `cells` | Mandatory measured cell registry (ids) |
 | `dataset` | §7.1 axes (shape, payload, memory ratio, dist, card, sel) |

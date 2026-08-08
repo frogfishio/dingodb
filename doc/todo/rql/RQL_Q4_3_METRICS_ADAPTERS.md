@@ -18,7 +18,7 @@ are green for measured cells.
 
 | Module | Role |
 |---|---|
-| `metrics` | Latency collector, quantiles, assemble §7.4 envelope, key presence |
+| `metrics` | Latency collector, quantiles, assemble §7.4 envelope, structured presence (F6) |
 | `shared_work` | Same `LogicalDataset` content_hash for all engines |
 | `engine` | Adapters: logical Ready, Mongo/CBL/server NotConfigured after load, Residiuum embedded feature |
 | `run` | Smoke portfolio runner + evidence publish |
@@ -36,8 +36,36 @@ Collectors fill:
 - lifecycle + cold method
 - deferred work drain flags
 
-Physical bytes / amplification / index size remain residual until store probes
-(keys present in envelope as `None`).
+### 3.1 Presence honesty (F6)
+
+`metric_key_presence` returns structured states — **never** unconditional present:
+
+| State | Meaning |
+|---|---|
+| `present` | Measured value populated |
+| `residual` | Known instrumentation gap (store/host probes not wired) |
+| `not_supported` | Platform/engine cannot provide the metric |
+
+**Competitive completeness** (`metrics_competitive_complete`) is true only when
+every required §7.4 key is `present`. Residual keys without a principal waiver
+**fail** competitive validation.
+
+**Scaffold smoke** may still publish when residual-class keys are `residual` and
+core measured keys (digest, coverage, validity, latency, docs examined,
+lifecycle, deferred drain) are `present` (`metrics_scaffold_publishable`).
+
+### 3.2 Residual until probes (documented)
+
+These keys stay `residual` when empty (envelope fields remain `None`):
+
+| Key | Residual until |
+|---|---|
+| `cpu_rss` | CPU time collection; RSS on platforms without a probe (macOS currently None) |
+| `physical_bytes_rw_amplification` | Store physical I/O + amplification probes |
+| `index_size_build_write_penalty` | Index size/build/write-penalty accounting |
+| `explain_plan` | Adapters echo executed plan digest |
+
+Constants: `RESIDUAL_UNTIL_PROBES_KEYS`, `RESIDUAL_METRIC_NOTES` in `metrics.rs`.
 
 ## 4. Adapters
 

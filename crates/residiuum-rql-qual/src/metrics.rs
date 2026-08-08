@@ -237,54 +237,202 @@ pub fn assemble_metrics(
     }
 }
 
-/// Which required metric keys are populated enough for scaffold publication.
-pub fn metric_key_presence(m: &CellMetrics) -> Vec<(String, bool)> {
+/// Presence classification for a required §7.4 metric key.
+///
+/// Missing instrumentation must **not** be reported as present. Residual and
+/// not-supported keys are honest gaps: scaffold smoke may still publish them;
+/// competitive completeness fails until they are `Present` or a principal
+/// residual waiver is recorded outside this check.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MetricPresenceState {
+    /// Measured value is populated in the envelope.
+    Present,
+    /// Known instrumentation gap (store/host probes not wired yet).
+    Residual,
+    /// Platform or engine cannot provide this metric.
+    NotSupported,
+}
+
+impl MetricPresenceState {
+    pub fn is_present(self) -> bool {
+        matches!(self, Self::Present)
+    }
+
+    /// Competitive cells require a measured value (no silent residual).
+    pub fn competitive_ok(self) -> bool {
+        self.is_present()
+    }
+
+    /// Scaffold publication may include residual / not-supported flags.
+    pub fn scaffold_ok(self) -> bool {
+        matches!(
+            self,
+            Self::Present | Self::Residual | Self::NotSupported
+        )
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Present => "present",
+            Self::Residual => "residual",
+            Self::NotSupported => "not_supported",
+        }
+    }
+}
+
+/// Keys that stay residual until store/host probes or explain plumbing land.
+/// Documented for Q4/Q5 honesty — do not treat as competitive-present.
+pub const RESIDUAL_UNTIL_PROBES_KEYS: &[&str] = &[
+    "cpu_rss",
+    "physical_bytes_rw_amplification",
+    "index_size_build_write_penalty",
+    "explain_plan",
+];
+
+/// Human-readable residual notes for evidence / principal review.
+pub const RESIDUAL_METRIC_NOTES: &[(&str, &str)] = &[
+    (
+        "cpu_rss",
+        "CPU time not collected yet; RSS best-effort (Linux /proc; macOS residual None)",
+    ),
+    (
+        "physical_bytes_rw_amplification",
+        "Physical bytes R/W + amplification residual until store probes",
+    ),
+    (
+        "index_size_build_write_penalty",
+        "Index size/build/write-penalty residual until index accounting probes",
+    ),
+    (
+        "explain_plan",
+        "Explain plan digest residual until adapters echo executed plan hash",
+    ),
+];
+
+fn present_or_residual(has_value: bool) -> MetricPresenceState {
+    if has_value {
+        MetricPresenceState::Present
+    } else {
+        MetricPresenceState::Residual
+    }
+}
+
+fn present_or_absent_core(has_value: bool) -> MetricPresenceState {
+    // Core correctness / latency keys have no residual waiver in-tree:
+    // missing means Residual for scaffold visibility, but competitive fails.
+    present_or_residual(has_value)
+}
+
+/// Per-key presence for every required §7.4 metric (never unconditional present).
+pub fn metric_key_presence(m: &CellMetrics) -> Vec<(String, MetricPresenceState)> {
     vec![
         (
             "result_digest".into(),
-            m.result_digest_echo.is_some(),
+            present_or_absent_core(m.result_digest_echo.is_some()),
         ),
-        ("coverage".into(), m.coverage_complete.is_some()),
-        ("validity".into(), m.validity_ok.is_some()),
-        ("queries_per_s".into(), m.queries_per_s.is_some()),
+        (
+            "coverage".into(),
+            present_or_absent_core(m.coverage_complete.is_some()),
+        ),
+        (
+            "validity".into(),
+            present_or_absent_core(m.validity_ok.is_some()),
+        ),
+        (
+            "queries_per_s".into(),
+            present_or_absent_core(m.queries_per_s.is_some()),
+        ),
         (
             "latency_p50_p95_p99_max".into(),
-            m.latency.samples > 0 && m.latency.p50.is_some(),
+            present_or_absent_core(m.latency.samples > 0 && m.latency.p50.is_some()),
         ),
         (
             "cpu_rss".into(),
-            m.resource.rss_bytes.is_some() || m.resource.cpu_time_ns.is_some() || true,
-        ), // rss optional; key acknowledged
+            present_or_residual(
+                m.resource.rss_bytes.is_some() || m.resource.cpu_time_ns.is_some(),
+            ),
+        ),
         (
             "physical_bytes_rw_amplification".into(),
-            m.resource.physical_bytes_read.is_some()
-                || m.resource.read_amplification.is_some()
-                || true,
-        ), // residual until store probes
+            present_or_residual(
+                m.resource.physical_bytes_read.is_some()
+                    || m.resource.physical_bytes_written.is_some()
+                    || m.resource.read_amplification.is_some(),
+            ),
+        ),
         (
             "docs_index_examined".into(),
-            m.path.documents_examined.is_some(),
+            present_or_absent_core(
+                m.path.documents_examined.is_some()
+                    || m.path.index_entries_examined.is_some(),
+            ),
         ),
         (
             "index_size_build_write_penalty".into(),
-            m.path.index_size_bytes.is_some()
-                || m.path.index_build_ns.is_some()
-                || m.path.indexed_write_penalty_ns.is_some()
-                || true,
+            present_or_residual(
+                m.path.index_size_bytes.is_some()
+                    || m.path.index_build_ns.is_some()
+                    || m.path.indexed_write_penalty_ns.is_some(),
+            ),
         ),
         (
             "explain_plan".into(),
-            m.path.explain_plan_digest.is_some() || true,
+            present_or_residual(m.path.explain_plan_digest.is_some()),
         ),
         (
             "cache_lifecycle_state".into(),
-            m.lifecycle.is_some(),
+            present_or_absent_core(m.lifecycle.is_some()),
         ),
         (
             "deferred_work_drain".into(),
-            m.deferred_drained.is_some(),
+            present_or_absent_core(m.deferred_drained.is_some()),
         ),
     ]
+}
+
+/// Competitive completeness: every required §7.4 key must be `Present`.
+/// Residual / not_supported without an external principal waiver ⇒ fail.
+pub fn metrics_competitive_complete(m: &CellMetrics) -> bool {
+    metric_key_presence(m)
+        .iter()
+        .all(|(_, state)| state.competitive_ok())
+}
+
+/// Scaffold smoke may publish when residual-class keys are Residual and core
+/// measured keys (digest/latency/path basics) are Present.
+pub fn metrics_scaffold_publishable(m: &CellMetrics) -> bool {
+    let presence = metric_key_presence(m);
+    if !presence.iter().all(|(_, s)| s.scaffold_ok()) {
+        return false;
+    }
+    // Core keys that scaffold still needs filled (not residual-class).
+    const CORE: &[&str] = &[
+        "result_digest",
+        "coverage",
+        "validity",
+        "queries_per_s",
+        "latency_p50_p95_p99_max",
+        "docs_index_examined",
+        "cache_lifecycle_state",
+        "deferred_work_drain",
+    ];
+    for key in CORE {
+        match presence.iter().find(|(k, _)| k == key) {
+            Some((_, MetricPresenceState::Present)) => {}
+            _ => return false,
+        }
+    }
+    true
+}
+
+/// Keys that are residual or not_supported (for evidence notes).
+pub fn metric_residual_keys(m: &CellMetrics) -> Vec<String> {
+    metric_key_presence(m)
+        .into_iter()
+        .filter(|(_, s)| !s.is_present())
+        .map(|(k, _)| k)
+        .collect()
 }
 
 #[cfg(test)]
@@ -296,6 +444,12 @@ mod tests {
         assert!(REQUIRED_METRIC_KEYS.len() >= 10);
         assert!(REQUIRED_METRIC_KEYS.contains(&"result_digest"));
         assert!(REQUIRED_METRIC_KEYS.contains(&"latency_p50_p95_p99_max"));
+        for key in RESIDUAL_UNTIL_PROBES_KEYS {
+            assert!(
+                REQUIRED_METRIC_KEYS.contains(key),
+                "residual key {key} must stay on required list"
+            );
+        }
     }
 
     #[test]
@@ -330,6 +484,112 @@ mod tests {
         assert!(m.queries_per_s.unwrap() > 0.0);
         assert_eq!(m.validity_ok, Some(true));
         let presence = metric_key_presence(&m);
-        assert!(presence.iter().any(|(k, ok)| k == "result_digest" && *ok));
+        assert!(presence.iter().any(|(k, s)| {
+            k == "result_digest" && *s == MetricPresenceState::Present
+        }));
+    }
+
+    #[test]
+    fn no_unconditional_present_on_empty_residual_keys() {
+        let m = CellMetrics::default();
+        let presence = metric_key_presence(&m);
+        for key in RESIDUAL_UNTIL_PROBES_KEYS {
+            let state = presence
+                .iter()
+                .find(|(k, _)| k == key)
+                .map(|(_, s)| *s)
+                .expect(key);
+            assert_eq!(
+                state,
+                MetricPresenceState::Residual,
+                "{key} must be residual when empty, not present"
+            );
+        }
+        // Never claim competitive-complete on empty envelope.
+        assert!(!metrics_competitive_complete(&m));
+        assert!(!metrics_scaffold_publishable(&m));
+    }
+
+    #[test]
+    fn residual_vs_present_and_competitive_gate() {
+        let mut c = LatencyCollector::new();
+        c.record_ns(500_000);
+        let mut m = assemble_metrics(
+            &c,
+            QueryPathMetrics {
+                documents_examined: Some(3),
+                ..Default::default()
+            },
+            Some(LifecycleClass::WarmSteady),
+            Some("not_cold_warm_steady".into()),
+            Some("digest".into()),
+            Some(true),
+            Some(true),
+        );
+
+        // Typical scaffold assemble: residual-class keys empty → Residual.
+        let presence = metric_key_presence(&m);
+        assert_eq!(
+            presence.iter().find(|(k, _)| k == "cpu_rss").unwrap().1,
+            MetricPresenceState::Residual
+        );
+        assert_eq!(
+            presence
+                .iter()
+                .find(|(k, _)| k == "physical_bytes_rw_amplification")
+                .unwrap()
+                .1,
+            MetricPresenceState::Residual
+        );
+        assert_eq!(
+            presence
+                .iter()
+                .find(|(k, _)| k == "index_size_build_write_penalty")
+                .unwrap()
+                .1,
+            MetricPresenceState::Residual
+        );
+        assert_eq!(
+            presence.iter().find(|(k, _)| k == "explain_plan").unwrap().1,
+            MetricPresenceState::Residual
+        );
+        assert!(metrics_scaffold_publishable(&m));
+        assert!(
+            !metrics_competitive_complete(&m),
+            "competitive completeness must fail while residual keys are empty"
+        );
+
+        // Fill residual-class fields → competitive complete.
+        m.resource.rss_bytes = Some(1_048_576);
+        m.resource.cpu_time_ns = Some(100);
+        m.resource.physical_bytes_read = Some(4096);
+        m.resource.physical_bytes_written = Some(0);
+        m.resource.read_amplification = Some(1.0);
+        m.path.index_size_bytes = Some(128);
+        m.path.index_build_ns = Some(10);
+        m.path.indexed_write_penalty_ns = Some(1);
+        m.path.explain_plan_digest = Some("plan_abc".into());
+
+        let presence = metric_key_presence(&m);
+        for key in RESIDUAL_UNTIL_PROBES_KEYS {
+            assert_eq!(
+                presence.iter().find(|(k, _)| k == key).unwrap().1,
+                MetricPresenceState::Present,
+                "{key} should be present when populated"
+            );
+        }
+        assert!(metrics_competitive_complete(&m));
+        assert!(metrics_scaffold_publishable(&m));
+        assert!(metric_residual_keys(&m).is_empty());
+    }
+
+    #[test]
+    fn residual_notes_cover_probe_keys() {
+        for key in RESIDUAL_UNTIL_PROBES_KEYS {
+            assert!(
+                RESIDUAL_METRIC_NOTES.iter().any(|(k, _)| k == key),
+                "missing residual note for {key}"
+            );
+        }
     }
 }
