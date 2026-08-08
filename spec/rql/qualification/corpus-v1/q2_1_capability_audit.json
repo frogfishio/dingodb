@@ -925,17 +925,19 @@
       },
       "domain": "commerce",
       "execute": {
-        "message": "resource limit exceeded: query budget max_documents=10 exceeded",
+        "coverage_complete": false,
         "path": "execute_rql_full",
-        "status": "error"
+        "row_count": 10,
+        "status": "ok"
       },
       "expected_kind": "oracle_rule",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "budget_coverage_damage_refusal"
       ],
-      "gap_package": "pkg_budget_partial_coverage",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "source",
       "source": "from orders budget { documents: 10, bytes: 1048576, result_bytes: 65536 }",
       "tier": "A"
@@ -1575,17 +1577,19 @@
       },
       "domain": "messaging",
       "execute": {
-        "message": "resource limit exceeded: query budget max_result_bytes=4096 exceeded (result_bytes=4203)",
+        "coverage_complete": false,
         "path": "execute_rql_full",
-        "status": "error"
+        "row_count": 25,
+        "status": "ok"
       },
       "expected_kind": "oracle_rule",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "budget_coverage_damage_refusal"
       ],
-      "gap_package": "pkg_budget_partial_coverage",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "source",
       "source": "from messages budget { documents: 100000, bytes: 1048576, result_bytes: 4096 }",
       "tier": "A"
@@ -2404,17 +2408,19 @@
       },
       "domain": "directory",
       "execute": {
-        "message": "resource limit exceeded: query budget max_documents=12 exceeded",
+        "coverage_complete": false,
         "path": "execute_rql_full",
-        "status": "error"
+        "row_count": 12,
+        "status": "ok"
       },
       "expected_kind": "oracle_rule",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "budget_coverage_damage_refusal"
       ],
-      "gap_package": "pkg_budget_partial_coverage",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "source",
       "source": "from entries budget { documents: 12, bytes: 1048576, result_bytes: 65536 }",
       "tier": "A"
@@ -3292,17 +3298,19 @@
       },
       "domain": "telemetry",
       "execute": {
-        "message": "resource limit exceeded: query budget max_result_bytes=4096 exceeded (result_bytes=4173)",
+        "coverage_complete": false,
         "path": "execute_rql_full",
-        "status": "error"
+        "row_count": 26,
+        "status": "ok"
       },
       "expected_kind": "oracle_rule",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "budget_coverage_damage_refusal"
       ],
-      "gap_package": "pkg_budget_partial_coverage",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "source",
       "source": "from events budget { documents: 100000, bytes: 1048576, result_bytes: 4096 }",
       "tier": "A"
@@ -4309,17 +4317,19 @@
       },
       "domain": "project_management",
       "execute": {
-        "message": "resource limit exceeded: query budget max_documents=20 exceeded",
+        "coverage_complete": false,
         "path": "execute_rql_full",
-        "status": "error"
+        "row_count": 20,
+        "status": "ok"
       },
       "expected_kind": "oracle_rule",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "budget_coverage_damage_refusal"
       ],
-      "gap_package": "pkg_budget_partial_coverage",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "source",
       "source": "from tasks budget { documents: 20, bytes: 1048576, result_bytes: 65536 }",
       "tier": "A"
@@ -4543,20 +4553,9 @@
   ],
   "corpus_version": "rql-q1-corpus-v0.4.1",
   "format": "residiuum-rql-q2-1-capability-audit-v1",
-  "generated_unix_s": 1786153953,
-  "git_sha": "8f0533677a5aaeb329dc662d3d368164af481246",
+  "generated_unix_s": 1786158085,
+  "git_sha": "7fdf156caabb49d51c0b120b2e5bb2082d5c289c",
   "packages": [
-    {
-      "blocked_case_count": 5,
-      "case_ids": [
-        "commerce.orders.budget_documents",
-        "messaging.messages.budget_cancel_surface",
-        "directory.entries.budget_documents",
-        "telemetry.events.budget_result_bytes",
-        "project_management.tasks.budget_documents"
-      ],
-      "package_id": "pkg_budget_partial_coverage"
-    },
     {
       "blocked_case_count": 5,
       "case_ids": [
@@ -4589,22 +4588,21 @@
   ],
   "profile": "rql-gate1-practical-corpus-v1",
   "recommended_implementation_package_order": [
-    "pkg_budget_partial_coverage",
     "pkg_computed_conditional_project",
     "pkg_cursor_after_clause",
     "pkg_enrich_semantics"
   ],
   "summary": {
     "compile_ok": 134,
-    "execute_ok": 129,
+    "execute_ok": 134,
     "expected_refusal_ok": 2,
     "failure_class_counts": {
       "expected_refusal": 2,
-      "semantic": 15,
+      "semantic": 10,
       "syntax": 1
     },
-    "gap_case_count": 16,
-    "product_expressible": 129,
+    "gap_case_count": 11,
+    "product_expressible": 134,
     "tier_a_cases": 147
   }
 }

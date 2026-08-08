@@ -18,6 +18,7 @@ use super::vm_exec::{CoreOperands, VmPool};
 use crate::app_v1::{
     ConsistencyEvidence, HoleEvidence, QueryBudget, QueryId, QueryPage, QueryRow, QueryRunOptions,
 };
+use crate::app_v1::CoveragePolicy;
 use crate::cursor_v1::parameter_hash as cursor_parameter_hash;
 use crate::error::Error;
 use crate::plan_v1::OrderTerm;
@@ -42,39 +43,6 @@ fn check_governance(options: &QueryRunOptions, started: Instant) -> Result<(), E
     if let Some(deadline) = options.deadline {
         if started.elapsed() >= deadline {
             return Err(Error::DeadlineExceeded("query deadline exceeded".into()));
-        }
-    }
-    Ok(())
-}
-
-fn check_doc_budget(budget: Option<QueryBudget>, examined: u64) -> Result<(), Error> {
-    if let Some(max) = budget.and_then(|b| b.max_documents) {
-        if examined > max {
-            return Err(Error::ResourceLimit(format!(
-                "query budget max_documents={max} exceeded"
-            )));
-        }
-    }
-    Ok(())
-}
-
-fn check_bytes_budget(budget: Option<QueryBudget>, examined_bytes: u64) -> Result<(), Error> {
-    if let Some(max) = budget.and_then(|b| b.max_bytes) {
-        if examined_bytes > max {
-            return Err(Error::ResourceLimit(format!(
-                "query budget max_bytes={max} exceeded (examined_bytes={examined_bytes})"
-            )));
-        }
-    }
-    Ok(())
-}
-
-fn check_result_budget(budget: Option<QueryBudget>, result_bytes: u64) -> Result<(), Error> {
-    if let Some(max) = budget.and_then(|b| b.max_result_bytes) {
-        if result_bytes > max {
-            return Err(Error::ResourceLimit(format!(
-                "query budget max_result_bytes={max} exceeded (result_bytes={result_bytes})"
-            )));
         }
     }
     Ok(())
@@ -182,9 +150,82 @@ pub(crate) struct CoreFrame<'a> {
     saw_filter: bool,
     saw_order: bool,
     saw_page: bool,
+    /// Soft-stopped because a query budget was exhausted under incomplete coverage.
+    budget_truncated: bool,
 }
 
 impl<'a> CoreFrame<'a> {
+    /// Soft budget stop allowed when plan or run options permit incomplete coverage.
+    ///
+    /// RQL_SPEC: budget exhaust under `coverage complete` fails closed; under
+    /// `allow incomplete` (or run options IncompleteAllowed) returns partial page
+    /// + incomplete coverage evidence. Hard fail-closed paths (APB dual-pack) keep
+    /// default Complete and still get [`Error::ResourceLimit`].
+    fn allows_budget_partial(&self) -> bool {
+        matches!(self.coverage, CoveragePolicy::IncompleteAllowed)
+            || matches!(self.options.coverage, CoveragePolicy::IncompleteAllowed)
+    }
+
+    /// Record soft budget exhaust; return Ok(true) = stop. Hard mode → ResourceLimit.
+    fn hit_budget(&mut self, kind: &str, detail: String) -> Result<bool, Error> {
+        if self.allows_budget_partial() {
+            if !self.budget_truncated {
+                self.budget_truncated = true;
+                self.known_holes.push(HoleEvidence {
+                    code: format!("budget_exhausted_{kind}"),
+                    key: None,
+                });
+            }
+            Ok(true)
+        } else {
+            Err(Error::ResourceLimit(detail))
+        }
+    }
+
+    /// Before examining another document: stop if document budget is already full.
+    fn stop_if_doc_budget_full(&mut self) -> Result<bool, Error> {
+        if let Some(max) = self.budget.and_then(|b| b.max_documents) {
+            if self.examined_docs >= max {
+                return self.hit_budget(
+                    "documents",
+                    format!("query budget max_documents={max} exceeded"),
+                );
+            }
+        }
+        Ok(false)
+    }
+
+    /// Before accepting payload bytes for a candidate: stop if bytes budget would exceed.
+    fn stop_if_bytes_would_exceed(&mut self, add_bytes: u64) -> Result<bool, Error> {
+        if let Some(max) = self.budget.and_then(|b| b.max_bytes) {
+            let next = self.examined_bytes.saturating_add(add_bytes);
+            if next > max {
+                return self.hit_budget(
+                    "bytes",
+                    format!(
+                        "query budget max_bytes={max} exceeded (examined_bytes={next})"
+                    ),
+                );
+            }
+        }
+        Ok(false)
+    }
+
+    /// Before materialising a result row: stop if result_bytes budget would exceed.
+    fn stop_if_result_would_exceed(&mut self, next_total: u64) -> Result<bool, Error> {
+        if let Some(max) = self.budget.and_then(|b| b.max_result_bytes) {
+            if next_total > max {
+                return self.hit_budget(
+                    "result_bytes",
+                    format!(
+                        "query budget max_result_bytes={max} exceeded (result_bytes={next_total})"
+                    ),
+                );
+            }
+        }
+        Ok(false)
+    }
+
     /// Prepare frame after BindCollection from typed pool + Core opcode operands.
     ///
     /// `program_hash` is the canonical QVM hash of the **complete** program
@@ -246,6 +287,7 @@ impl<'a> CoreFrame<'a> {
             saw_filter: false,
             saw_order: false,
             saw_page: false,
+            budget_truncated: false,
         })
     }
 
@@ -313,15 +355,19 @@ impl<'a> CoreFrame<'a> {
     ) -> Result<(), Error> {
         for key in candidates {
             check_governance(self.options, self.started)?;
+            if self.stop_if_doc_budget_full()? {
+                return Ok(());
+            }
             if let Some(doc) = scan.get_json(&key)? {
+                let blen = json_byte_len(&doc);
+                if self.stop_if_bytes_would_exceed(blen)? {
+                    return Ok(());
+                }
                 self.examined_docs += 1;
-                self.examined_bytes = self.examined_bytes.saturating_add(json_byte_len(&doc));
-                check_doc_budget(self.budget, self.examined_docs)?;
-                check_bytes_budget(self.budget, self.examined_bytes)?;
+                self.examined_bytes = self.examined_bytes.saturating_add(blen);
                 self.working.push((key, doc));
             } else {
                 self.examined_docs += 1;
-                check_doc_budget(self.budget, self.examined_docs)?;
                 self.known_holes.push(HoleEvidence {
                     code: "index_key_absent".into(),
                     key: Some(key),
@@ -335,22 +381,29 @@ impl<'a> CoreFrame<'a> {
         let mut after: Option<String> = None;
         loop {
             check_governance(self.options, self.started)?;
+            if self.budget_truncated {
+                break;
+            }
             let batch = scan.list_keys(Some(256), after.as_deref())?;
             if batch.is_empty() {
                 break;
             }
             for key in batch {
                 check_governance(self.options, self.started)?;
+                if self.stop_if_doc_budget_full()? {
+                    return Ok(());
+                }
                 after = Some(key.clone());
                 if let Some(doc) = scan.get_json(&key)? {
+                    let blen = json_byte_len(&doc);
+                    if self.stop_if_bytes_would_exceed(blen)? {
+                        return Ok(());
+                    }
                     self.examined_docs += 1;
-                    self.examined_bytes = self.examined_bytes.saturating_add(json_byte_len(&doc));
-                    check_doc_budget(self.budget, self.examined_docs)?;
-                    check_bytes_budget(self.budget, self.examined_bytes)?;
+                    self.examined_bytes = self.examined_bytes.saturating_add(blen);
                     self.working.push((key, doc));
                 } else {
                     self.examined_docs += 1;
-                    check_doc_budget(self.budget, self.examined_docs)?;
                     self.known_holes.push(HoleEvidence {
                         code: "key_listed_absent".into(),
                         key: Some(key),
@@ -407,20 +460,24 @@ impl<'a> CoreFrame<'a> {
         let mut iter = candidates.into_iter();
         while let Some(key) = iter.next() {
             check_governance(self.options, self.started)?;
+            if self.stop_if_doc_budget_full()? {
+                return Ok(());
+            }
             match scan.get_json(&key)? {
                 None => {
                     self.examined_docs += 1;
-                    check_doc_budget(self.budget, self.examined_docs)?;
                     self.known_holes.push(HoleEvidence {
                         code: "index_key_absent".into(),
                         key: Some(key),
                     });
                 }
                 Some(doc) => {
+                    let blen = json_byte_len(&doc);
+                    if self.stop_if_bytes_would_exceed(blen)? {
+                        return Ok(());
+                    }
                     self.examined_docs += 1;
-                    self.examined_bytes = self.examined_bytes.saturating_add(json_byte_len(&doc));
-                    check_doc_budget(self.budget, self.examined_docs)?;
-                    check_bytes_budget(self.budget, self.examined_bytes)?;
+                    self.examined_bytes = self.examined_bytes.saturating_add(blen);
                     if self.where_k.eval_doc(&doc)? {
                         self.working.push((key, doc));
                         if self.working.len() >= need {
@@ -443,12 +500,18 @@ impl<'a> CoreFrame<'a> {
         let mut after = after_key;
         'outer: loop {
             check_governance(self.options, self.started)?;
+            if self.budget_truncated {
+                break;
+            }
             let batch = scan.list_keys(Some(256), after.as_deref())?;
             if batch.is_empty() {
                 break;
             }
             for key in batch {
                 check_governance(self.options, self.started)?;
+                if self.stop_if_doc_budget_full()? {
+                    return Ok(());
+                }
                 after = Some(key.clone());
                 match scan.get_json(&key)? {
                     None => {
@@ -457,14 +520,14 @@ impl<'a> CoreFrame<'a> {
                             key: Some(key),
                         });
                         self.examined_docs += 1;
-                        check_doc_budget(self.budget, self.examined_docs)?;
                     }
                     Some(doc) => {
+                        let blen = json_byte_len(&doc);
+                        if self.stop_if_bytes_would_exceed(blen)? {
+                            return Ok(());
+                        }
                         self.examined_docs += 1;
-                        self.examined_bytes =
-                            self.examined_bytes.saturating_add(json_byte_len(&doc));
-                        check_doc_budget(self.budget, self.examined_docs)?;
-                        check_bytes_budget(self.budget, self.examined_bytes)?;
+                        self.examined_bytes = self.examined_bytes.saturating_add(blen);
                         if self.where_k.eval_doc(&doc)? {
                             self.working.push((key, doc));
                             if self.working.len() >= need {
@@ -556,13 +619,17 @@ impl<'a> CoreFrame<'a> {
         let mut result_bytes: u64 = 0;
         let mut last_full_for_cursor: Option<(String, JsonValue)> = None;
 
-        for (key, doc) in self.working.drain(..) {
+        let bag = std::mem::take(&mut self.working);
+        for (key, doc) in bag {
             check_governance(self.options, self.started)?;
             last_full_for_cursor = Some((key.clone(), doc.clone()));
             let value = super::ir_project::apply_project_paths(&doc, self.project.paths.as_ref())?;
             let row_len = json_byte_len(&value);
             let next_result = result_bytes.saturating_add(row_len);
-            check_result_budget(self.budget, next_result)?;
+            if self.stop_if_result_would_exceed(next_result)? {
+                // Soft: omit this and remaining rows; hard already returned Err.
+                break;
+            }
             result_bytes = next_result;
             matched.push((key, value));
         }
@@ -605,6 +672,9 @@ impl<'a> CoreFrame<'a> {
             exhausted
         };
 
+        // Budget soft-stop: no continuation (budget is query-wide, not page-resume).
+        let exhausted = exhausted || self.budget_truncated;
+
         let rows: Vec<QueryRow> = matched
             .into_iter()
             .map(|(key, value)| QueryRow { key, value })
@@ -639,6 +709,13 @@ impl<'a> CoreFrame<'a> {
 
         let coverage_mode =
             super::ir_page::resolve_coverage_mode(self.coverage, self.options.coverage);
+        // Soft budget exhaust forces incomplete coverage evidence even when the
+        // plan defaulted to Complete but run options allowed incomplete.
+        let coverage_mode = if self.budget_truncated {
+            CoveragePolicy::IncompleteAllowed
+        } else {
+            coverage_mode
+        };
         let coverage =
             super::ir_page::finish_coverage(coverage_mode, &self.known_holes, self.examined_docs)?;
 

@@ -131,7 +131,7 @@ claim its one-runtime exit."*
 | Sole production authority = QVM + `run_vm` | A1–A8 | **labor_closed** (architecture) |
 | No second product executor | A3–A5, A7 | **labor_closed** |
 | Principal honesty that residual IR is documented tech-debt (not second executor) | A12–A13; A9 = out_of_scope_for_D0_close (Q0.A7) | **principal_only** for close |
-| Frontend → identical canonical QVM (SQL/builder/RQL) | Q2.3 + corpus | **open** (Q2 backlog; D0 residual Feature blocks exit claim) |
+| Frontend → identical canonical QVM (SQL/builder/RQL) | Q2.3 + corpus | **labor_closed for Core multi-frontend identity** ([RQL_Q2_3_FRONTEND_QVM_EXIT_PACK.md](./RQL_Q2_3_FRONTEND_QVM_EXIT_PACK.md)); **exit claim still blocked** by D0 OPEN + Tier-A gaps |
 | Tier A 100% expressible | Q1 corpus + Q2 implement | **open** (**out_of_scope_for_D0** capability) |
 
 **Law for implementers:** Do **not** mark Q2 Feature/package exit "one QVM runtime"

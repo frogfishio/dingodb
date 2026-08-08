@@ -26,7 +26,7 @@ Q2.1 order rank 1: 16 Tier-A cases
 |---|---:|
 | `pkg_enrich_corpus_dialect` | 15 |
 | `pkg_array_predicate_surface` | 0 (closed Q2.2c) |
-| `pkg_budget_partial_coverage` | 5 |
+| `pkg_budget_partial_coverage` | 0 (closed Q2.2d) |
 | `pkg_computed_conditional_project` | 5 |
 | `pkg_cursor_after_clause` | 5 |
 | `pkg_enrich_semantics` | 1 |

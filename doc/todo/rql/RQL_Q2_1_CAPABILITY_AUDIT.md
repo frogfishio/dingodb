@@ -4,6 +4,7 @@ Status: **labor complete** (2026-08-07) · package RQL-Q2 **not accepted**
 **Re-audit after Q2.2 wave-1 (`pkg_group_aggregate`, 2026-08-08):** execute_ok **107**/147 (was 91); gap **38** (was 54); `pkg_group_aggregate` **0 blocked** (was 16). Machine report refreshed.
 **Re-audit after Q2.2b enrich dialect (2026-08-08):** execute_ok **122**/147; gap **23**; `pkg_enrich_corpus_dialect` **0**.  
 **Re-audit after Q2.2c array predicates (2026-08-08):** execute_ok **129**/147; gap **16**; `pkg_array_predicate_surface` **0**.
+**Re-audit after Q2.2d budget partial coverage (2026-08-08):** execute_ok **134**/147; gap **11**; `pkg_budget_partial_coverage` **0**.
 Task: Q2.1 · Feature `019fda4c-1227-7c93-b7e6-292141ec7a78`  
 Authority: [RQL_QUERY_QUALIFICATION_PROGRAM.md](./RQL_QUERY_QUALIFICATION_PROGRAM.md) §5  
 Machine report: [`spec/rql/qualification/corpus-v1/q2_1_capability_audit.json`](../../../spec/rql/qualification/corpus-v1/q2_1_capability_audit.json)  
@@ -141,4 +142,5 @@ Exit 0 = **audit completed** (all Tier-A cases classified), **not** 100% express
 
 Decision 0 remains **OPEN**. This audit uses the public Full → QVM path but does
 **not** claim one-runtime exit or RQL-C1 accept. Q2.3 still owns frontend QVM identity
-and one-runtime exit packaging.
+and one-runtime exit packaging — see [RQL_Q2_3_FRONTEND_QVM_EXIT_PACK.md](./RQL_Q2_3_FRONTEND_QVM_EXIT_PACK.md)
+(labor complete; **Q2 package exit still blocked**).
