@@ -288,24 +288,22 @@ fn encode_imm(out: &mut Vec<u8>, imm: &VmImm) -> Result<(), Error> {
                 }
             }
         }
-        VmImm::Project(paths) => {
+        VmImm::Project(p) => {
             out.push(IMM_PROJECT);
-            push_project(out, paths)?;
+            push_project(out, p)?;
         }
         VmImm::Enrich(e) => {
             out.push(IMM_ENRICH);
-            let body = serde_json::to_vec(&pipeline_step_json(&FullPipelineStepV1::Enrich(
-                e.clone(),
-            ))?)
-            .map_err(|e| Error::QueryInvalid(format!("qvm enrich json: {e}")))?;
+            let body =
+                serde_json::to_vec(&pipeline_step_json(&FullPipelineStepV1::Enrich(e.clone()))?)
+                    .map_err(|e| Error::QueryInvalid(format!("qvm enrich json: {e}")))?;
             push_blob(out, &body)?;
         }
         VmImm::Within(w) => {
             out.push(IMM_WITHIN);
-            let body = serde_json::to_vec(&pipeline_step_json(&FullPipelineStepV1::Within(
-                w.clone(),
-            ))?)
-            .map_err(|e| Error::QueryInvalid(format!("qvm within json: {e}")))?;
+            let body =
+                serde_json::to_vec(&pipeline_step_json(&FullPipelineStepV1::Within(w.clone()))?)
+                    .map_err(|e| Error::QueryInvalid(format!("qvm within json: {e}")))?;
             push_blob(out, &body)?;
         }
         VmImm::FilterAttach(p) => {
@@ -338,9 +336,8 @@ fn decode_imm(bytes: &[u8], off: &mut usize) -> Result<VmImm, Error> {
             let mut idb = [0u8; 16];
             idb.copy_from_slice(&bytes[*off..*off + 16]);
             *off += 16;
-            let id = CollectionId::from_bytes(idb).map_err(|e| {
-                Error::QueryInvalid(format!("qvm: collection id: {e}"))
-            })?;
+            let id = CollectionId::from_bytes(idb)
+                .map_err(|e| Error::QueryInvalid(format!("qvm: collection id: {e}")))?;
             Ok(VmImm::Collection(id))
         }
         IMM_INDEX_EQ => {
@@ -377,7 +374,7 @@ fn decode_imm(bytes: &[u8], off: &mut usize) -> Result<VmImm, Error> {
             };
             Ok(VmImm::Page { page_size, limit })
         }
-        IMM_PROJECT => Ok(VmImm::Project(read_project(bytes, off)?)),
+        IMM_PROJECT => Ok(VmImm::Project(read_project_imm(bytes, off)?)),
         IMM_ENRICH => {
             let body = read_blob(bytes, off)?;
             let v: JsonValue = serde_json::from_slice(&body)
@@ -516,7 +513,10 @@ fn read_order(bytes: &[u8], off: &mut usize) -> Result<Vec<OrderTerm>, Error> {
                 )))
             }
         };
-        let tie_break = o.get("tie_break").and_then(|t| t.as_bool()).unwrap_or(false);
+        let tie_break = o
+            .get("tie_break")
+            .and_then(|t| t.as_bool())
+            .unwrap_or(false);
         out.push(OrderTerm {
             path: Path::from_segments(segs)?,
             dir,
@@ -527,48 +527,206 @@ fn read_order(bytes: &[u8], off: &mut usize) -> Result<Vec<OrderTerm>, Error> {
     Ok(out)
 }
 
-fn push_project(out: &mut Vec<u8>, paths: &Option<Vec<Path>>) -> Result<(), Error> {
-    let body = match paths {
-        None => b"null".to_vec(),
-        Some(ps) => {
-            let arr: Vec<JsonValue> = ps
-                .iter()
-                .map(|p| {
-                    JsonValue::Array(p.0.iter().map(|s| JsonValue::String(s.clone())).collect())
-                })
-                .collect();
-            serde_json::to_vec(&JsonValue::Array(arr))
-                .map_err(|e| Error::QueryInvalid(format!("qvm project paths: {e}")))?
+fn push_project(out: &mut Vec<u8>, p: &super::vm_exec::ProjectImm) -> Result<(), Error> {
+    // Legacy wire: null or path-array when group is inactive (plan-vector stable).
+    // Extended: object with paths + group_agg when group is active.
+    let body = if !p.group_agg.is_active() {
+        match &p.paths {
+            None => b"null".to_vec(),
+            Some(ps) => {
+                let arr: Vec<JsonValue> = ps
+                    .iter()
+                    .map(|path| {
+                        JsonValue::Array(
+                            path.0
+                                .iter()
+                                .map(|s| JsonValue::String(s.clone()))
+                                .collect(),
+                        )
+                    })
+                    .collect();
+                serde_json::to_vec(&JsonValue::Array(arr))
+                    .map_err(|e| Error::QueryInvalid(format!("qvm project paths: {e}")))?
+            }
         }
+    } else {
+        let mut m = serde_json::Map::new();
+        match &p.paths {
+            None => {
+                m.insert("paths".into(), JsonValue::Null);
+            }
+            Some(ps) => {
+                let arr: Vec<JsonValue> = ps
+                    .iter()
+                    .map(|path| {
+                        JsonValue::Array(
+                            path.0
+                                .iter()
+                                .map(|s| JsonValue::String(s.clone()))
+                                .collect(),
+                        )
+                    })
+                    .collect();
+                m.insert("paths".into(), JsonValue::Array(arr));
+            }
+        }
+        m.insert("group_agg".into(), group_agg_to_json(&p.group_agg));
+        serde_json::to_vec(&JsonValue::Object(m))
+            .map_err(|e| Error::QueryInvalid(format!("qvm project group: {e}")))?
     };
     push_blob(out, &body)
 }
 
-fn read_project(bytes: &[u8], off: &mut usize) -> Result<Option<Vec<Path>>, Error> {
+fn group_agg_to_json(g: &crate::plan_v1::GroupAggSpec) -> JsonValue {
+    let mut m = serde_json::Map::new();
+    m.insert(
+        "group_by".into(),
+        JsonValue::Array(
+            g.group_by
+                .iter()
+                .map(|p| {
+                    JsonValue::Array(p.0.iter().map(|s| JsonValue::String(s.clone())).collect())
+                })
+                .collect(),
+        ),
+    );
+    let aggs: Vec<JsonValue> = g
+        .aggregates
+        .iter()
+        .map(|a| {
+            let mut o = serde_json::Map::new();
+            o.insert("fun".into(), JsonValue::String(a.fun.as_str().into()));
+            match &a.source {
+                None => {
+                    o.insert("source".into(), JsonValue::Null);
+                }
+                Some(p) => {
+                    o.insert(
+                        "source".into(),
+                        JsonValue::Array(
+                            p.0.iter().map(|s| JsonValue::String(s.clone())).collect(),
+                        ),
+                    );
+                }
+            }
+            o.insert("output".into(), JsonValue::String(a.output.clone()));
+            JsonValue::Object(o)
+        })
+        .collect();
+    m.insert("aggregates".into(), JsonValue::Array(aggs));
+    JsonValue::Object(m)
+}
+
+fn read_project_imm(bytes: &[u8], off: &mut usize) -> Result<super::vm_exec::ProjectImm, Error> {
+    use super::vm_exec::ProjectImm;
+    use crate::plan_v1::{AggFn, AggregateSpec, GroupAggSpec};
     let body = read_blob(bytes, off)?;
     let v: JsonValue = serde_json::from_slice(&body)
         .map_err(|e| Error::QueryInvalid(format!("qvm project json: {e}")))?;
+    // Legacy: null or array of path segment arrays.
     if v.is_null() {
-        return Ok(None);
+        return Ok(ProjectImm::paths_only(None));
     }
-    let arr = v
-        .as_array()
-        .ok_or_else(|| Error::QueryInvalid("qvm project must be array or null".into()))?;
-    let mut paths = Vec::with_capacity(arr.len());
-    for item in arr {
-        let segs = item
-            .as_array()
-            .ok_or_else(|| Error::QueryInvalid("qvm project path must be array".into()))?
-            .iter()
-            .map(|s| {
-                s.as_str()
-                    .map(|x| x.to_string())
-                    .ok_or_else(|| Error::QueryInvalid("qvm project segment".into()))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        paths.push(Path::from_segments(segs)?);
+    if let Some(arr) = v.as_array() {
+        let mut paths = Vec::with_capacity(arr.len());
+        for item in arr {
+            let segs = item
+                .as_array()
+                .ok_or_else(|| Error::QueryInvalid("qvm project path must be array".into()))?
+                .iter()
+                .map(|s| {
+                    s.as_str()
+                        .map(|x| x.to_string())
+                        .ok_or_else(|| Error::QueryInvalid("qvm project segment".into()))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            paths.push(Path::from_segments(segs)?);
+        }
+        return Ok(ProjectImm::paths_only(Some(paths)));
     }
-    Ok(Some(paths))
+    // Extended object form.
+    let obj = v
+        .as_object()
+        .ok_or_else(|| Error::QueryInvalid("qvm project must be array, null, or object".into()))?;
+    let paths = match obj.get("paths") {
+        None | Some(JsonValue::Null) => None,
+        Some(JsonValue::Array(arr)) => {
+            let mut paths = Vec::with_capacity(arr.len());
+            for item in arr {
+                let segs = item
+                    .as_array()
+                    .ok_or_else(|| Error::QueryInvalid("qvm project path must be array".into()))?
+                    .iter()
+                    .map(|s| {
+                        s.as_str()
+                            .map(|x| x.to_string())
+                            .ok_or_else(|| Error::QueryInvalid("qvm project segment".into()))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                paths.push(Path::from_segments(segs)?);
+            }
+            Some(paths)
+        }
+        Some(_) => return Err(Error::QueryInvalid("qvm project.paths invalid".into())),
+    };
+    let mut group_agg = GroupAggSpec::default();
+    if let Some(g) = obj.get("group_agg") {
+        if let Some(go) = g.as_object() {
+            if let Some(JsonValue::Array(keys)) = go.get("group_by") {
+                for k in keys {
+                    let segs = k
+                        .as_array()
+                        .ok_or_else(|| Error::QueryInvalid("qvm group_by path".into()))?
+                        .iter()
+                        .map(|s| {
+                            s.as_str()
+                                .map(|x| x.to_string())
+                                .ok_or_else(|| Error::QueryInvalid("qvm group_by segment".into()))
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+                    group_agg.group_by.push(Path::from_segments(segs)?);
+                }
+            }
+            if let Some(JsonValue::Array(items)) = go.get("aggregates") {
+                for it in items {
+                    let o = it
+                        .as_object()
+                        .ok_or_else(|| Error::QueryInvalid("qvm aggregate object".into()))?;
+                    let fun = AggFn::parse(
+                        o.get("fun")
+                            .and_then(|f| f.as_str())
+                            .ok_or_else(|| Error::QueryInvalid("qvm aggregate fun".into()))?,
+                    )?;
+                    let source = match o.get("source") {
+                        None | Some(JsonValue::Null) => None,
+                        Some(JsonValue::Array(arr)) => {
+                            let segs = arr
+                                .iter()
+                                .map(|s| {
+                                    s.as_str().map(|x| x.to_string()).ok_or_else(|| {
+                                        Error::QueryInvalid("qvm agg source segment".into())
+                                    })
+                                })
+                                .collect::<Result<Vec<_>, _>>()?;
+                            Some(Path::from_segments(segs)?)
+                        }
+                        Some(_) => return Err(Error::QueryInvalid("qvm aggregate source".into())),
+                    };
+                    let output = o
+                        .get("output")
+                        .and_then(|x| x.as_str())
+                        .ok_or_else(|| Error::QueryInvalid("qvm aggregate output".into()))?
+                        .to_string();
+                    group_agg.aggregates.push(AggregateSpec {
+                        fun,
+                        source,
+                        output,
+                    });
+                }
+            }
+        }
+    }
+    Ok(ProjectImm { paths, group_agg })
 }
 
 fn push_blob(out: &mut Vec<u8>, body: &[u8]) -> Result<(), Error> {
@@ -670,7 +828,9 @@ fn read_budget(bytes: &[u8], off: &mut usize) -> Result<QueryBudget, Error> {
     }
     if flags & 0x04 != 0 {
         if *off + 8 > bytes.len() {
-            return Err(Error::QueryInvalid("qvm: truncated max_result_bytes".into()));
+            return Err(Error::QueryInvalid(
+                "qvm: truncated max_result_bytes".into(),
+            ));
         }
         b.max_result_bytes = Some(u64::from_le_bytes(
             bytes[*off..*off + 8].try_into().expect("8"),
@@ -728,8 +888,7 @@ mod tests {
         let mut bytes = encode_qvm(&prog).expect("encode");
         // Corrupt op_count at fixed offset: magic4+ver1+flags1+cov1+cons1 = 8
         let op_count_off = 8;
-        bytes[op_count_off..op_count_off + 4]
-            .copy_from_slice(&(u32::MAX).to_le_bytes());
+        bytes[op_count_off..op_count_off + 4].copy_from_slice(&(u32::MAX).to_le_bytes());
         let err = decode_qvm(&bytes).unwrap_err();
         assert!(
             err.to_string().contains("op_count") || err.to_string().contains("qvm:"),
@@ -773,14 +932,18 @@ mod tests {
 
     #[test]
     fn qvm_program_hash_covers_full_attach() {
-        use crate::query_bytecode_v1::full_attach::{EnrichCardinality, EnrichStepV1, FullPipelineStepV1};
-        use crate::query_bytecode_v1::vm_exec::lower_full;
         use crate::predicate::Path;
+        use crate::query_bytecode_v1::full_attach::{
+            EnrichCardinality, EnrichStepV1, FullPipelineStepV1,
+        };
+        use crate::query_bytecode_v1::vm_exec::lower_full;
         let id = CollectionId::from_bytes(uuidish(20)).expect("id");
         let fid = CollectionId::from_bytes(uuidish(21)).expect("id");
         let mut bindings = CollectionBindings::default();
         bindings.bind("items", id);
-        let core = PlanBuilder::from_source("items").compile(&bindings).expect("plan");
+        let core = PlanBuilder::from_source("items")
+            .compile(&bindings)
+            .expect("plan");
         let core_only = encode_qvm(&lower_core(core.clone(), None)).expect("enc core");
         let pipeline = vec![FullPipelineStepV1::Enrich(EnrichStepV1 {
             output: "f".into(),

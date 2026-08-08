@@ -11,9 +11,7 @@
 //!
 //! Decision 0 remains OPEN; **RQL-C1 must not be accepted.**
 
-use crate::app_v1::{
-    ConsistencyMode, CoveragePolicy, QueryBudget, QueryPage, QueryRunOptions,
-};
+use crate::app_v1::{ConsistencyMode, CoveragePolicy, QueryBudget, QueryPage, QueryRunOptions};
 use crate::error::Error;
 use crate::plan_v1::{OrderTerm, RqlPlanV1};
 use crate::predicate::{Path, Predicate};
@@ -43,8 +41,7 @@ impl<H: HostCapabilities> DocScan for HostScan<'_, H> {
         limit: Option<usize>,
         after_key: Option<&str>,
     ) -> Result<Vec<String>, Error> {
-        self.host
-            .list_keys(self.collection_id, limit, after_key)
+        self.host.list_keys(self.collection_id, limit, after_key)
     }
 
     fn get_json(&mut self, key: &str) -> Result<Option<JsonValue>, Error> {
@@ -55,8 +52,7 @@ impl<H: HostCapabilities> DocScan for HostScan<'_, H> {
         &mut self,
         equalities: &[(String, JsonValue)],
     ) -> Result<Option<Vec<String>>, Error> {
-        self.host
-            .lookup_index_keys(self.collection_id, equalities)
+        self.host.lookup_index_keys(self.collection_id, equalities)
     }
 }
 
@@ -77,6 +73,25 @@ struct WithinScope {
     parents: Vec<(String, JsonValue)>,
 }
 
+/// Core `ProjectPaths` immediate: path list + optional group/aggregate.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub(crate) struct ProjectImm {
+    /// Path projection; `None` = full document (after optional group).
+    pub paths: Option<Vec<Path>>,
+    /// Group-by + aggregates; inactive when empty.
+    pub group_agg: crate::plan_v1::GroupAggSpec,
+}
+
+impl ProjectImm {
+    /// Path-only project (no group).
+    pub fn paths_only(paths: Option<Vec<Path>>) -> Self {
+        Self {
+            paths,
+            group_agg: crate::plan_v1::GroupAggSpec::default(),
+        }
+    }
+}
+
 /// Typed immediate for one VM instruction (operands live on the opcode).
 ///
 /// Core opcodes no longer recover semantics from a full [`RqlPlanV1`] sidecar —
@@ -86,9 +101,7 @@ pub(crate) enum VmImm {
     /// Bind / verify collection id.
     Collection(CollectionId),
     /// IndexEq: force-scan only; where is sole authority on Filter (`Where`).
-    IndexEq {
-        force_scan: bool,
-    },
+    IndexEq { force_scan: bool },
     /// Scan has no payload (key-source mode is derived from order at run start).
     None,
     /// Core Filter where predicate.
@@ -96,12 +109,9 @@ pub(crate) enum VmImm {
     /// Core order terms (includes key tie-break).
     Order(Vec<OrderTerm>),
     /// Core page size + optional total limit.
-    Page {
-        page_size: u32,
-        limit: Option<u64>,
-    },
-    /// Core path projection (`None` = full document).
-    Project(Option<Vec<Path>>),
+    Page { page_size: u32, limit: Option<u64> },
+    /// Core path projection + optional group/aggregate payload.
+    Project(ProjectImm),
     /// Enrich step (root or nested inside Within…WithinEnd).
     Enrich(EnrichStepV1),
     /// Within shell: carrier + alias only; body is stream ops until WithinEnd.
@@ -153,13 +163,12 @@ pub(crate) struct VmProgram {
     pub program_hash: [u8; 32],
 }
 
-
 /// Core operands extracted from a verified opcode stream (not a plan sidecar).
 #[derive(Debug, Clone)]
 pub(crate) struct CoreOperands {
     pub where_pred: Predicate,
     pub order: Vec<OrderTerm>,
-    pub project: Option<Vec<Path>>,
+    pub project: ProjectImm,
     pub page_size: u32,
     pub limit: Option<u64>,
     #[allow(dead_code)]
@@ -188,7 +197,13 @@ pub(crate) fn extract_core_operands(ops: &[VmInstr]) -> Result<CoreOperands, Err
             (OpCode::Order, VmImm::Order(o)) => {
                 order = Some(o.clone());
             }
-            (OpCode::Page, VmImm::Page { page_size: ps, limit: lim }) => {
+            (
+                OpCode::Page,
+                VmImm::Page {
+                    page_size: ps,
+                    limit: lim,
+                },
+            ) => {
                 page_size = Some(*ps);
                 limit = *lim;
             }
@@ -199,16 +214,12 @@ pub(crate) fn extract_core_operands(ops: &[VmInstr]) -> Result<CoreOperands, Err
         }
     }
     Ok(CoreOperands {
-        where_pred: where_pred.ok_or_else(|| {
-            Error::QueryInvalid("qvm: missing Core Filter Where".into())
-        })?,
+        where_pred: where_pred
+            .ok_or_else(|| Error::QueryInvalid("qvm: missing Core Filter Where".into()))?,
         order: order.ok_or_else(|| Error::QueryInvalid("qvm: missing Core Order".into()))?,
-        project: project.ok_or_else(|| {
-            Error::QueryInvalid("qvm: missing Core ProjectPaths".into())
-        })?,
-        page_size: page_size.ok_or_else(|| {
-            Error::QueryInvalid("qvm: missing Core Page".into())
-        })?,
+        project: project
+            .ok_or_else(|| Error::QueryInvalid("qvm: missing Core ProjectPaths".into()))?,
+        page_size: page_size.ok_or_else(|| Error::QueryInvalid("qvm: missing Core Page".into()))?,
         limit,
         force_scan,
     })
@@ -287,9 +298,7 @@ pub(crate) fn verify_vm_program(prog: &VmProgram) -> Result<(), Error> {
     }
     // Filter is sole where authority; IndexEq must not carry a predicate.
     if !matches!(prog.ops[2].imm, VmImm::None) {
-        return Err(Error::QueryInvalid(
-            "verify: Scan requires None imm".into(),
-        ));
+        return Err(Error::QueryInvalid("verify: Scan requires None imm".into()));
     }
     if !matches!(prog.ops[3].imm, VmImm::Where(_)) {
         return Err(Error::QueryInvalid(
@@ -302,9 +311,7 @@ pub(crate) fn verify_vm_program(prog: &VmProgram) -> Result<(), Error> {
         ));
     }
     if !matches!(prog.ops[5].imm, VmImm::Page { .. }) {
-        return Err(Error::QueryInvalid(
-            "verify: Page requires Page imm".into(),
-        ));
+        return Err(Error::QueryInvalid("verify: Page requires Page imm".into()));
     }
     if !matches!(prog.ops[6].imm, VmImm::Project(_)) {
         return Err(Error::QueryInvalid(
@@ -317,9 +324,7 @@ pub(crate) fn verify_vm_program(prog: &VmProgram) -> Result<(), Error> {
         match instr.op {
             OpCode::Halt => {
                 if !matches!(instr.imm, VmImm::None) {
-                    return Err(Error::QueryInvalid(
-                        "verify: Halt requires None imm".into(),
-                    ));
+                    return Err(Error::QueryInvalid("verify: Halt requires None imm".into()));
                 }
                 if depth != 0 {
                     return Err(Error::QueryInvalid(
@@ -413,7 +418,10 @@ pub(crate) fn lower_core_with_force_scan(
     let id = core.from.collection_id;
     let where_pred = core.where_pred.clone();
     let order = core.order.clone();
-    let project = core.project.clone();
+    let project = ProjectImm {
+        paths: core.project.clone(),
+        group_agg: core.group_agg.clone(),
+    };
     let page_size = core.page_size;
     let limit = core.limit;
     let pool = VmPool {
@@ -588,7 +596,12 @@ pub(crate) fn run_vm<H: HostCapabilities>(
                     ));
                 };
                 // Where is sole authority on Filter; IndexEq only probes equalities.
-                let where_pred = match prog.ops.iter().find(|i| i.op == OpCode::Filter).map(|i| &i.imm) {
+                let where_pred = match prog
+                    .ops
+                    .iter()
+                    .find(|i| i.op == OpCode::Filter)
+                    .map(|i| &i.imm)
+                {
                     Some(VmImm::Where(w)) => w,
                     _ => {
                         return Err(Error::QueryInvalid(
@@ -792,16 +805,15 @@ pub(crate) fn run_vm<H: HostCapabilities>(
                     ));
                 }
                 if page.is_none() {
-                    return Err(Error::QueryInvalid(
-                        "run_vm: Halt without Core page".into(),
-                    ));
+                    return Err(Error::QueryInvalid("run_vm: Halt without Core page".into()));
                 }
                 break;
             }
         }
     }
 
-    let page = page.ok_or_else(|| Error::QueryInvalid("run_vm: finished without Core page".into()))?;
+    let page =
+        page.ok_or_else(|| Error::QueryInvalid("run_vm: finished without Core page".into()))?;
     Ok(VmOutcome {
         page,
         rows,

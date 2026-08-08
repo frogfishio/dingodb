@@ -53,7 +53,10 @@ pub struct CompiledAppCore {
 /// Budgets are **not** part of the canonical plan hash: they travel with
 /// [`crate::app_v1::QueryRunOptions`] at execution. Source `budget { … }` and
 /// run-option budgets should be merged by the host (stricter wins).
-pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<CompiledAppCore, Error> {
+pub fn compile_app_core(
+    source: &str,
+    bindings: &CollectionBindings,
+) -> Result<CompiledAppCore, Error> {
     // UTF-8 validity is guaranteed for `&str`; reject oversized source first.
     if source.len() > MAX_RQL_SOURCE_BYTES {
         return Err(Error::QueryInvalid(format!(
@@ -89,12 +92,14 @@ pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<C
     let mut budget: Option<QueryBudget> = None;
     // Terminal clauses appear at most once (RQL_SPEC §5).
     let mut saw_project = false;
+    let mut saw_group = false;
     let mut saw_order = false;
     let mut saw_limit = false;
     let mut saw_page = false;
     let mut saw_coverage = false;
     let mut saw_consistency = false;
     let mut saw_budget = false;
+    let mut group_keys: Vec<crate::predicate::Path> = Vec::new();
 
     loop {
         p.skip_ws();
@@ -106,16 +111,63 @@ pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<C
             where_parts.push(p.parse_or()?);
             continue;
         }
-        if p.eat_keyword("project") {
+        // `group by path, path` (Q2 pkg_group_aggregate) — before project.
+        if p.eat_keyword("group") {
+            if saw_group {
+                return Err(Error::QueryInvalid("duplicate group clause".into()));
+            }
             if saw_project {
                 return Err(Error::QueryInvalid(
-                    "duplicate project clause".into(),
+                    "group by must appear before project".into(),
                 ));
+            }
+            saw_group = true;
+            p.skip_ws();
+            p.expect_keyword("by")?;
+            p.skip_ws();
+            loop {
+                let path = p.parse_path_dotted()?;
+                group_keys.push(crate::predicate::Path::parse_dotted(&path)?);
+                p.skip_ws();
+                if p.eat_char(',') {
+                    p.skip_ws();
+                    continue;
+                }
+                break;
+            }
+            continue;
+        }
+        if p.eat_keyword("project") {
+            if saw_project {
+                return Err(Error::QueryInvalid("duplicate project clause".into()));
             }
             saw_project = true;
             p.skip_ws();
-            let fields = p.parse_project_list()?;
-            builder = builder.project(fields)?;
+            let clause = p.parse_project_clause()?;
+            if clause.aggregates.is_empty() && !saw_group {
+                // Flat path project (existing Application Core).
+                builder = builder.project(clause.paths_dotted)?;
+            } else {
+                // Group / aggregate projection — paths omitted (group row is authority).
+                use crate::plan_v1::{AggregateSpec, GroupAggSpec};
+                let mut aggregates = Vec::new();
+                for a in clause.aggregates {
+                    aggregates.push(AggregateSpec {
+                        fun: a.fun,
+                        source: a
+                            .source
+                            .map(|s| crate::predicate::Path::parse_dotted(&s))
+                            .transpose()?,
+                        output: a.output,
+                    });
+                }
+                builder = builder.group_agg(GroupAggSpec {
+                    group_by: group_keys.clone(),
+                    aggregates,
+                })?;
+                // Optional identity path list for explain; leave project None so
+                // group rows pass through ProjectPaths as full documents.
+            }
             continue;
         }
         if p.eat_keyword("order") {
@@ -209,9 +261,7 @@ pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<C
         }
         if p.eat_keyword("consistency") {
             if saw_consistency {
-                return Err(Error::QueryInvalid(
-                    "duplicate consistency clause".into(),
-                ));
+                return Err(Error::QueryInvalid("duplicate consistency clause".into()));
             }
             saw_consistency = true;
             p.skip_ws();
@@ -255,6 +305,20 @@ pub fn compile_app_core(source: &str, bindings: &CollectionBindings) -> Result<C
             Predicate::And { args: where_parts }
         };
         builder = builder.where_(combined);
+    }
+
+    // `group by` without aggregate project still activates group mode.
+    if saw_group && !group_keys.is_empty() {
+        // If project already installed group_agg via aggregates, keys were set
+        // there. If only keys (or no project), install keys-only group_agg.
+        // Re-installing is safe: project branch already cloned group_keys.
+        if !saw_project {
+            use crate::plan_v1::GroupAggSpec;
+            builder = builder.group_agg(GroupAggSpec {
+                group_by: group_keys,
+                aggregates: Vec::new(),
+            })?;
+        }
     }
 
     let plan = builder.compile(bindings)?;
@@ -317,7 +381,10 @@ fn reject_excluded_features(source: &str) -> Result<(), Error> {
         }
     }
     // bare "enrich" as first token after explain
-    if lower.split_whitespace().any(|t| t == "enrich" || t == "within") {
+    if lower
+        .split_whitespace()
+        .any(|t| t == "enrich" || t == "within")
+    {
         return Err(Error::QueryInvalid(format!(
             "{DIAG_RQL_FEATURE_UNAVAILABLE}: enrich/within outside rql-app-core-v1"
         )));
@@ -326,6 +393,18 @@ fn reject_excluded_features(source: &str) -> Result<(), Error> {
 }
 
 // --- lexer/parser ------------------------------------------------------------
+
+/// Flat project list parse result (paths + optional aggregates).
+struct ParsedProjectClause {
+    paths_dotted: Vec<String>,
+    aggregates: Vec<ParsedAggregate>,
+}
+
+struct ParsedAggregate {
+    fun: crate::plan_v1::AggFn,
+    source: Option<String>,
+    output: String,
+}
 
 struct Parser<'a> {
     s: &'a str,
@@ -595,12 +674,33 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_project_list(&mut self) -> Result<Vec<String>, Error> {
-        // project a, b, c   or project [a, b]
-        let mut fields = Vec::new();
+        Ok(self.parse_project_clause()?.paths_dotted)
+    }
+
+    /// Flat `project` list: paths and/or aggregates (`count() as n`, `sum(x) as t`).
+    fn parse_project_clause(&mut self) -> Result<ParsedProjectClause, Error> {
+        // project a, b, c   or project [a, b]   or project region, count() as n
+        let mut paths_dotted = Vec::new();
+        let mut aggregates = Vec::new();
         let bracket = self.eat_char('[');
         self.skip_ws();
+        if self.is_eof() || (bracket && self.peek() == Some(']')) {
+            if bracket {
+                let _ = self.eat_char(']');
+            }
+            return Ok(ParsedProjectClause {
+                paths_dotted,
+                aggregates,
+            });
+        }
         loop {
-            fields.push(self.parse_path_dotted()?);
+            self.skip_ws();
+            // Aggregate call: count() | sum(path) | min(path) | max(path) | avg(path)
+            if let Some(agg) = self.try_parse_aggregate_item()? {
+                aggregates.push(agg);
+            } else {
+                paths_dotted.push(self.parse_path_dotted()?);
+            }
             self.skip_ws();
             if self.eat_char(',') {
                 self.skip_ws();
@@ -611,10 +711,71 @@ impl<'a> Parser<'a> {
         if bracket {
             self.skip_ws();
             if !self.eat_char(']') {
-                return Err(Error::QueryInvalid("expected `]` after project list".into()));
+                return Err(Error::QueryInvalid(
+                    "expected `]` after project list".into(),
+                ));
             }
         }
-        Ok(fields)
+        Ok(ParsedProjectClause {
+            paths_dotted,
+            aggregates,
+        })
+    }
+
+    /// Try to parse `count() as out` or `sum(path) as out` (and min/max/avg).
+    fn try_parse_aggregate_item(&mut self) -> Result<Option<ParsedAggregate>, Error> {
+        let save = self.i;
+        let fun_name = if self.eat_keyword("count") {
+            "count"
+        } else if self.eat_keyword("sum") {
+            "sum"
+        } else if self.eat_keyword("min") {
+            "min"
+        } else if self.eat_keyword("max") {
+            "max"
+        } else if self.eat_keyword("avg") {
+            "avg"
+        } else {
+            return Ok(None);
+        };
+        self.skip_ws();
+        if !self.eat_char('(') {
+            // Not a call — rewind (e.g. field named `count`).
+            self.i = save;
+            return Ok(None);
+        }
+        self.skip_ws();
+        let source = if fun_name == "count" {
+            if !self.eat_char(')') {
+                return Err(Error::QueryInvalid(
+                    "count() takes no arguments in this slice".into(),
+                ));
+            }
+            None
+        } else {
+            let path = self.parse_path_dotted()?;
+            self.skip_ws();
+            if !self.eat_char(')') {
+                return Err(Error::QueryInvalid(format!(
+                    "expected `)` after {fun_name}(path)"
+                )));
+            }
+            Some(path)
+        };
+        self.skip_ws();
+        if !self.eat_keyword("as") {
+            return Err(Error::QueryInvalid(format!(
+                "{fun_name}() requires `as <alias>`"
+            )));
+        }
+        self.skip_ws();
+        let output = self.parse_ident_or_string()?;
+        let fun = crate::plan_v1::AggFn::parse(fun_name)?;
+        Ok(Some(ParsedAggregate {
+            fun,
+            source,
+            output,
+        }))
     }
 
     // predicate: or / and / not / cmp
@@ -734,10 +895,7 @@ impl<'a> Parser<'a> {
             let neg = self.eat_keyword("not");
             self.skip_ws();
             self.expect_keyword("null")?;
-            return Ok(Predicate::IsNull {
-                path,
-                negated: neg,
-            });
+            return Ok(Predicate::IsNull { path, negated: neg });
         }
 
         // `not in` / `in`
@@ -1028,7 +1186,13 @@ mod tests {
         match &c.plan.where_pred {
             Predicate::And { args } => {
                 assert_eq!(args.len(), 2);
-                assert!(matches!(&args[0], Predicate::Cmp { cmp: CompareOp::Eq, .. }));
+                assert!(matches!(
+                    &args[0],
+                    Predicate::Cmp {
+                        cmp: CompareOp::Eq,
+                        ..
+                    }
+                ));
                 assert!(matches!(&args[1], Predicate::Or { .. }));
             }
             other => panic!("expected And of two where clauses, got {other:?}"),
@@ -1052,14 +1216,8 @@ mod tests {
         .unwrap();
         match &c2.plan.where_pred {
             Predicate::And { args } => {
-                assert!(matches!(
-                    &args[0],
-                    Predicate::IsNull { negated: false, .. }
-                ));
-                assert!(matches!(
-                    &args[1],
-                    Predicate::In { negated: true, .. }
-                ));
+                assert!(matches!(&args[0], Predicate::IsNull { negated: false, .. }));
+                assert!(matches!(&args[1], Predicate::In { negated: true, .. }));
             }
             other => panic!("expected And, got {other:?}"),
         }
@@ -1220,15 +1378,11 @@ mod tests {
         let seed = b"from orders where status = \"paid\" limit 10 page size 5";
         let mut state: u64 = 0xC0FFEE_u64;
         for i in 0..256u64 {
-            state = state
-                .wrapping_mul(6364136223846793005)
-                .wrapping_add(1);
+            state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
             let mut buf = seed.to_vec();
             let n = (state as usize % 8) + 1;
             for _ in 0..n {
-                state = state
-                    .wrapping_mul(6364136223846793005)
-                    .wrapping_add(1);
+                state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
                 let idx = (state as usize) % buf.len().max(1);
                 let byte = (state >> 32) as u8;
                 if idx < buf.len() {

@@ -53,7 +53,7 @@ Today (product): compile → **`encode_qvm` / `decode_qvm`** → **`run_vm`**.
 | `0x10` | `Scan` | Host `list_keys` stream |
 | `0x11` | `IndexEq` | Host equality-index probe (may fall back to Scan) |
 | `0x20` | `Filter` | Kernel predicate over working set |
-| `0x30` | `ProjectPaths` | Core path-project |
+| `0x30` | `ProjectPaths` | Core path-project; optional group/agg payload in Project imm (Q2) |
 | `0x40` | `Order` | Sort / sort-tuple |
 | `0x50` | `Page` | Page size + coverage + cursor |
 | `0x60` | `Enrich` | Enrich (root or nested inside Within…WithinEnd) |

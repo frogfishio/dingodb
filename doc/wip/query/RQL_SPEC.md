@@ -110,9 +110,9 @@ RQL v1 deliberately excludes:
 - unbounded recursive traversal;
 - SQL-style flattening joins;
 - SQL-style offset execution that silently enumerates and discards a prefix;
-- aggregation and grouping;
 - window functions;
-- arbitrary computed projection expressions;
+- arbitrary computed projection expressions (except the Tier-A aggregate forms in §9a);
+- aggregation beyond the §9a Gate-1 subset (`count` / `sum` / `min` / `max` / `avg`);
 - text, vector, and geospatial clauses until their dedicated specifications
   are promoted from [FUTURE_ROADMAP.md](../../todo/deferred/FUTURE_ROADMAP.md).
 
@@ -195,7 +195,8 @@ the parameter production below.
 
 ```ebnf
 query             = [ "explain" ], from-clause, { pipeline-step },
-                    [ project-clause ],
+                    [ group-clause ],
+                    [ project-clause | project-flat-clause ],
                     [ order-clause ],
                     [ limit-clause ],
                     [ page-clause ],
@@ -212,6 +213,17 @@ source-ref        = identifier | string ;
 
 pipeline-step     = where-clause | enrich-clause | within-clause ;
 where-clause      = "where", predicate ;
+
+(* Gate-1 Tier A grouping — Q2 pkg_group_aggregate; see §9a *)
+group-clause      = "group", "by", path, { ",", path } ;
+
+(* Flat Application Core project (paths and/or aggregates) *)
+project-flat-clause = "project", [ "[" ], project-flat-item,
+                      { ",", project-flat-item }, [ "]" ] ;
+project-flat-item = path
+                  | "count", "(", ")", "as", identifier
+                  | ( "sum" | "min" | "max" | "avg" ), "(", path, ")",
+                    "as", identifier ;
 
 enrich-clause     = "enrich", identifier,
                     "using", source-ref, [ "as", identifier ],
@@ -454,6 +466,56 @@ This lifting applies only to optional carriers introduced by the typed RQL
 plan; it does not reinterpret stored document values. It makes predicates and
 projection such as `customer.name` meaningful after `expect optional` while
 preserving `None` versus `Some(Null)` in the logical result.
+
+## 9a. Grouping and aggregation (Gate-1 Tier A)
+
+Status: **specified for Q2** (`pkg_group_aggregate`). Programme Tier A requires
+grouping and `count` / `sum` / `min` / `max` / `avg` even though earlier RQL v1
+text excluded them. This section freezes the product meaning used by the Q1
+corpus and Q2 capability closure.
+
+### 9a.1 Surface
+
+```text
+from <source>
+  [ where <predicate> ]
+  [ group by <path> { , <path> } ]
+  project <group-key-or-agg> { , <group-key-or-agg> }
+```
+
+Aggregate items:
+
+| Form | Meaning |
+|---|---|
+| `count() as <alias>` | Number of input rows in the group (always a non-negative integer). |
+| `sum(<path>) as <alias>` | Sum of numeric present values; null/absent ignored; empty → null. |
+| `min(<path>) as <alias>` | Numeric minimum; null/absent ignored; empty → null. |
+| `max(<path>) as <alias>` | Numeric maximum; null/absent ignored; empty → null. |
+| `avg(<path>) as <alias>` | Numeric mean over contributing values; empty → null. |
+
+Rules:
+
+1. `group by` is optional. Absent group keys with aggregates ⇒ **one global group**.
+2. Each group emits **one output row**. Group key fields use the last path segment
+   as the output name (`region`, `status`, …).
+3. Aggregate aliases are required (`as <identifier>`).
+4. Null, absent, and non-numeric present values for `sum` / `min` / `max` /
+   `avg` are **skipped** (heterogeneous document bags). Plain decimal strings
+   may contribute when finite; `NaN` / `Inf` tokens do not. Empty contribution
+   set ⇒ null result (not zero, except `count()` which is always a row count).
+5. Order, limit, and page size apply to **group rows** after aggregation (not to
+   a truncated pre-group sample). Document/byte budgets still apply to the input scan.
+6. Multiplicity: one row per distinct group-key tuple (null/absent keys compare equal).
+7. Output row keys are synthetic (`g:<hash>`) and not part of answer equivalence;
+   comparable dimensions are the projected group keys and aggregate fields.
+8. `COUNT DISTINCT`, window functions, and `HAVING` remain out of this slice.
+
+### 9a.2 Execution authority
+
+Grouping lowers through the Core plan (`group_agg` on `rql-plan-v1`) into the
+Core `ProjectPaths` QVM immediate. The phase body is a Rust IR residual
+(`residiuum-query-ir-group-agg-v1`) until Decision 0 / pure micro-op work lands.
+Product execute still goes `compile → QVM encode → run_vm` once — no second executor.
 
 ## 9. Projection
 

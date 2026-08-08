@@ -20,6 +20,7 @@ mod core_page;
 mod core_phases;
 mod full_attach;
 mod full_imm_json;
+mod group_agg;
 mod ir_attach;
 mod ir_order;
 mod ir_page;
@@ -43,6 +44,7 @@ pub use full_attach::{
     FULL_EXPLAIN_HASH_DOMAIN, MAX_PROJECT_DEPTH, MAX_WITHIN_DEPTH, RQL_FULL_PROFILE,
 };
 // IR / attach orchestration: crate-private (RQL-P0b) — profiles remain public stamps.
+pub use group_agg::GROUP_AGG_IR_PROFILE;
 pub use ir_attach::ATTACH_IR_PROFILE;
 pub use ir_order::ORDER_IR_PROFILE;
 pub use ir_page::PAGE_IR_PROFILE;
@@ -235,15 +237,7 @@ pub fn execute_qvm_bytes<H: HostCapabilities>(
     collection_id: CollectionId,
 ) -> Result<QueryPage, Error> {
     let prog = qvm::decode_qvm(qvm_bytes)?;
-    let out = vm_exec::run_vm(
-        host,
-        &prog,
-        params,
-        options,
-        heap_id,
-        collection_id,
-        false,
-    )?;
+    let out = vm_exec::run_vm(host, &prog, params, options, heap_id, collection_id, false)?;
     Ok(out.page)
 }
 
@@ -296,15 +290,7 @@ pub(crate) fn execute_decoded_core<H: HostCapabilities>(
     }
     let prog = vm_exec::lower_core(core.clone(), budget);
     let prog = qvm::materialize_qvm(&prog)?;
-    let out = vm_exec::run_vm(
-        host,
-        &prog,
-        params,
-        options,
-        heap_id,
-        collection_id,
-        false,
-    )?;
+    let out = vm_exec::run_vm(host, &prog, params, options, heap_id, collection_id, false)?;
     Ok(out.page)
 }
 
@@ -402,12 +388,8 @@ mod tests {
         docs.insert("b".into(), json!({"status": "paused"}));
         let mut host = MapHost { docs };
 
-        let bc = lower_core_source(
-            "from items where status = \"active\"",
-            id,
-            "items",
-        )
-        .expect("lower");
+        let bc =
+            lower_core_source("from items where status = \"active\"", id, "items").expect("lower");
 
         // Tamper: rebuild QVM with a different Filter where via plan re-lower.
         let mut bindings = CollectionBindings {

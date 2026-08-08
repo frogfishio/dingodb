@@ -44,56 +44,66 @@ mod claim;
 mod cluster_backend;
 #[cfg(feature = "legacy-flat-sdk")]
 mod collection;
-mod residiuum;
+/// Authenticated query continuation (`residiuum-cursor-v1`) — APP-6 mint/verify.
+pub mod cursor_v1;
 mod dialects;
 mod directory_cache;
 mod error;
 mod filter;
 mod heap;
-/// Shared total predicate profile (`residiuum-predicate-v1`).
-pub mod predicate;
-/// Canonical Application Core logical plan (`rql-plan-v1`) + plan hash.
-pub mod plan_v1;
-/// RQL Application Core source → [`plan_v1::RqlPlanV1`] (`rql-app-core-v1`) — APP-5.
-pub mod rql_app_core;
-/// SQL-ish+ → Application Core RQL emit/refuse (`residiuum-sql-plus-to-rql-v1`) — Phase 2 scaffold.
-pub mod sql_plus;
-/// Authenticated query continuation (`residiuum-cursor-v1`) — APP-6 mint/verify.
-pub mod cursor_v1;
-/// Query bytecode v1 — single product runtime (Decision 0 / RQL-X*).
-pub mod query_bytecode_v1;
-/// Stable bounded read views — APB-6 T1 scaffold.
-pub mod read_view_v1;
 mod history;
 mod indexes;
 #[cfg(feature = "legacy-flat-sdk")]
 mod multi_query;
+/// Canonical Application Core logical plan (`rql-plan-v1`) + plan hash.
+pub mod plan_v1;
+/// Shared total predicate profile (`residiuum-predicate-v1`).
+pub mod predicate;
+/// Query bytecode v1 — single product runtime (Decision 0 / RQL-X*).
+pub mod query_bytecode_v1;
+/// Stable bounded read views — APB-6 T1 scaffold.
+pub mod read_view_v1;
 mod receipt;
 mod remote;
 mod remote_heap;
+mod residiuum;
 mod resource;
+/// RQL Application Core source → [`plan_v1::RqlPlanV1`] (`rql-app-core-v1`) — APP-5.
+pub mod rql_app_core;
 #[cfg(feature = "legacy-flat-sdk")]
 mod sda_query;
+/// SQL-ish+ → Application Core RQL emit/refuse (`residiuum-sql-plus-to-rql-v1`) — Phase 2 scaffold.
+pub mod sql_plus;
 mod subject;
 mod tls;
 mod value;
 
+/// Application Core query budget (APP-0). Distinct from legacy [`filter::QueryBudget`].
+pub use app_v1::QueryBudget as AppQueryBudget;
 pub use app_v1::{
-    AdminOperation, AddResult, CollectionClient, CollectionCreateReceipt, CollectionInfo,
+    AddResult, AdminOperation, CollectionClient, CollectionCreateReceipt, CollectionInfo,
     CollectionQuery, ConsistencyEvidence, ConsistencyMode, Continuation, CoverageEvidence,
     CoveragePolicy, CreateCollectionOptions, CreateCollectionResult, DeleteWithOptions,
     FindJsonOptions, HeapClient, HoleEvidence, IndexManager, KeyProfile, Parameters,
-    QueryExplanation, QueryId, QueryPage, QueryRow, QueryRunOptions, ReplaceOptions, ScanJsonOptions,
-    ScanJsonPage, UpsertResult, ViewBoundCollection, ViewBoundQuery, CURSOR_PROFILE,
-    KEY_PROFILE_RANDOM_V1, RQL_APP_CORE_PROFILE, RQL_PLAN_PROFILE, PREDICATE_PROFILE,
-    RUST_APP_PROFILE,
+    QueryExplanation, QueryId, QueryPage, QueryRow, QueryRunOptions, ReplaceOptions,
+    ScanJsonOptions, ScanJsonPage, UpsertResult, ViewBoundCollection, ViewBoundQuery,
+    CURSOR_PROFILE, KEY_PROFILE_RANDOM_V1, PREDICATE_PROFILE, RQL_APP_CORE_PROFILE,
+    RQL_PLAN_PROFILE, RUST_APP_PROFILE,
 };
-/// Application Core query budget (APP-0). Distinct from legacy [`filter::QueryBudget`].
-pub use app_v1::QueryBudget as AppQueryBudget;
+pub use cursor_v1::{
+    active_cursor_key_ring, derive_vector_lock_key, install_cursor_key_ring, mint as mint_cursor,
+    mint_now as mint_cursor_now, parameter_hash as cursor_parameter_hash, verify as verify_cursor,
+    CursorKey, CursorKeyRing, CursorKeyRingGuard, CursorLogical,
+    VerifyContext as CursorVerifyContext, CURSOR_KEY_MATERIAL_PROFILE,
+    MAC_DOMAIN as CURSOR_MAC_DOMAIN, MAX_ACCEPT_AGE_SECONDS, PARAMETER_HASH_DOMAIN,
+    PROFILE as CURSOR_V1_PROFILE, SKEW_SECONDS as CURSOR_SKEW_SECONDS,
+    TTL_SECONDS as CURSOR_TTL_SECONDS, VECTOR_LOCK_SEED,
+};
 pub use plan_v1::{
-    where_field_eq_param, CollectionBindings, NullsOrder, OrderDir, OrderTerm, PlanBuilder,
-    PlanSource, RqlPlanV1, DEFAULT_PAGE_SIZE, KEY_TIE_BREAK_PATH, MAX_ORDER_TERMS, MAX_PAGE_SIZE,
-    MAX_PROJECT_ITEMS, PLAN_ENCODING_PROFILE, PLAN_HASH_DOMAIN, PLAN_PROFILE,
+    where_field_eq_param, AggFn, AggregateSpec, CollectionBindings, GroupAggSpec, NullsOrder,
+    OrderDir, OrderTerm, PlanBuilder, PlanSource, RqlPlanV1, DEFAULT_PAGE_SIZE, KEY_TIE_BREAK_PATH,
+    MAX_ORDER_TERMS, MAX_PAGE_SIZE, MAX_PROJECT_ITEMS, PLAN_ENCODING_PROFILE, PLAN_HASH_DOMAIN,
+    PLAN_PROFILE,
 };
 pub use rql_app_core::{
     compile_app_core, merge_budgets, CompiledAppCore, APP_CORE_PROFILE,
@@ -104,39 +114,7 @@ pub use sql_plus::{
     DIAG_SQL_RQL_PARSE_ERROR, DIAG_SQL_RQL_STATEMENT_UNSUPPORTED, SQL_PLUS_ALIAS, SQL_PLUS_DIALECT,
     SQL_PLUS_PROFILE,
 };
-pub use cursor_v1::{
-    active_cursor_key_ring, derive_vector_lock_key, install_cursor_key_ring,
-    mint as mint_cursor, mint_now as mint_cursor_now, parameter_hash as cursor_parameter_hash,
-    verify as verify_cursor, CursorKey, CursorKeyRing, CursorKeyRingGuard, CursorLogical,
-    VerifyContext as CursorVerifyContext, CURSOR_KEY_MATERIAL_PROFILE,
-    MAC_DOMAIN as CURSOR_MAC_DOMAIN, MAX_ACCEPT_AGE_SECONDS, PARAMETER_HASH_DOMAIN,
-    PROFILE as CURSOR_V1_PROFILE, SKEW_SECONDS as CURSOR_SKEW_SECONDS,
-    TTL_SECONDS as CURSOR_TTL_SECONDS, VECTOR_LOCK_SEED,
-};
 // Product query runtime: QVM1 only (Q0.A10). RQB1 removed from the SDK.
-pub use query_bytecode_v1::{
-    compile_rql_full, compile_where, execute_bytecode, execute_core_rql, execute_full_qvm_with,
-    execute_qvm_bytes, execute_rql_full, execute_rql_full_with, explain_core_source,
-    explain_rql_full, explain_rql_full_on_heap, explain_rql_source, lower_core_source,
-    lower_predicate, qvm_hash, refuse_full_language_on_core_wire, source_uses_rql_full_constructs,
-    validate_qvm, CompiledKernelWhere, CompiledRqlFull, EnrichAttachMode, EnrichCardinality,
-    EnrichLoadEvidence, EnrichStepV1, FullPipelineStepV1, HostCapabilities, ProjectItemV1,
-    QueryBytecodeV1, RqlFullExecuteOptions, RqlFullPage, WithinStepV1, ATTACH_IR_PROFILE,
-    BYTECODE_PROFILE, DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL,
-    DIAG_RQL_PROJECTION_CONFLICT, DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE, EXEC_PROFILE,
-    FULL_EXPLAIN_HASH_DOMAIN, KERNEL_PROFILE, MAX_PROJECT_DEPTH, MAX_WITHIN_DEPTH,
-    ORDER_IR_PROFILE, PAGE_IR_PROFILE, PROJECT_IR_PROFILE, QVM_MAGIC, QVM_MAX_BLOB_BYTES,
-    QVM_MAX_OPS, QVM_MAX_TOTAL_BYTES, RQL_FULL_PROFILE, VM_PROFILE, VM_VERSION, Instruction,
-    OpCode,
-};
-pub use read_view_v1::{
-    AuthoritativeFrontier, FrontierDrift, FrontierKind, PinCapability, ReadView, ReadViewInfo,
-    ReadViewOptions, ReadViewRetentionBudget, SemanticVersions, READ_VIEW_PROFILE,
-};
-pub use predicate::{
-    field, param, CompareOp, Operand, Path as PredPath, PredField, Predicate, Resolve,
-    MAX_PATH_SEGMENTS, MAX_PREDICATE_NODES, PREDICATE_PROFILE_V1,
-};
 pub use claim::{
     flat_collection_claim_language, heap_only_embedded_profile, legacy_flat_sdk_enabled,
     product_claim_language, product_may_advertise_qualified_heap, FLAT_COLLECTION_SURFACE_LABEL,
@@ -149,64 +127,87 @@ pub use collection::{
     find_on_store, Collection, DocumentScanPage, IncompleteDocument, JsonScanIter, JsonScanPage,
     KeyScanPage, UndecodableDocument,
 };
-pub use residiuum::Residiuum;
-/// Re-export cluster coverage / scan types when the `cluster` feature is on.
-#[cfg(feature = "cluster")]
-pub use residiuum_cluster::{Coverage, FindResult, ScanOptions};
+pub use dialects::{
+    compile_dialect, compile_json_value, compile_sda_source, list_builtin_dialects, BuiltinDialect,
+    CompiledDialect, CompiledPortable, CompiledSda, DialectInfo, DialectInfoOwned, DialectRegistry,
+    QueryDialect, SdaShape, DIALECT_PROFILE,
+};
 pub use directory_cache::{
     AssignmentWire, CachedRoute, ClientDirectoryCache, DirectorySnapshot, NodeId, PartitionId,
     PartitionMap, PlacementEpoch, Term, HASH_PROFILE_BLAKE3_MOD,
 };
 pub use error::{Error, ErrorCode};
-pub use dialects::{
-    compile_dialect, compile_json_value, compile_sda_source, list_builtin_dialects,
-    BuiltinDialect, CompiledDialect, CompiledPortable, CompiledSda, DialectInfo,
-    DialectInfoOwned, DialectRegistry, QueryDialect, SdaShape, DIALECT_PROFILE,
-};
+#[cfg(feature = "legacy-flat-sdk")]
+pub use filter::QueryBuilder;
 pub use filter::{
     FieldBuilder, Filter, Pred, QueryBudget, QueryOptions, QueryPlan, SortOrder, QUERY_PLAN_PROFILE,
 };
-#[cfg(feature = "legacy-flat-sdk")]
-pub use filter::QueryBuilder;
 pub use heap::{
-    CreatedCollection, ResidiuumDeployment, Heap, HeapBatch, HeapCollection, HeapConnection, HeapStream,
-    ListedCollection, SignedCursor,
+    CreatedCollection, Heap, HeapBatch, HeapCollection, HeapConnection, HeapStream,
+    ListedCollection, ResidiuumDeployment, SignedCursor,
 };
+pub use history::{KeyHistory, Version};
+pub use indexes::IndexInfo;
+#[cfg(feature = "legacy-flat-sdk")]
+pub use indexes::{create_index_on_store, mark_indexes_stale, Indexes};
+#[cfg(feature = "legacy-flat-sdk")]
+pub use multi_query::{map_joined_sda, JoinBuilder, MultiQuery, MULTI_QUERY_PROFILE};
+pub use predicate::{
+    field, param, CompareOp, Operand, Path as PredPath, PredField, Predicate, Resolve,
+    MAX_PATH_SEGMENTS, MAX_PREDICATE_NODES, PREDICATE_PROFILE_V1,
+};
+pub use query_bytecode_v1::{
+    compile_rql_full, compile_where, execute_bytecode, execute_core_rql, execute_full_qvm_with,
+    execute_qvm_bytes, execute_rql_full, execute_rql_full_with, explain_core_source,
+    explain_rql_full, explain_rql_full_on_heap, explain_rql_source, lower_core_source,
+    lower_predicate, qvm_hash, refuse_full_language_on_core_wire, source_uses_rql_full_constructs,
+    validate_qvm, CompiledKernelWhere, CompiledRqlFull, EnrichAttachMode, EnrichCardinality,
+    EnrichLoadEvidence, EnrichStepV1, FullPipelineStepV1, HostCapabilities, Instruction, OpCode,
+    ProjectItemV1, QueryBytecodeV1, RqlFullExecuteOptions, RqlFullPage, WithinStepV1,
+    ATTACH_IR_PROFILE, BYTECODE_PROFILE, DIAG_RQL_ENRICH_CARDINALITY, DIAG_RQL_FULL_RESIDUAL,
+    DIAG_RQL_PROJECTION_CONFLICT, DIAG_RQL_PROJECT_TYPE, DIAG_RQL_WITHIN_TYPE, EXEC_PROFILE,
+    FULL_EXPLAIN_HASH_DOMAIN, KERNEL_PROFILE, MAX_PROJECT_DEPTH, MAX_WITHIN_DEPTH,
+    ORDER_IR_PROFILE, PAGE_IR_PROFILE, PROJECT_IR_PROFILE, QVM_MAGIC, QVM_MAX_BLOB_BYTES,
+    QVM_MAX_OPS, QVM_MAX_TOTAL_BYTES, RQL_FULL_PROFILE, VM_PROFILE, VM_VERSION,
+};
+pub use read_view_v1::{
+    AuthoritativeFrontier, FrontierDrift, FrontierKind, PinCapability, ReadView, ReadViewInfo,
+    ReadViewOptions, ReadViewRetentionBudget, SemanticVersions, READ_VIEW_PROFILE,
+};
+pub use receipt::{DeleteReceipt, PutOptions, WriteReceipt};
+pub use remote::{
+    parse_residiuum_url, ConnectOptions, ExtentRow, HistoryVersionRow, IndexInfoRow,
+    ParsedResidiuumUrl, PresentChunkRow, RemoteClient, RpcRequest, RpcResponse, ScanRow,
+    DEFAULT_PORT,
+};
+#[cfg(feature = "dangerous-key-export")]
+pub use remote_heap::InMemoryHolderKey;
 pub use remote_heap::{
     connect_heap, parse_find_wire, parse_scan_json_wire, CredentialError, FindWirePage,
     HeapCredential, HolderSigner, RemoteCreatedCollection, RemoteHeap, RemoteHeapOptions,
     ScanJsonWirePage,
 };
-#[cfg(feature = "dangerous-key-export")]
-pub use remote_heap::InMemoryHolderKey;
-#[cfg(feature = "legacy-flat-sdk")]
-pub use multi_query::{map_joined_sda, JoinBuilder, MultiQuery, MULTI_QUERY_PROFILE};
+pub use residiuum::Residiuum;
+/// Re-export cluster coverage / scan types when the `cluster` feature is on.
+#[cfg(feature = "cluster")]
+pub use residiuum_cluster::{Coverage, FindResult, ScanOptions};
+pub use resource::{
+    check_json_depth, check_payload_len, check_rpc_line_len, estimate_json_bytes,
+    estimate_row_bytes, host_limits, json_depth, CancelToken, ResourceLimits,
+    DEFAULT_MAX_JSON_DEPTH, DEFAULT_MAX_PAYLOAD_BYTES, DEFAULT_MAX_RESULT_BYTES,
+    DEFAULT_MAX_RPC_LINE_BYTES, RESOURCE_PROFILE,
+};
 #[cfg(feature = "legacy-flat-sdk")]
 pub use sda_query::{eval_sda_program, SdaTextQuery, SDA_QUERY_PROFILE};
-pub use history::{KeyHistory, Version};
-pub use indexes::IndexInfo;
-#[cfg(feature = "legacy-flat-sdk")]
-pub use indexes::{create_index_on_store, mark_indexes_stale, Indexes};
-pub use receipt::{DeleteReceipt, PutOptions, WriteReceipt};
-pub use resource::{
-    check_json_depth, check_payload_len, check_rpc_line_len, estimate_json_bytes, estimate_row_bytes,
-    host_limits, json_depth, CancelToken, ResourceLimits, DEFAULT_MAX_JSON_DEPTH,
-    DEFAULT_MAX_PAYLOAD_BYTES, DEFAULT_MAX_RESULT_BYTES, DEFAULT_MAX_RPC_LINE_BYTES,
-    RESOURCE_PROFILE,
-};
-pub use remote::{
-    parse_residiuum_url, ConnectOptions, ExtentRow, HistoryVersionRow, IndexInfoRow, ParsedResidiuumUrl,
-    PresentChunkRow, RemoteClient, RpcRequest, RpcResponse, ScanRow, DEFAULT_PORT,
-};
-pub use tls::{
-    build_client_config, client_connect, cluster_urn, constant_time_eq, constant_time_str_eq,
-    load_certs, load_private_key, node_urn, redact_secret, IoStream, PeerIdentity, TlsClientOptions,
-    TlsServerOptions, TlsServerState, CHANNEL_BINDING_EXPORTER_LABEL, CLUSTER_URN_PREFIX,
-    NODE_URN_PREFIX, TLS_PROFILE,
-};
 pub use subject::{
     collection_prefix, decode_subject, encode_subject, validate_collection_name, validate_key,
     MAX_COLLECTION_NAME_LEN, MAX_KEY_LEN,
+};
+pub use tls::{
+    build_client_config, client_connect, cluster_urn, constant_time_eq, constant_time_str_eq,
+    load_certs, load_private_key, node_urn, redact_secret, IoStream, PeerIdentity,
+    TlsClientOptions, TlsServerOptions, TlsServerState, CHANNEL_BINDING_EXPORTER_LABEL,
+    CLUSTER_URN_PREFIX, NODE_URN_PREFIX, TLS_PROFILE,
 };
 pub use value::{decode_bytes, decode_json, encode_bytes, encode_json};
 
@@ -237,10 +238,7 @@ pub fn write_json_frame<W: std::io::Write, T: serde::Serialize>(
 }
 
 /// Read one length-prefixed frame.
-pub fn read_frame<R: std::io::Read>(
-    r: &mut R,
-    max_frame: usize,
-) -> Result<Option<Vec<u8>>, Error> {
+pub fn read_frame<R: std::io::Read>(r: &mut R, max_frame: usize) -> Result<Option<Vec<u8>>, Error> {
     residiuum_client::read_frame(r, max_frame).map_err(Error::from)
 }
 

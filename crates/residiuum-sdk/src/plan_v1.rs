@@ -88,7 +88,9 @@ impl NullsOrder {
         match s {
             "last" => Ok(Self::Last),
             "first" => Ok(Self::First),
-            other => Err(Error::QueryInvalid(format!("unknown nulls order `{other}`"))),
+            other => Err(Error::QueryInvalid(format!(
+                "unknown nulls order `{other}`"
+            ))),
         }
     }
 }
@@ -115,6 +117,75 @@ pub struct PlanSource {
     pub collection_id: CollectionId,
 }
 
+/// Aggregate function (Gate-1 Tier A / Q2 `pkg_group_aggregate`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AggFn {
+    /// `count()` — rows in the group.
+    Count,
+    /// `sum(path)` — numeric sum; null/absent ignored.
+    Sum,
+    /// `min(path)` — numeric minimum; null/absent ignored.
+    Min,
+    /// `max(path)` — numeric maximum; null/absent ignored.
+    Max,
+    /// `avg(path)` — numeric mean; null/absent ignored.
+    Avg,
+}
+
+impl AggFn {
+    /// Stable wire / plan id.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Count => "count",
+            Self::Sum => "sum",
+            Self::Min => "min",
+            Self::Max => "max",
+            Self::Avg => "avg",
+        }
+    }
+
+    /// Parse a stable function id (`count`, `sum`, …).
+    pub fn parse(s: &str) -> Result<Self, Error> {
+        match s {
+            "count" => Ok(Self::Count),
+            "sum" => Ok(Self::Sum),
+            "min" => Ok(Self::Min),
+            "max" => Ok(Self::Max),
+            "avg" => Ok(Self::Avg),
+            other => Err(Error::QueryInvalid(format!(
+                "unknown aggregate function `{other}`"
+            ))),
+        }
+    }
+}
+
+/// One aggregate projection (`count() as n`, `sum(amount) as total`, …).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AggregateSpec {
+    /// Function.
+    pub fun: AggFn,
+    /// Source path; `None` only for [`AggFn::Count`].
+    pub source: Option<Path>,
+    /// Output field name (`as` alias).
+    pub output: String,
+}
+
+/// Group-by keys + aggregate projections (empty = inactive).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct GroupAggSpec {
+    /// Group key paths (empty ⇒ single global group when aggregates present).
+    pub group_by: Vec<Path>,
+    /// Aggregate outputs.
+    pub aggregates: Vec<AggregateSpec>,
+}
+
+impl GroupAggSpec {
+    /// True when group-by or any aggregate is present.
+    pub fn is_active(&self) -> bool {
+        !self.group_by.is_empty() || !self.aggregates.is_empty()
+    }
+}
+
 /// Validated Application Core logical plan.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RqlPlanV1 {
@@ -128,6 +199,8 @@ pub struct RqlPlanV1 {
     pub where_pred: Predicate,
     /// Projection paths; `None` means full document.
     pub project: Option<Vec<Path>>,
+    /// Group-by + aggregates (Q2); inactive when empty.
+    pub group_agg: GroupAggSpec,
     /// Order terms including key tie-break as last term.
     pub order: Vec<OrderTerm>,
     /// Optional total limit across pages.
@@ -193,15 +266,58 @@ impl RqlPlanV1 {
                             .iter()
                             .map(|p| {
                                 JsonValue::Array(
-                                    p.0.iter()
-                                        .map(|s| JsonValue::String(s.clone()))
-                                        .collect(),
+                                    p.0.iter().map(|s| JsonValue::String(s.clone())).collect(),
                                 )
                             })
                             .collect(),
                     ),
                 );
             }
+        }
+
+        // Optional group/aggregate — omitted when inactive so plan vectors stay stable.
+        if self.group_agg.is_active() {
+            let mut g = BTreeMap::new();
+            g.insert(
+                "group_by".into(),
+                JsonValue::Array(
+                    self.group_agg
+                        .group_by
+                        .iter()
+                        .map(|p| {
+                            JsonValue::Array(
+                                p.0.iter().map(|s| JsonValue::String(s.clone())).collect(),
+                            )
+                        })
+                        .collect(),
+                ),
+            );
+            let aggs: Vec<JsonValue> = self
+                .group_agg
+                .aggregates
+                .iter()
+                .map(|a| {
+                    let mut m = BTreeMap::new();
+                    m.insert("fun".into(), JsonValue::String(a.fun.as_str().into()));
+                    match &a.source {
+                        None => {
+                            m.insert("source".into(), JsonValue::Null);
+                        }
+                        Some(p) => {
+                            m.insert(
+                                "source".into(),
+                                JsonValue::Array(
+                                    p.0.iter().map(|s| JsonValue::String(s.clone())).collect(),
+                                ),
+                            );
+                        }
+                    }
+                    m.insert("output".into(), JsonValue::String(a.output.clone()));
+                    btree_to_obj(m)
+                })
+                .collect();
+            g.insert("aggregates".into(), JsonValue::Array(aggs));
+            root.insert("group_agg".into(), btree_to_obj(g));
         }
 
         let order: Vec<JsonValue> = self
@@ -321,6 +437,8 @@ impl RqlPlanV1 {
             Some(_) => return Err(Error::QueryInvalid("project must be array or null".into())),
         };
 
+        let group_agg = parse_group_agg_json(obj.get("group_agg"))?;
+
         let mut order = Vec::new();
         if let Some(JsonValue::Array(terms)) = obj.get("order") {
             if terms.len() > MAX_ORDER_TERMS + 1 {
@@ -348,7 +466,10 @@ impl RqlPlanV1 {
                 let dir = OrderDir::parse(o.get("dir").and_then(|d| d.as_str()).unwrap_or("asc"))?;
                 let nulls =
                     NullsOrder::parse(o.get("nulls").and_then(|n| n.as_str()).unwrap_or("last"))?;
-                let tie_break = o.get("tie_break").and_then(|b| b.as_bool()).unwrap_or(false);
+                let tie_break = o
+                    .get("tie_break")
+                    .and_then(|b| b.as_bool())
+                    .unwrap_or(false);
                 order.push(OrderTerm {
                     path,
                     dir,
@@ -384,7 +505,11 @@ impl RqlPlanV1 {
             Some(_) => return Err(Error::QueryInvalid("page_size invalid".into())),
         };
 
-        let coverage = match obj.get("coverage").and_then(|c| c.as_str()).unwrap_or("complete") {
+        let coverage = match obj
+            .get("coverage")
+            .and_then(|c| c.as_str())
+            .unwrap_or("complete")
+        {
             "complete" => CoveragePolicy::Complete,
             "incomplete_allowed" | "allow_incomplete" => CoveragePolicy::IncompleteAllowed,
             other => {
@@ -414,6 +539,7 @@ impl RqlPlanV1 {
             },
             where_pred,
             project,
+            group_agg,
             order,
             limit,
             page_size,
@@ -423,6 +549,95 @@ impl RqlPlanV1 {
         plan.where_pred.check_node_ceiling()?;
         Ok(plan)
     }
+}
+
+fn parse_group_agg_json(v: Option<&JsonValue>) -> Result<GroupAggSpec, Error> {
+    let Some(v) = v else {
+        return Ok(GroupAggSpec::default());
+    };
+    if v.is_null() {
+        return Ok(GroupAggSpec::default());
+    }
+    let obj = v
+        .as_object()
+        .ok_or_else(|| Error::QueryInvalid("group_agg must be object".into()))?;
+    let mut group_by = Vec::new();
+    if let Some(JsonValue::Array(keys)) = obj.get("group_by") {
+        for k in keys {
+            if let Some(s) = k.as_str() {
+                group_by.push(Path::parse_dotted(s)?);
+            } else if let Some(arr) = k.as_array() {
+                let segs: Vec<String> = arr
+                    .iter()
+                    .map(|x| {
+                        x.as_str()
+                            .map(|s| s.to_string())
+                            .ok_or_else(|| Error::QueryInvalid("group_by segment".into()))
+                    })
+                    .collect::<Result<_, _>>()?;
+                group_by.push(Path::from_segments(segs)?);
+            } else {
+                return Err(Error::QueryInvalid("group_by item invalid".into()));
+            }
+        }
+    }
+    let mut aggregates = Vec::new();
+    if let Some(JsonValue::Array(items)) = obj.get("aggregates") {
+        for it in items {
+            let o = it
+                .as_object()
+                .ok_or_else(|| Error::QueryInvalid("aggregate item object".into()))?;
+            let fun = AggFn::parse(
+                o.get("fun")
+                    .and_then(|f| f.as_str())
+                    .ok_or_else(|| Error::QueryInvalid("aggregate fun required".into()))?,
+            )?;
+            let source = match o.get("source") {
+                None | Some(JsonValue::Null) => None,
+                Some(JsonValue::String(s)) => Some(Path::parse_dotted(s)?),
+                Some(JsonValue::Array(arr)) => {
+                    let segs: Vec<String> = arr
+                        .iter()
+                        .map(|x| {
+                            x.as_str()
+                                .map(|s| s.to_string())
+                                .ok_or_else(|| Error::QueryInvalid("agg source segment".into()))
+                        })
+                        .collect::<Result<_, _>>()?;
+                    Some(Path::from_segments(segs)?)
+                }
+                Some(_) => return Err(Error::QueryInvalid("aggregate source invalid".into())),
+            };
+            if fun == AggFn::Count && source.is_some() {
+                return Err(Error::QueryInvalid(
+                    "count() does not take a field path in this slice".into(),
+                ));
+            }
+            if fun != AggFn::Count && source.is_none() {
+                return Err(Error::QueryInvalid(format!(
+                    "{}() requires a field path",
+                    fun.as_str()
+                )));
+            }
+            let output = o
+                .get("output")
+                .and_then(|x| x.as_str())
+                .ok_or_else(|| Error::QueryInvalid("aggregate output required".into()))?
+                .to_string();
+            if output.is_empty() {
+                return Err(Error::QueryInvalid("aggregate output empty".into()));
+            }
+            aggregates.push(AggregateSpec {
+                fun,
+                source,
+                output,
+            });
+        }
+    }
+    Ok(GroupAggSpec {
+        group_by,
+        aggregates,
+    })
 }
 
 /// Name → collection id binding table for plan compilation.
@@ -453,6 +668,7 @@ pub struct PlanBuilder {
     source_name: String,
     where_pred: Predicate,
     project: Option<Vec<Path>>,
+    group_agg: GroupAggSpec,
     order: Vec<OrderTerm>,
     limit: Option<u64>,
     page_size: Option<u32>,
@@ -467,6 +683,7 @@ impl PlanBuilder {
             source_name: name.into(),
             where_pred: Predicate::True,
             project: None,
+            group_agg: GroupAggSpec::default(),
             order: Vec::new(),
             limit: None,
             page_size: None,
@@ -495,6 +712,33 @@ impl PlanBuilder {
             return Err(Error::QueryInvalid("project exceeds ceiling".into()));
         }
         self.project = Some(paths);
+        Ok(self)
+    }
+
+    /// Group-by keys + aggregate projections (Q2 `pkg_group_aggregate`).
+    pub fn group_agg(mut self, spec: GroupAggSpec) -> Result<Self, Error> {
+        if spec.aggregates.len() + spec.group_by.len() > MAX_PROJECT_ITEMS {
+            return Err(Error::QueryInvalid(
+                "group_agg exceeds project item ceiling".into(),
+            ));
+        }
+        for a in &spec.aggregates {
+            if a.output.is_empty() {
+                return Err(Error::QueryInvalid("aggregate output empty".into()));
+            }
+            if a.fun == AggFn::Count && a.source.is_some() {
+                return Err(Error::QueryInvalid(
+                    "count() does not take a field path in this slice".into(),
+                ));
+            }
+            if a.fun != AggFn::Count && a.source.is_none() {
+                return Err(Error::QueryInvalid(format!(
+                    "{}() requires a field path",
+                    a.fun.as_str()
+                )));
+            }
+        }
+        self.group_agg = spec;
         Ok(self)
     }
 
@@ -568,6 +812,7 @@ impl PlanBuilder {
             },
             where_pred: self.where_pred,
             project: self.project,
+            group_agg: self.group_agg,
             order,
             limit: self.limit,
             page_size: self.page_size.unwrap_or(DEFAULT_PAGE_SIZE),

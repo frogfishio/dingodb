@@ -14,16 +14,15 @@
 //! [`CoreFrame`] phases remain as the shared implementation.
 //! Decision 0 remains OPEN; RQL-C1 must not be accepted.
 
+use super::vm_exec::{CoreOperands, VmPool};
 use crate::app_v1::{
-    ConsistencyEvidence, HoleEvidence, QueryBudget, QueryId, QueryPage, QueryRow,
-    QueryRunOptions,
+    ConsistencyEvidence, HoleEvidence, QueryBudget, QueryId, QueryPage, QueryRow, QueryRunOptions,
 };
 use crate::cursor_v1::parameter_hash as cursor_parameter_hash;
 use crate::error::Error;
 use crate::plan_v1::OrderTerm;
 use crate::predicate::{Path, Predicate};
 use crate::rql_app_core::merge_budgets;
-use super::vm_exec::{CoreOperands, VmPool};
 use residiuum_heap::{CollectionId, HeapId};
 use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
@@ -42,9 +41,7 @@ fn check_governance(options: &QueryRunOptions, started: Instant) -> Result<(), E
     }
     if let Some(deadline) = options.deadline {
         if started.elapsed() >= deadline {
-            return Err(Error::DeadlineExceeded(
-                "query deadline exceeded".into(),
-            ));
+            return Err(Error::DeadlineExceeded("query deadline exceeded".into()));
         }
     }
     Ok(())
@@ -104,10 +101,16 @@ fn has_later_match<S: DocScan>(
             if let Some(doc) = scan.get_json(&key)? {
                 examined_docs += 1;
                 examined_bytes = examined_bytes.saturating_add(json_byte_len(&doc));
-                if budget.and_then(|b| b.max_documents).is_some_and(|m| examined_docs > m) {
+                if budget
+                    .and_then(|b| b.max_documents)
+                    .is_some_and(|m| examined_docs > m)
+                {
                     return Ok(false);
                 }
-                if budget.and_then(|b| b.max_bytes).is_some_and(|m| examined_bytes > m) {
+                if budget
+                    .and_then(|b| b.max_bytes)
+                    .is_some_and(|m| examined_bytes > m)
+                {
                     return Ok(false);
                 }
                 if where_k.eval_doc(&doc)? {
@@ -115,7 +118,10 @@ fn has_later_match<S: DocScan>(
                 }
             } else {
                 examined_docs += 1;
-                if budget.and_then(|b| b.max_documents).is_some_and(|m| examined_docs > m) {
+                if budget
+                    .and_then(|b| b.max_documents)
+                    .is_some_and(|m| examined_docs > m)
+                {
                     return Ok(false);
                 }
             }
@@ -145,7 +151,7 @@ pub(crate) struct CoreFrame<'a> {
     coverage: crate::app_v1::CoveragePolicy,
     consistency: crate::app_v1::ConsistencyMode,
     order: Vec<OrderTerm>,
-    project: Option<Vec<Path>>,
+    project: super::vm_exec::ProjectImm,
     params: &'a BTreeMap<String, JsonValue>,
     options: &'a QueryRunOptions,
     heap_id: HeapId,
@@ -201,13 +207,7 @@ impl<'a> CoreFrame<'a> {
         let page_size = super::ir_page::resolve_page_size(core.page_size, options.page_size);
         let param_hash = cursor_parameter_hash(params);
         let (last_sort_tuple_resume, remaining_limit) = if let Some(ref cont) = options.after {
-            super::ir_page::decode_after(
-                cont,
-                heap_id,
-                collection_id,
-                &program_hash,
-                &param_hash,
-            )?
+            super::ir_page::decode_after(cont, heap_id, collection_id, &program_hash, &param_hash)?
         } else {
             (None, core.limit)
         };
@@ -275,9 +275,10 @@ impl<'a> CoreFrame<'a> {
     /// Does **not** apply `where` (RQL-VM3b). Key-stream paths leave a
     /// [`PendingKeys`] cursor for Filter; field-order materializes docs now.
     pub fn scan<S: DocScan>(&mut self, scan: &mut S) -> Result<(), Error> {
-        let index_keys = self.index_keys.as_ref().ok_or_else(|| {
-            Error::QueryInvalid("core frame: Scan before IndexEq".into())
-        })?;
+        let index_keys = self
+            .index_keys
+            .as_ref()
+            .ok_or_else(|| Error::QueryInvalid("core frame: Scan before IndexEq".into()))?;
         self.used_index = index_keys.is_some();
         let after_key = self
             .last_sort_tuple_resume
@@ -314,8 +315,7 @@ impl<'a> CoreFrame<'a> {
             check_governance(self.options, self.started)?;
             if let Some(doc) = scan.get_json(&key)? {
                 self.examined_docs += 1;
-                self.examined_bytes =
-                    self.examined_bytes.saturating_add(json_byte_len(&doc));
+                self.examined_bytes = self.examined_bytes.saturating_add(json_byte_len(&doc));
                 check_doc_budget(self.budget, self.examined_docs)?;
                 check_bytes_budget(self.budget, self.examined_bytes)?;
                 self.working.push((key, doc));
@@ -344,8 +344,7 @@ impl<'a> CoreFrame<'a> {
                 after = Some(key.clone());
                 if let Some(doc) = scan.get_json(&key)? {
                     self.examined_docs += 1;
-                    self.examined_bytes =
-                        self.examined_bytes.saturating_add(json_byte_len(&doc));
+                    self.examined_bytes = self.examined_bytes.saturating_add(json_byte_len(&doc));
                     check_doc_budget(self.budget, self.examined_docs)?;
                     check_bytes_budget(self.budget, self.examined_bytes)?;
                     self.working.push((key, doc));
@@ -370,7 +369,13 @@ impl<'a> CoreFrame<'a> {
         let pending = self.pending_keys.take().ok_or_else(|| {
             Error::QueryInvalid("core frame: Filter without Scan pending keys".into())
         })?;
-        let need = super::ir_page::rows_needed(self.remaining_limit, self.page_size);
+        // Group/aggregate must see the full filtered bag (budget still applies).
+        // Early-stop at page size would under-count groups.
+        let need = if self.project.group_agg.is_active() {
+            usize::MAX / 4
+        } else {
+            super::ir_page::rows_needed(self.remaining_limit, self.page_size)
+        };
         match pending {
             PendingKeys::Materialized => {
                 let mut kept = Vec::with_capacity(self.working.len());
@@ -413,8 +418,7 @@ impl<'a> CoreFrame<'a> {
                 }
                 Some(doc) => {
                     self.examined_docs += 1;
-                    self.examined_bytes =
-                        self.examined_bytes.saturating_add(json_byte_len(&doc));
+                    self.examined_bytes = self.examined_bytes.saturating_add(json_byte_len(&doc));
                     check_doc_budget(self.budget, self.examined_docs)?;
                     check_bytes_budget(self.budget, self.examined_bytes)?;
                     if self.where_k.eval_doc(&doc)? {
@@ -475,11 +479,16 @@ impl<'a> CoreFrame<'a> {
     }
 
     /// OpCode::Order — sort-tuple order (no-op for key-only stream).
+    ///
+    /// When group/aggregate is active, pre-group order is skipped; group rows
+    /// are ordered after aggregation inside [`Self::project_paths`].
     pub fn order(&mut self) -> Result<(), Error> {
         if !self.saw_filter {
-            return Err(Error::QueryInvalid("core frame: Order before Filter".into()));
+            return Err(Error::QueryInvalid(
+                "core frame: Order before Filter".into(),
+            ));
         }
-        if !self.key_only_order {
+        if !self.project.group_agg.is_active() && !self.key_only_order {
             self.working.sort_by(|(ka, va), (kb, vb)| {
                 super::ir_order::compare_rows(ka, va, kb, vb, &self.order)
             });
@@ -489,17 +498,16 @@ impl<'a> CoreFrame<'a> {
     }
 
     /// OpCode::Page — field-order resume + limit + page-size truncate.
+    ///
+    /// When group/aggregate is active, truncation is deferred until after
+    /// aggregation in [`Self::project_paths`].
     pub fn page(&mut self) -> Result<(), Error> {
         if !self.saw_order {
             return Err(Error::QueryInvalid("core frame: Page before Order".into()));
         }
-        if !self.key_only_order {
+        if !self.project.group_agg.is_active() && !self.key_only_order {
             if let Some(ref lst) = self.last_sort_tuple_resume {
-                super::ir_order::retain_after_sort_tuple(
-                    &mut self.working,
-                    &self.order,
-                    lst,
-                );
+                super::ir_order::retain_after_sort_tuple(&mut self.working, &self.order, lst);
             }
             if let Some(n) = self.remaining_limit {
                 self.working.truncate(n as usize);
@@ -522,6 +530,28 @@ impl<'a> CoreFrame<'a> {
         }
         let _ = self.index_keys.take();
 
+        // Q2 group/aggregate: reshape, then order + page the group bag.
+        if self.project.group_agg.is_active() {
+            self.working = super::group_agg::apply_group_agg(
+                std::mem::take(&mut self.working),
+                &self.project.group_agg,
+            )?;
+            // Deterministic order on group rows (key tie-break still applies).
+            self.working.sort_by(|(ka, va), (kb, vb)| {
+                super::ir_order::compare_rows(ka, va, kb, vb, &self.order)
+            });
+            if let Some(ref lst) = self.last_sort_tuple_resume {
+                super::ir_order::retain_after_sort_tuple(&mut self.working, &self.order, lst);
+            }
+            if let Some(n) = self.remaining_limit {
+                self.working.truncate(n as usize);
+            }
+            if self.working.len() > self.page_size {
+                self.field_order_more = true;
+                self.working.truncate(self.page_size);
+            }
+        }
+
         let mut matched: Vec<(String, JsonValue)> = Vec::with_capacity(self.working.len());
         let mut result_bytes: u64 = 0;
         let mut last_full_for_cursor: Option<(String, JsonValue)> = None;
@@ -529,8 +559,7 @@ impl<'a> CoreFrame<'a> {
         for (key, doc) in self.working.drain(..) {
             check_governance(self.options, self.started)?;
             last_full_for_cursor = Some((key.clone(), doc.clone()));
-            let value =
-                super::ir_project::apply_project_paths(&doc, self.project.as_ref())?;
+            let value = super::ir_project::apply_project_paths(&doc, self.project.paths.as_ref())?;
             let row_len = json_byte_len(&value);
             let next_result = result_bytes.saturating_add(row_len);
             check_result_budget(self.budget, next_result)?;
@@ -593,8 +622,7 @@ impl<'a> CoreFrame<'a> {
                     JsonValue::Null,
                 )
             });
-            let last_tuple =
-                super::ir_order::build_sort_tuple(&last_key, &last_doc, &self.order);
+            let last_tuple = super::ir_order::build_sort_tuple(&last_key, &last_doc, &self.order);
             Some(super::ir_page::mint_page_cursor(
                 self.heap_id,
                 self.collection_id,
@@ -611,11 +639,8 @@ impl<'a> CoreFrame<'a> {
 
         let coverage_mode =
             super::ir_page::resolve_coverage_mode(self.coverage, self.options.coverage);
-        let coverage = super::ir_page::finish_coverage(
-            coverage_mode,
-            &self.known_holes,
-            self.examined_docs,
-        )?;
+        let coverage =
+            super::ir_page::finish_coverage(coverage_mode, &self.known_holes, self.examined_docs)?;
 
         let _ = result_bytes;
         let _ = self.examined_bytes;
@@ -637,4 +662,3 @@ impl<'a> CoreFrame<'a> {
         })
     }
 }
-

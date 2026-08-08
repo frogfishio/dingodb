@@ -770,22 +770,27 @@
       ],
       "case_id": "commerce.orders.group_region_count",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: unexpected token near `group by region project `",
-        "status": "error"
+        "base_source": "from orders group by region project region, count() as order_count",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "commerce",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 3,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "group_aggregate"
       ],
-      "gap_package": "pkg_group_aggregate",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "pending",
       "source": "from orders group by region project region, count() as order_count",
       "tier": "A"
@@ -797,22 +802,27 @@
       ],
       "case_id": "commerce.orders.group_status_sum_amount",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: unexpected token near `group by status project `",
-        "status": "error"
+        "base_source": "from orders group by status project status, sum(amount) as total_amount",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "commerce",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 4,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "group_aggregate"
       ],
-      "gap_package": "pkg_group_aggregate",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "pending",
       "source": "from orders group by status project status, sum(amount) as total_amount",
       "tier": "A"
@@ -824,22 +834,27 @@
       ],
       "case_id": "commerce.orders.agg_min_max_amount",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: unexpected token near `(amount) as min_amount, `",
-        "status": "error"
+        "base_source": "from orders project min(amount) as min_amount, max(amount) as max_amount",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "commerce",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 1,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "group_aggregate"
       ],
-      "gap_package": "pkg_group_aggregate",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "pending",
       "source": "from orders project min(amount) as min_amount, max(amount) as max_amount",
       "tier": "A"
@@ -850,23 +865,28 @@
       ],
       "case_id": "commerce.orders.agg_avg_amount_paid",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: unexpected token near `(amount) as avg_amount`",
-        "status": "error"
+        "base_source": "from orders where status = \"paid\" project avg(amount) as avg_amount",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "commerce",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 1,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "group_aggregate",
         "selection_key_eq_range_compound"
       ],
-      "gap_package": "pkg_group_aggregate",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "pending",
       "source": "from orders where status = \"paid\" project avg(amount) as avg_amount",
       "tier": "A"
@@ -1448,23 +1468,28 @@
       ],
       "case_id": "messaging.messages.group_unread_by_conversation",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: unexpected token near `group by conversation_id`",
-        "status": "error"
+        "base_source": "from messages where read_at is null or missing(read_at) group by conversation_id project conversation_id, count() as unread_count",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "messaging",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 16,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "group_aggregate",
         "predicate_missing_null_type_nested_array"
       ],
-      "gap_package": "pkg_group_aggregate",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "pending",
       "source": "from messages where read_at is null or missing(read_at) group by conversation_id project conversation_id, count() as unread_count",
       "tier": "A"
@@ -1476,22 +1501,27 @@
       ],
       "case_id": "messaging.messages.group_sender_count",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: unexpected token near `group by sender_id proje`",
-        "status": "error"
+        "base_source": "from messages group by sender_id project sender_id, count() as message_count",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "messaging",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 12,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "group_aggregate"
       ],
-      "gap_package": "pkg_group_aggregate",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "pending",
       "source": "from messages group by sender_id project sender_id, count() as message_count",
       "tier": "A"
@@ -2248,22 +2278,27 @@
       ],
       "case_id": "directory.entries.group_by_category_count",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: unexpected token near `group by category_id pro`",
-        "status": "error"
+        "base_source": "from entries group by category_id project category_id, count() as entry_count",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "directory",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 8,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "group_aggregate"
       ],
-      "gap_package": "pkg_group_aggregate",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "pending",
       "source": "from entries group by category_id project category_id, count() as entry_count",
       "tier": "A"
@@ -2275,22 +2310,27 @@
       ],
       "case_id": "directory.entries.group_by_kind_count",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: unexpected token near `group by kind project ki`",
-        "status": "error"
+        "base_source": "from entries group by kind project kind, count() as n",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "directory",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 2,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "group_aggregate"
       ],
-      "gap_package": "pkg_group_aggregate",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "pending",
       "source": "from entries group by kind project kind, count() as n",
       "tier": "A"
@@ -3042,22 +3082,27 @@
       ],
       "case_id": "telemetry.events.group_by_device_count",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: unexpected token near `group by device_id proje`",
-        "status": "error"
+        "base_source": "from events group by device_id project device_id, count() as event_count",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "telemetry",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 24,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "group_aggregate"
       ],
-      "gap_package": "pkg_group_aggregate",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "pending",
       "source": "from events group by device_id project device_id, count() as event_count",
       "tier": "A"
@@ -3069,22 +3114,27 @@
       ],
       "case_id": "telemetry.events.group_severity_count",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: unexpected token near `group by severity projec`",
-        "status": "error"
+        "base_source": "from events group by severity project severity, count() as n",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "telemetry",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 4,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "group_aggregate"
       ],
-      "gap_package": "pkg_group_aggregate",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "pending",
       "source": "from events group by severity project severity, count() as n",
       "tier": "A"
@@ -3096,22 +3146,27 @@
       ],
       "case_id": "telemetry.metrics.agg_avg_by_name",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: unexpected token near `group by metric_name pro`",
-        "status": "error"
+        "base_source": "from metrics group by metric_name project metric_name, avg(value) as avg_value",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "telemetry",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 3,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "group_aggregate"
       ],
-      "gap_package": "pkg_group_aggregate",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "pending",
       "source": "from metrics group by metric_name project metric_name, avg(value) as avg_value",
       "tier": "A"
@@ -3123,22 +3178,27 @@
       ],
       "case_id": "telemetry.metrics.agg_min_max_value",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: unexpected token near `(value) as min_v, max(va`",
-        "status": "error"
+        "base_source": "from metrics project min(value) as min_v, max(value) as max_v",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "telemetry",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 1,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "group_aggregate"
       ],
-      "gap_package": "pkg_group_aggregate",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "pending",
       "source": "from metrics project min(value) as min_v, max(value) as max_v",
       "tier": "A"
@@ -3947,22 +4007,27 @@
       ],
       "case_id": "project_management.tasks.group_status_count",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: unexpected token near `group by status project `",
-        "status": "error"
+        "base_source": "from tasks group by status project status, count() as n",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "project_management",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 4,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "group_aggregate"
       ],
-      "gap_package": "pkg_group_aggregate",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "pending",
       "source": "from tasks group by status project status, count() as n",
       "tier": "A"
@@ -3974,22 +4039,27 @@
       ],
       "case_id": "project_management.tasks.group_by_assignee_count",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: unexpected token near `group by assignee_id pro`",
-        "status": "error"
+        "base_source": "from tasks group by assignee_id project assignee_id, count() as task_count",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "project_management",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 8,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "group_aggregate"
       ],
-      "gap_package": "pkg_group_aggregate",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "pending",
       "source": "from tasks group by assignee_id project assignee_id, count() as task_count",
       "tier": "A"
@@ -4001,22 +4071,27 @@
       ],
       "case_id": "project_management.tasks.group_by_project_sum_points",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: unexpected token near `group by project_id proj`",
-        "status": "error"
+        "base_source": "from tasks group by project_id project project_id, sum(estimate_points) as total_points",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "project_management",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 20,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "group_aggregate"
       ],
-      "gap_package": "pkg_group_aggregate",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "pending",
       "source": "from tasks group by project_id project project_id, sum(estimate_points) as total_points",
       "tier": "A"
@@ -4028,22 +4103,27 @@
       ],
       "case_id": "project_management.projects.group_by_owner_count",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: unexpected token near `group by owner_id projec`",
-        "status": "error"
+        "base_source": "from projects group by owner_id project owner_id, count() as project_count",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "project_management",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 8,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "semantic",
+      "failure_class": null,
       "family_tags": [
         "group_aggregate"
       ],
-      "gap_package": "pkg_group_aggregate",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "pending",
       "source": "from projects group by owner_id project owner_id, count() as project_count",
       "tier": "A"
@@ -4353,31 +4433,9 @@
   ],
   "corpus_version": "rql-q1-corpus-v0.4.0",
   "format": "residiuum-rql-q2-1-capability-audit-v1",
-  "generated_unix_s": 1786108588,
-  "git_sha": "96b526fdb3ed55959db77abd5ee41b0d02f45dc1",
+  "generated_unix_s": 1786152637,
+  "git_sha": "69f7f50a22582ac44f2ee31c36b8a00ba523f6d3",
   "packages": [
-    {
-      "blocked_case_count": 16,
-      "case_ids": [
-        "commerce.orders.group_region_count",
-        "commerce.orders.group_status_sum_amount",
-        "commerce.orders.agg_min_max_amount",
-        "commerce.orders.agg_avg_amount_paid",
-        "messaging.messages.group_unread_by_conversation",
-        "messaging.messages.group_sender_count",
-        "directory.entries.group_by_category_count",
-        "directory.entries.group_by_kind_count",
-        "telemetry.events.group_by_device_count",
-        "telemetry.events.group_severity_count",
-        "telemetry.metrics.agg_avg_by_name",
-        "telemetry.metrics.agg_min_max_value",
-        "project_management.tasks.group_status_count",
-        "project_management.tasks.group_by_assignee_count",
-        "project_management.tasks.group_by_project_sum_points",
-        "project_management.projects.group_by_owner_count"
-      ],
-      "package_id": "pkg_group_aggregate"
-    },
     {
       "blocked_case_count": 15,
       "case_ids": [
@@ -4455,7 +4513,6 @@
   ],
   "profile": "rql-gate1-practical-corpus-v1",
   "recommended_implementation_package_order": [
-    "pkg_group_aggregate",
     "pkg_enrich_corpus_dialect",
     "pkg_array_predicate_surface",
     "pkg_budget_partial_coverage",
@@ -4464,16 +4521,16 @@
     "pkg_enrich_semantics"
   ],
   "summary": {
-    "compile_ok": 96,
-    "execute_ok": 91,
+    "compile_ok": 112,
+    "execute_ok": 107,
     "expected_refusal_ok": 2,
     "failure_class_counts": {
       "expected_refusal": 2,
-      "semantic": 31,
+      "semantic": 15,
       "syntax": 23
     },
-    "gap_case_count": 54,
-    "product_expressible": 91,
+    "gap_case_count": 38,
+    "product_expressible": 107,
     "tier_a_cases": 147
   }
 }
