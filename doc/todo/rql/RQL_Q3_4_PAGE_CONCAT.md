@@ -65,3 +65,7 @@ Product path: `CollectionClient::rql` only (QVM1 / Core).
 - [x] Machine report + human pack  
 - [x] verify-rql-q3.sh includes suite  
 - [ ] Principal package accept (not labor)  
+
+## Evidence write policy (F8)
+
+Default tests write under `target/rql-q3/` only. Checked-in `spec/` snapshots update only with `RESIDIUUM_WRITE_SPEC_EVIDENCE=1` or `scripts/publish-rql-q3-evidence.sh`.

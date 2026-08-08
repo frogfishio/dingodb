@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # RQL-Q4 structural verify: Q4.1 architecture + Q4.2 datasets + Q4.3 metrics/adapters.
 # Exit 0 = scaffold labor green. Not package accept / not competitive.
+#
+# F8: tests write under target/rql-q4/ by default (do not rewrite checked-in spec/).
+#      Publish snapshots: bash scripts/publish-rql-q4-evidence.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -11,6 +14,19 @@ fail() { printf 'verify-rql-q4-harness: FAIL: %s\n' "$*" >&2; exit 1; }
 need() {
   if [[ ! -f "$1" ]]; then
     fail "missing required file: $1"
+  fi
+}
+
+resolve_report() {
+  local name="$1"
+  local target="$ROOT/target/rql-q4/$name"
+  local spec="$ROOT/spec/rql/qualification/harness-v1/$name"
+  if [[ -f "$target" ]]; then
+    printf '%s' "$target"
+  elif [[ -f "$spec" ]]; then
+    printf '%s' "$spec"
+  else
+    fail "missing report: $name (neither target/rql-q4/ nor committed spec/)"
   fi
 }
 
@@ -32,6 +48,11 @@ need "$ROOT/spec/rql/qualification/corpus-v1/corpus-v1.json"
 command -v cargo >/dev/null 2>&1 || fail "cargo required"
 grep -q 'residiuum-rql-qual' "$ROOT/Cargo.toml" || fail "workspace member missing"
 
+SPEC_BEFORE=$(
+  git -C "$ROOT" status --porcelain -- \
+    'spec/rql/qualification/harness-v1/q4_*.json' 2>/dev/null || true
+)
+
 ok "unit tests (Q4.1–Q4.3 structural, default features)"
 cargo test -p residiuum-rql-qual
 
@@ -39,14 +60,11 @@ cargo test -p residiuum-rql-qual
 ok "residiuum-embedded feature (product adapter compile + smoke)"
 cargo test -p residiuum-rql-qual --features residiuum-embedded --lib
 
-REPORT1="$ROOT/spec/rql/qualification/harness-v1/q4_1_architecture_report.json"
-REPORT2="$ROOT/spec/rql/qualification/harness-v1/q4_2_dataset_cells_report.json"
-REPORT3="$ROOT/spec/rql/qualification/harness-v1/q4_3_metrics_adapters_report.json"
-BUNDLE3="$ROOT/spec/rql/qualification/harness-v1/q4_3_smoke_evidence_bundle.json"
-need "$REPORT1"
-need "$REPORT2"
-need "$REPORT3"
-need "$BUNDLE3"
+REPORT1="$(resolve_report q4_1_architecture_report.json)"
+REPORT2="$(resolve_report q4_2_dataset_cells_report.json)"
+REPORT3="$(resolve_report q4_3_metrics_adapters_report.json)"
+BUNDLE3="$(resolve_report q4_3_smoke_evidence_bundle.json)"
+ok "using reports from $(dirname "$REPORT3" | sed "s|$ROOT/||")"
 
 python3 - "$REPORT1" "$REPORT2" "$REPORT3" "$BUNDLE3" <<'PY'
 import json, sys
@@ -89,4 +107,14 @@ print(
 )
 PY
 
-ok "PASS (Q4.1–Q4.3 labor evidence only — not package accept / not competitive)"
+SPEC_AFTER=$(
+  git -C "$ROOT" status --porcelain -- \
+    'spec/rql/qualification/harness-v1/q4_*.json' 2>/dev/null || true
+)
+if [[ "$SPEC_BEFORE" != "$SPEC_AFTER" ]]; then
+  fail "default verify mutated tracked harness evidence under spec/ (F8).
+  before: $SPEC_BEFORE
+  after:  $SPEC_AFTER"
+fi
+
+ok "PASS (Q4.1–Q4.3 labor evidence only — not package accept / not competitive; F8 no-spec-churn)"

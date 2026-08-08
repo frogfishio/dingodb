@@ -477,7 +477,6 @@ mod tests {
     use super::*;
     use crate::generator::generate_dataset;
     use crate::lifecycle::validate_cold_claim;
-    use std::fs;
     use std::path::PathBuf;
 
     #[test]
@@ -568,11 +567,16 @@ mod tests {
 
     #[test]
     fn write_q4_2_report() {
+        // F8: default → target/; RESIDIUUM_WRITE_SPEC_EVIDENCE=1 also writes spec/.
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let path = root.join("spec/rql/qualification/harness-v1/q4_2_dataset_cells_report.json");
         let report = q4_2_report_json();
-        fs::create_dir_all(path.parent().unwrap()).unwrap();
-        fs::write(&path, serde_json::to_string_pretty(&report).unwrap()).unwrap();
+        let body = serde_json::to_string_pretty(&report).unwrap();
+        let path = crate::evidence::write_evidence_artifact(
+            root.join("target/rql-q4/q4_2_dataset_cells_report.json"),
+            root.join("spec/rql/qualification/harness-v1/q4_2_dataset_cells_report.json"),
+            &body,
+        )
+        .expect("write q4.2 report");
         assert!(path.is_file());
         assert_eq!(report["summary"]["mandatory_cells"], 12);
         assert_eq!(report["summary"]["smoke_plans"], 12);

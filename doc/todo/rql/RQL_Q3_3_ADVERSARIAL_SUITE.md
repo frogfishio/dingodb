@@ -18,7 +18,8 @@ package review.
 | Suite | `crates/residiuum-sdk/tests/rql_q3_adversarial.rs` |
 | One-command gate | `bash scripts/verify-rql-q3.sh` |
 | Machine report | `spec/rql/qualification/corpus-v1/q3_3_adversarial_report.json` |
-| Runtime copy | `target/rql-q3/q3_3_adversarial_report.json` |
+| Runtime copy (default write) | `target/rql-q3/q3_3_adversarial_report.json` |
+| Spec snapshot publish | `RESIDIUUM_WRITE_SPEC_EVIDENCE=1` or `scripts/publish-rql-q3-evidence.sh` (F8) |
 
 `verify-rql-q3.sh` runs **Q3.1 + Q3.2 + Q3.3** (oracle, differential matrix,
 adversarial) and asserts machine-report floors. Exit 0 = labor evidence only —

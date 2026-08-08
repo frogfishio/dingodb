@@ -182,8 +182,16 @@ pub fn publish_smoke_evidence(
         "lane_s_fixture_identity ok={lane_s_ok} hash={lane_s_hash}"
     ));
 
-    let out = workspace_root.join("spec/rql/qualification/harness-v1/q4_3_smoke_evidence_bundle.json");
-    bundle.write_json(&out)?;
+    // F8: default → target/rql-q4/; RESIDIUUM_WRITE_SPEC_EVIDENCE=1 also writes spec/.
+    let target_bundle =
+        workspace_root.join("target/rql-q4/q4_3_smoke_evidence_bundle.json");
+    let spec_bundle = workspace_root
+        .join("spec/rql/qualification/harness-v1/q4_3_smoke_evidence_bundle.json");
+    bundle.write_json(&target_bundle)?;
+    if crate::evidence::write_spec_evidence_enabled() {
+        bundle.write_json(&spec_bundle)?;
+    }
+    let out = target_bundle;
 
     // Architecture/labor report
     let report = json!({
@@ -208,13 +216,12 @@ pub fn publish_smoke_evidence(
         ],
         "authority": "doc/todo/rql/RQL_Q4_3_METRICS_ADAPTERS.md",
     });
-    let report_path =
-        workspace_root.join("spec/rql/qualification/harness-v1/q4_3_metrics_adapters_report.json");
-    fs::write(
-        &report_path,
-        serde_json::to_string_pretty(&report).map_err(|e| RunError::Io(e.to_string()))?,
-    )
-    .map_err(|e| RunError::Io(e.to_string()))?;
+    let body = serde_json::to_string_pretty(&report).map_err(|e| RunError::Io(e.to_string()))?;
+    crate::evidence::write_evidence_artifact(
+        workspace_root.join("target/rql-q4/q4_3_metrics_adapters_report.json"),
+        workspace_root.join("spec/rql/qualification/harness-v1/q4_3_metrics_adapters_report.json"),
+        &body,
+    )?;
 
     let _ = ready_ok;
     Ok(out)
@@ -223,7 +230,9 @@ pub fn publish_smoke_evidence(
 /// Machine JSON for verify (also used as lightweight call without full publish).
 pub fn q4_3_report_value(workspace_root: &Path) -> Result<Value, RunError> {
     let _ = publish_smoke_evidence(workspace_root, 0x04_43, "q4-3-smoke")?;
-    let p = workspace_root.join("spec/rql/qualification/harness-v1/q4_3_metrics_adapters_report.json");
+    let target = workspace_root.join("target/rql-q4/q4_3_metrics_adapters_report.json");
+    let spec = workspace_root.join("spec/rql/qualification/harness-v1/q4_3_metrics_adapters_report.json");
+    let p = if target.is_file() { target } else { spec };
     let raw = fs::read_to_string(&p).map_err(|e| RunError::Io(e.to_string()))?;
     serde_json::from_str(&raw).map_err(|e| RunError::Io(e.to_string()))
 }
@@ -310,7 +319,13 @@ mod tests {
         let root = workspace_root();
         let path = publish_smoke_evidence(&root, 0x04_43, "q4-3-unit").expect("publish");
         assert!(path.is_file());
-        let report = root.join("spec/rql/qualification/harness-v1/q4_3_metrics_adapters_report.json");
+        // F8: default publishes under target/rql-q4/
+        assert!(
+            path.starts_with(root.join("target/rql-q4")),
+            "default publish must write under target/: {}",
+            path.display()
+        );
+        let report = root.join("target/rql-q4/q4_3_metrics_adapters_report.json");
         assert!(report.is_file());
         let v: Value = serde_json::from_str(&fs::read_to_string(report).unwrap()).unwrap();
         assert_eq!(v["format"], "residiuum-rql-q4-3-metrics-adapters-report-v1");

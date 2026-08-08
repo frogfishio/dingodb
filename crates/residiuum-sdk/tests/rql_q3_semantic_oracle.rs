@@ -16,6 +16,10 @@
 //! Exit of this suite = oracle runs corpus expected-result checks independently
 //! of Residiuum plan selection. Green ≠ Gate-1; green ≠ full Q3 package accept.
 
+
+#[path = "common/rql_evidence_write.rs"]
+mod rql_evidence_write;
+
 use residiuum_heap::CollectionId;
 use residiuum_sdk::predicate::resolve_path;
 use residiuum_sdk::{
@@ -994,22 +998,12 @@ fn rql_q3_1_corpus_oracle_suite() {
         "cases": case_results,
     });
 
-    let out_dir = root.join("target/rql-q3");
-    let _ = fs::create_dir_all(&out_dir);
-    let report_path = out_dir.join("q3_1_oracle_report.json");
-    fs::write(
-        &report_path,
-        serde_json::to_string_pretty(&summary).expect("report json"),
-    )
-    .expect("write report");
-
-    // Also publish a stable path under spec for labor evidence (not Gate-1).
-    let evidence = root.join("spec/rql/qualification/corpus-v1/q3_1_oracle_report.json");
-    fs::write(
-        &evidence,
-        serde_json::to_string_pretty(&summary).expect("evidence json"),
-    )
-    .expect("write evidence");
+    // F8: default → target/ only; set RESIDIUUM_WRITE_SPEC_EVIDENCE=1 to publish spec/.
+    let report_path = rql_evidence_write::write_q3_report(
+        &root,
+        "q3_1_oracle_report.json",
+        &serde_json::to_string_pretty(&summary).expect("report json"),
+    );
 
     eprintln!(
         "rql_q3_1: oracle_ok={oracle_ok} unsupported={oracle_unsupported} compile_fail={oracle_compile_fail} eval_fail={oracle_eval_fail} fixture_fail={oracle_fixture_fail} digest_mismatch={digest_mismatch} considered={tier_a_considered}"

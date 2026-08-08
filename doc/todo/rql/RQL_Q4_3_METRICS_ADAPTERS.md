@@ -84,9 +84,11 @@ fixture identity proofs across lanes.
 
 | Artefact | Path |
 |---|---|
-| Smoke evidence bundle | `spec/rql/qualification/harness-v1/q4_3_smoke_evidence_bundle.json` |
-| Labor report | `spec/rql/qualification/harness-v1/q4_3_metrics_adapters_report.json` |
-| Command | `bash scripts/verify-rql-q4-harness.sh` |
+| Smoke evidence bundle (default write) | `target/rql-q4/q4_3_smoke_evidence_bundle.json` |
+| Labor report (default write) | `target/rql-q4/q4_3_metrics_adapters_report.json` |
+| Checked-in snapshots | `spec/rql/qualification/harness-v1/q4_3_*.json` via publish only |
+| Default verify | `bash scripts/verify-rql-q4-harness.sh` (reads target/ then spec/; no spec churn) |
+| Explicit publish (F8) | `bash scripts/publish-rql-q4-evidence.sh` or `RESIDIUUM_WRITE_SPEC_EVIDENCE=1` |
 
 Bundle includes env fingerprint (Q0 pins), 12 smoke cells, content_hash, notes
 that CBL/Mongo are not competitive Ready.

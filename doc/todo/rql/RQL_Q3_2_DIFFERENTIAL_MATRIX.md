@@ -81,3 +81,7 @@ Source-level `after $cursor` remains residual (same five corpus cases as Q3.1 un
 - [x] Metamorphic laws as hard unit tests
 - [x] Machine report + scoreboard note
 - [ ] Principal package accept (not labor)
+
+## Evidence write policy (F8)
+
+Default tests write under `target/rql-q3/` only. Checked-in `spec/` snapshots update only with `RESIDIUUM_WRITE_SPEC_EVIDENCE=1` or `scripts/publish-rql-q3-evidence.sh`.

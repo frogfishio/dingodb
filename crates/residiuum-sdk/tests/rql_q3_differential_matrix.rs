@@ -16,6 +16,9 @@
 //! Failures are **defects** (suite fails). Row count alone is never enough:
 //! keys, values, multiplicity, order (when declared), coverage.
 
+#[path = "common/rql_evidence_write.rs"]
+mod rql_evidence_write;
+
 use residiuum_heap::{
     mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, CollectionId, Constraints,
     DeploymentId, HeapAdministrativeState, HeapId, HeapSecuritySnapshot, HeapSlot, Rights,
@@ -1352,12 +1355,12 @@ fn rql_q3_2_corpus_differential_matrix() {
         "cases": case_results,
     });
 
-    let out_dir = root.join("target/rql-q3");
-    let _ = fs::create_dir_all(&out_dir);
-    let report = out_dir.join("q3_2_differential_report.json");
-    fs::write(&report, serde_json::to_string_pretty(&summary).unwrap()).unwrap();
-    let evidence = root.join("spec/rql/qualification/corpus-v1/q3_2_differential_report.json");
-    fs::write(&evidence, serde_json::to_string_pretty(&summary).unwrap()).unwrap();
+    // F8: default → target/ only; RESIDIUUM_WRITE_SPEC_EVIDENCE=1 publishes spec/.
+    let report = rql_evidence_write::write_q3_report(
+        &root,
+        "q3_2_differential_report.json",
+        &serde_json::to_string_pretty(&summary).unwrap(),
+    );
 
     eprintln!(
         "rql_q3_2: equal={equal_all} diverge={diverge} unsupported={unsupported} errors={product_err} reopen_checked={reopen_checked} reopen_fail={reopen_fail} considered={considered}"

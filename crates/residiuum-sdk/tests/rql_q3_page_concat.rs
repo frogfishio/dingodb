@@ -13,6 +13,9 @@
 //!
 //! Not Gate-1; not RQL-Q3 package accept.
 
+#[path = "common/rql_evidence_write.rs"]
+mod rql_evidence_write;
+
 use residiuum_heap::{
     mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, Constraints, DeploymentId,
     HeapAdministrativeState, HeapId, HeapSecuritySnapshot, HeapSlot, Rights, SecurityRevision,
@@ -24,7 +27,6 @@ use residiuum_sdk::{
 use residiuum_store::{publish_staged_genesis, stage_heap_genesis, HeapMetaLayout};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
-use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tempfile::tempdir;
@@ -276,11 +278,8 @@ fn q34_law_single_page_is_unpaged() {
 #[test]
 fn q34_write_report() {
     // Evidence stamp for verify script (unit law suite presence).
+    // F8: default → target/ only; RESIDIUUM_WRITE_SPEC_EVIDENCE=1 publishes spec/.
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let path = root.join("spec/rql/qualification/corpus-v1/q3_4_page_concat_report.json");
-    if let Some(p) = path.parent() {
-        let _ = fs::create_dir_all(p);
-    }
     let report = json!({
         "format": "residiuum-rql-q3-4-page-concat-report-v1",
         "package": "RQL-Q3",
@@ -305,6 +304,10 @@ fn q34_write_report() {
         ],
         "human": "doc/todo/rql/RQL_Q3_4_PAGE_CONCAT.md",
     });
-    fs::write(&path, serde_json::to_string_pretty(&report).unwrap()).expect("write report");
+    let path = rql_evidence_write::write_q3_report(
+        &root,
+        "q3_4_page_concat_report.json",
+        &serde_json::to_string_pretty(&report).unwrap(),
+    );
     assert!(path.is_file());
 }

@@ -20,6 +20,9 @@
 //! One-command green: `bash scripts/verify-rql-q3.sh` (unifies Q3.1–Q3.3).
 //! Green ≠ Gate-1; green ≠ RQL-Q3 package accept.
 
+#[path = "common/rql_evidence_write.rs"]
+mod rql_evidence_write;
+
 use residiuum_heap::{
     mint_capability, AuthorityEpoch, AuthorityGeneration, CertificateId, CollectionId, Constraints,
     DeploymentId, HeapAdministrativeState, HeapId, HeapSecuritySnapshot, HeapSlot, Rights,
@@ -33,7 +36,6 @@ use residiuum_sdk::{
 use residiuum_store::{publish_staged_genesis, stage_heap_genesis, HeapMetaLayout};
 use serde_json::{json, Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -1161,13 +1163,8 @@ fn q33_write_adversarial_report() {
     });
 
     let root = workspace_root();
-    let out1 = root.join("spec/rql/qualification/corpus-v1/q3_3_adversarial_report.json");
-    let out2 = root.join("target/rql-q3/q3_3_adversarial_report.json");
-    if let Some(parent) = out2.parent() {
-        let _ = fs::create_dir_all(parent);
-    }
     let pretty = serde_json::to_string_pretty(&report).unwrap();
-    fs::write(&out1, &pretty).expect("write spec report");
-    let _ = fs::write(&out2, &pretty);
-    assert!(out1.is_file());
+    // F8: default → target/ only; RESIDIUUM_WRITE_SPEC_EVIDENCE=1 publishes spec/.
+    let out = rql_evidence_write::write_q3_report(&root, "q3_3_adversarial_report.json", &pretty);
+    assert!(out.is_file());
 }

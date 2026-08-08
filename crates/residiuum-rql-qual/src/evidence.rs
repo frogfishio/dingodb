@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -244,6 +244,41 @@ pub fn scaffold_cell(
     }
 }
 
+
+/// Env flag: when truthy, also write checked-in `spec/` evidence snapshots (F8).
+/// Default is off — tests/verify write under `target/rql-q4/` only.
+pub fn write_spec_evidence_enabled() -> bool {
+    match std::env::var("RESIDIUUM_WRITE_SPEC_EVIDENCE") {
+        Ok(v) => {
+            let v = v.trim().to_ascii_lowercase();
+            matches!(v.as_str(), "1" | "true" | "yes" | "on")
+        }
+        Err(_) => false,
+    }
+}
+
+/// Always write `body` to `target_path`. Optionally also to `spec_path` when
+/// [`write_spec_evidence_enabled`].
+pub fn write_evidence_artifact(
+    target_path: impl AsRef<Path>,
+    spec_path: impl AsRef<Path>,
+    body: &str,
+) -> Result<PathBuf, EvidenceError> {
+    let target_path = target_path.as_ref();
+    if let Some(parent) = target_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| EvidenceError::Io(e.to_string()))?;
+    }
+    fs::write(target_path, body).map_err(|e| EvidenceError::Io(e.to_string()))?;
+    if write_spec_evidence_enabled() {
+        let spec_path = spec_path.as_ref();
+        if let Some(parent) = spec_path.parent() {
+            fs::create_dir_all(parent).map_err(|e| EvidenceError::Io(e.to_string()))?;
+        }
+        fs::write(spec_path, body).map_err(|e| EvidenceError::Io(e.to_string()))?;
+    }
+    Ok(target_path.to_path_buf())
+}
+
 /// Minimal machine-readable architecture report for verify script.
 pub fn write_architecture_report(path: impl AsRef<Path>) -> Result<Value, EvidenceError> {
     let report = json!({
@@ -339,9 +374,16 @@ mod tests {
         assert!(out.is_file());
         assert!(bundle.content_hash.is_some());
 
-        let report_path = root.join("spec/rql/qualification/harness-v1/q4_1_architecture_report.json");
-        write_architecture_report(&report_path).expect("arch report");
-        assert!(report_path.is_file());
+        // F8: default → target/; RESIDIUUM_WRITE_SPEC_EVIDENCE=1 also writes spec/.
+        let target = root.join("target/rql-q4/q4_1_architecture_report.json");
+        let spec = root.join("spec/rql/qualification/harness-v1/q4_1_architecture_report.json");
+        let report = write_architecture_report(&target).expect("arch report");
+        assert!(target.is_file());
+        assert_eq!(report["format"], "residiuum-rql-q4-1-architecture-report-v1");
+        if write_spec_evidence_enabled() {
+            write_architecture_report(&spec).expect("arch report spec");
+            assert!(spec.is_file());
+        }
     }
 
     #[test]

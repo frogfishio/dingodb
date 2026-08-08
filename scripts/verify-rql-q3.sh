@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # RQL-Q3 one-command green: Q3.1 oracle + Q3.2 differential + Q3.3 adversarial + Q3.4 page-concat.
 # Exit 0 = labor evidence only. Does NOT accept the package (principal).
+#
+# F8: tests write under target/rql-q3/ by default (do not rewrite checked-in spec/).
+#      Publish snapshots: bash scripts/publish-rql-q3-evidence.sh
+#      or RESIDIUUM_WRITE_SPEC_EVIDENCE=1 cargo test ...
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -11,6 +15,20 @@ fail() { printf 'verify-rql-q3: FAIL: %s\n' "$*" >&2; exit 1; }
 need() {
   if [[ ! -f "$1" ]]; then
     fail "missing required file: $1"
+  fi
+}
+
+# Prefer fresh target/ report from this run; fall back to committed spec/ snapshot.
+resolve_report() {
+  local name="$1"
+  local target="$ROOT/target/rql-q3/$name"
+  local spec="$ROOT/spec/rql/qualification/corpus-v1/$name"
+  if [[ -f "$target" ]]; then
+    printf '%s' "$target"
+  elif [[ -f "$spec" ]]; then
+    printf '%s' "$spec"
+  else
+    fail "missing report: $name (neither target/rql-q3/ nor committed spec/)"
   fi
 }
 
@@ -28,6 +46,13 @@ need "$ROOT/tools/rql_q1/materialise_fixture.py"
 command -v cargo >/dev/null 2>&1 || fail "cargo required"
 command -v python3 >/dev/null 2>&1 || fail "python3 required"
 
+# Snapshot tracked evidence before tests (F8: default must not mutate them).
+SPEC_BEFORE=$(
+  git -C "$ROOT" status --porcelain -- \
+    'spec/rql/qualification/corpus-v1/q3_*.json' \
+    'spec/rql/qualification/harness-v1/q4_*.json' 2>/dev/null || true
+)
+
 ok "Q3.1 independent semantic oracle"
 cargo test -p residiuum-sdk --test rql_q3_semantic_oracle
 
@@ -40,14 +65,11 @@ cargo test -p residiuum-sdk --test rql_q3_adversarial
 ok "Q3.4 page-concat metamorphic law"
 cargo test -p residiuum-sdk --test rql_q3_page_concat
 
-REPORT1="$ROOT/spec/rql/qualification/corpus-v1/q3_1_oracle_report.json"
-REPORT2="$ROOT/spec/rql/qualification/corpus-v1/q3_2_differential_report.json"
-REPORT3="$ROOT/spec/rql/qualification/corpus-v1/q3_3_adversarial_report.json"
-REPORT4="$ROOT/spec/rql/qualification/corpus-v1/q3_4_page_concat_report.json"
-need "$REPORT1"
-need "$REPORT2"
-need "$REPORT3"
-need "$REPORT4"
+REPORT1="$(resolve_report q3_1_oracle_report.json)"
+REPORT2="$(resolve_report q3_2_differential_report.json)"
+REPORT3="$(resolve_report q3_3_adversarial_report.json)"
+REPORT4="$(resolve_report q3_4_page_concat_report.json)"
+ok "using reports: $(basename "$REPORT1") from $(dirname "$REPORT1" | sed "s|$ROOT/||")"
 
 python3 - "$REPORT1" "$REPORT2" "$REPORT3" "$REPORT4" <<'PY'
 import json, sys
@@ -96,4 +118,16 @@ print(
 )
 PY
 
-ok "PASS (Q3.1–Q3.4 labor evidence only — not package accept)"
+SPEC_AFTER=$(
+  git -C "$ROOT" status --porcelain -- \
+    'spec/rql/qualification/corpus-v1/q3_*.json' \
+    'spec/rql/qualification/harness-v1/q4_*.json' 2>/dev/null || true
+)
+if [[ "$SPEC_BEFORE" != "$SPEC_AFTER" ]]; then
+  fail "default verify mutated tracked evidence under spec/ (F8). Before/after porcelain differs.
+  set RESIDIUUM_WRITE_SPEC_EVIDENCE=1 only for explicit publish.
+  before: $SPEC_BEFORE
+  after:  $SPEC_AFTER"
+fi
+
+ok "PASS (Q3.1–Q3.4 labor evidence only — not package accept; F8 no-spec-churn)"
