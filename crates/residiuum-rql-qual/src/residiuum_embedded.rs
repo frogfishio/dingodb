@@ -7,7 +7,7 @@
 
 use crate::canonicalize::{canonicalize_rows, ResultRow};
 use crate::cell_plan::MeasuredCellPlan;
-use crate::engine::{AdapterError, AdapterStatus, EngineRunOutcome};
+use crate::engine::{AdapterError, AdapterStatus, EngineRunOutcome, ExecutionKind};
 use crate::lane::EngineId;
 use crate::metrics::{
     assemble_metrics, LatencyCollector, QueryPathMetrics, QueryTimer,
@@ -82,6 +82,7 @@ pub fn execute_plan_embedded(
     {
         return Ok(EngineRunOutcome {
             engine: EngineId::ResidiuumEmbedded,
+            execution_kind: ExecutionKind::Product,
             status: AdapterStatus::Ready,
             result: None,
             metrics: None,
@@ -143,6 +144,7 @@ pub fn execute_plan_embedded(
         Err(e) => {
             return Ok(EngineRunOutcome {
                 engine: EngineId::ResidiuumEmbedded,
+                execution_kind: ExecutionKind::Product,
                 status: AdapterStatus::Ready,
                 result: None,
                 metrics: None,
@@ -184,6 +186,7 @@ pub fn execute_plan_embedded(
 
     Ok(EngineRunOutcome {
         engine: EngineId::ResidiuumEmbedded,
+        execution_kind: ExecutionKind::Product,
         status: AdapterStatus::Ready,
         result: Some(canon),
         metrics: Some(metrics),

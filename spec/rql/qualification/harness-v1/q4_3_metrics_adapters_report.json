@@ -12,7 +12,7 @@
   ],
   "summary": {
     "cbl_shared_work_loaded": 12,
-    "content_hash": "fa07e047dfb6d13c6b7502e4ca32707d9d5bb8e2941b35ea461a73b4512fc6e3",
+    "content_hash": "064e415771f33451aeaca996d20286801dd84864141ce009684bfc3be2cb7827",
     "lane_s_fixture_identity": true,
     "logical_ready_with_result": 12,
     "metric_envelope": "§7.4 collectors + path digests",

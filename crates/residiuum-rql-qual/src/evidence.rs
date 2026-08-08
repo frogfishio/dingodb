@@ -257,6 +257,7 @@ pub fn write_architecture_report(path: impl AsRef<Path>) -> Result<Value, Eviden
             EngineId::ResidiuumServer.as_str(),
             EngineId::MongoLocal.as_str(),
             EngineId::CouchbaseLiteEmbedded.as_str(),
+            EngineId::LogicalHarness.as_str(),
         ],
         "modules": [
             "lane", "fixture", "engine", "canonicalize", "metrics", "evidence", "cells"

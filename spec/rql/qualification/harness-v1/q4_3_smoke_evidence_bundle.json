@@ -4,14 +4,14 @@
   "env": {
     "format": "residiuum-rql-qual-env-fingerprint-v1",
     "harness_profile": "residiuum-rql-qual-harness-v1",
-    "git_sha": "d3514ba3dbd496d480421999a81fc326625a6693",
+    "git_sha": "678975ff38d90c232de814ef6a6a23c13b833a12",
     "dirty": true,
     "residiuum_version": "0.2.2",
     "rustc": "rustc 1.92.0 (ded5c06cf 2025-12-08)",
     "os": "macos",
     "arch": "aarch64",
     "hostname_class": "controlled_host_unspecified",
-    "recorded_unix_s": 1786165507,
+    "recorded_unix_s": 1786166908,
     "mongo_pin": "8.2.12",
     "cbl_pin": "4.1.0",
     "cbl_full_sync": true,
@@ -36,12 +36,13 @@
       "lane": "embedded",
       "pairing": {
         "lane": "embedded",
-        "side_a": "residiuum_embedded",
+        "side_a": "logical_harness",
         "side_b": "couchbase_lite_embedded"
       },
       "concurrency": 1,
       "side_a": {
-        "engine": "residiuum_embedded",
+        "engine": "logical_harness",
+        "execution_kind": "logical_simulator",
         "status": "ready",
         "result": {
           "keys_digest": "684da7bb288def1fc8e6d66715b495a54a792b64353824b916dab93e814359a8",
@@ -52,12 +53,12 @@
           "row_count": 1
         },
         "metrics": {
-          "queries_per_s": 139528.39402818473,
+          "queries_per_s": 50210.885720024104,
           "latency": {
-            "p50": 7167,
-            "p95": 7167,
-            "p99": 7167,
-            "max": 7167,
+            "p50": 19916,
+            "p95": 19916,
+            "p99": 19916,
+            "max": 19916,
             "samples": 1
           },
           "resource": {
@@ -90,6 +91,7 @@
       },
       "side_b": {
         "engine": "couchbase_lite_embedded",
+        "execution_kind": "not_configured",
         "status": "not_configured",
         "result": null,
         "metrics": null,
@@ -100,12 +102,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 139528.39402818473,
+        "queries_per_s": 50210.885720024104,
         "latency": {
-          "p50": 7167,
-          "p95": 7167,
-          "p99": 7167,
-          "max": 7167,
+          "p50": 19916,
+          "p95": 19916,
+          "p99": 19916,
+          "max": 19916,
           "samples": 1
         },
         "resource": {
@@ -141,12 +143,13 @@
       "lane": "embedded",
       "pairing": {
         "lane": "embedded",
-        "side_a": "residiuum_embedded",
+        "side_a": "logical_harness",
         "side_b": "couchbase_lite_embedded"
       },
       "concurrency": 1,
       "side_a": {
-        "engine": "residiuum_embedded",
+        "engine": "logical_harness",
+        "execution_kind": "logical_simulator",
         "status": "ready",
         "result": {
           "keys_digest": "7852cc456e308d8c23142016fb9a147cef1277ed2fccc6196395bc4742dff2e3",
@@ -157,12 +160,12 @@
           "row_count": 7
         },
         "metrics": {
-          "queries_per_s": 28880.86642599278,
+          "queries_per_s": 12868.687908580841,
           "latency": {
-            "p50": 34625,
-            "p95": 34625,
-            "p99": 34625,
-            "max": 34625,
+            "p50": 77708,
+            "p95": 77708,
+            "p99": 77708,
+            "max": 77708,
             "samples": 1
           },
           "resource": {
@@ -195,6 +198,7 @@
       },
       "side_b": {
         "engine": "couchbase_lite_embedded",
+        "execution_kind": "not_configured",
         "status": "not_configured",
         "result": null,
         "metrics": null,
@@ -205,12 +209,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 28880.86642599278,
+        "queries_per_s": 12868.687908580841,
         "latency": {
-          "p50": 34625,
-          "p95": 34625,
-          "p99": 34625,
-          "max": 34625,
+          "p50": 77708,
+          "p95": 77708,
+          "p99": 77708,
+          "max": 77708,
           "samples": 1
         },
         "resource": {
@@ -246,12 +250,13 @@
       "lane": "embedded",
       "pairing": {
         "lane": "embedded",
-        "side_a": "residiuum_embedded",
+        "side_a": "logical_harness",
         "side_b": "couchbase_lite_embedded"
       },
       "concurrency": 1,
       "side_a": {
-        "engine": "residiuum_embedded",
+        "engine": "logical_harness",
+        "execution_kind": "logical_simulator",
         "status": "ready",
         "result": {
           "keys_digest": "8435b3e2da4e22357e2b3f5b70872749e54fc059ed364d2fd4e801975243d21e",
@@ -262,12 +267,12 @@
           "row_count": 8
         },
         "metrics": {
-          "queries_per_s": 34482.75862068965,
+          "queries_per_s": 12219.85971601046,
           "latency": {
-            "p50": 29000,
-            "p95": 29000,
-            "p99": 29000,
-            "max": 29000,
+            "p50": 81834,
+            "p95": 81834,
+            "p99": 81834,
+            "max": 81834,
             "samples": 1
           },
           "resource": {
@@ -300,6 +305,7 @@
       },
       "side_b": {
         "engine": "couchbase_lite_embedded",
+        "execution_kind": "not_configured",
         "status": "not_configured",
         "result": null,
         "metrics": null,
@@ -310,12 +316,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 34482.75862068965,
+        "queries_per_s": 12219.85971601046,
         "latency": {
-          "p50": 29000,
-          "p95": 29000,
-          "p99": 29000,
-          "max": 29000,
+          "p50": 81834,
+          "p95": 81834,
+          "p99": 81834,
+          "max": 81834,
           "samples": 1
         },
         "resource": {
@@ -351,12 +357,13 @@
       "lane": "embedded",
       "pairing": {
         "lane": "embedded",
-        "side_a": "residiuum_embedded",
+        "side_a": "logical_harness",
         "side_b": "couchbase_lite_embedded"
       },
       "concurrency": 1,
       "side_a": {
-        "engine": "residiuum_embedded",
+        "engine": "logical_harness",
+        "execution_kind": "logical_simulator",
         "status": "ready",
         "result": {
           "keys_digest": "e68a650db70f28f66a3b099684df8de9f0854324c3267b6acbc3448b0fbb2880",
@@ -367,12 +374,12 @@
           "row_count": 11
         },
         "metrics": {
-          "queries_per_s": 14150.87664680827,
+          "queries_per_s": 4614.504309947026,
           "latency": {
-            "p50": 70667,
-            "p95": 70667,
-            "p99": 70667,
-            "max": 70667,
+            "p50": 216708,
+            "p95": 216708,
+            "p99": 216708,
+            "max": 216708,
             "samples": 1
           },
           "resource": {
@@ -405,6 +412,7 @@
       },
       "side_b": {
         "engine": "couchbase_lite_embedded",
+        "execution_kind": "not_configured",
         "status": "not_configured",
         "result": null,
         "metrics": null,
@@ -415,12 +423,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 14150.87664680827,
+        "queries_per_s": 4614.504309947026,
         "latency": {
-          "p50": 70667,
-          "p95": 70667,
-          "p99": 70667,
-          "max": 70667,
+          "p50": 216708,
+          "p95": 216708,
+          "p99": 216708,
+          "max": 216708,
           "samples": 1
         },
         "resource": {
@@ -456,12 +464,13 @@
       "lane": "embedded",
       "pairing": {
         "lane": "embedded",
-        "side_a": "residiuum_embedded",
+        "side_a": "logical_harness",
         "side_b": "couchbase_lite_embedded"
       },
       "concurrency": 1,
       "side_a": {
-        "engine": "residiuum_embedded",
+        "engine": "logical_harness",
+        "execution_kind": "logical_simulator",
         "status": "ready",
         "result": {
           "keys_digest": "1c45b196073766995adb10865b34a9908940c3f93f235140e6c8fb639dee7623",
@@ -472,12 +481,12 @@
           "row_count": 64
         },
         "metrics": {
-          "queries_per_s": 20443.20876604792,
+          "queries_per_s": 6116.207951070336,
           "latency": {
-            "p50": 48916,
-            "p95": 48916,
-            "p99": 48916,
-            "max": 48916,
+            "p50": 163500,
+            "p95": 163500,
+            "p99": 163500,
+            "max": 163500,
             "samples": 1
           },
           "resource": {
@@ -510,6 +519,7 @@
       },
       "side_b": {
         "engine": "couchbase_lite_embedded",
+        "execution_kind": "not_configured",
         "status": "not_configured",
         "result": null,
         "metrics": null,
@@ -520,12 +530,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 20443.20876604792,
+        "queries_per_s": 6116.207951070336,
         "latency": {
-          "p50": 48916,
-          "p95": 48916,
-          "p99": 48916,
-          "max": 48916,
+          "p50": 163500,
+          "p95": 163500,
+          "p99": 163500,
+          "max": 163500,
           "samples": 1
         },
         "resource": {
@@ -561,12 +571,13 @@
       "lane": "embedded",
       "pairing": {
         "lane": "embedded",
-        "side_a": "residiuum_embedded",
+        "side_a": "logical_harness",
         "side_b": "couchbase_lite_embedded"
       },
       "concurrency": 1,
       "side_a": {
-        "engine": "residiuum_embedded",
+        "engine": "logical_harness",
+        "execution_kind": "logical_simulator",
         "status": "ready",
         "result": {
           "keys_digest": "f396958ffc68ebeff9af17069a9e498d811bd9ccbffc0abd0bf877faf4bdcc26",
@@ -577,12 +588,12 @@
           "row_count": 10
         },
         "metrics": {
-          "queries_per_s": 6212.762256226741,
+          "queries_per_s": 1877.2010181938322,
           "latency": {
-            "p50": 160959,
-            "p95": 160959,
-            "p99": 160959,
-            "max": 160959,
+            "p50": 532708,
+            "p95": 532708,
+            "p99": 532708,
+            "max": 532708,
             "samples": 1
           },
           "resource": {
@@ -615,6 +626,7 @@
       },
       "side_b": {
         "engine": "couchbase_lite_embedded",
+        "execution_kind": "not_configured",
         "status": "not_configured",
         "result": null,
         "metrics": null,
@@ -625,12 +637,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 6212.762256226741,
+        "queries_per_s": 1877.2010181938322,
         "latency": {
-          "p50": 160959,
-          "p95": 160959,
-          "p99": 160959,
-          "max": 160959,
+          "p50": 532708,
+          "p95": 532708,
+          "p99": 532708,
+          "max": 532708,
           "samples": 1
         },
         "resource": {
@@ -666,12 +678,13 @@
       "lane": "embedded",
       "pairing": {
         "lane": "embedded",
-        "side_a": "residiuum_embedded",
+        "side_a": "logical_harness",
         "side_b": "couchbase_lite_embedded"
       },
       "concurrency": 1,
       "side_a": {
-        "engine": "residiuum_embedded",
+        "engine": "logical_harness",
+        "execution_kind": "logical_simulator",
         "status": "ready",
         "result": {
           "keys_digest": "1c45b196073766995adb10865b34a9908940c3f93f235140e6c8fb639dee7623",
@@ -682,12 +695,12 @@
           "row_count": 64
         },
         "metrics": {
-          "queries_per_s": 10909.170248510898,
+          "queries_per_s": 4209.055361705173,
           "latency": {
-            "p50": 91666,
-            "p95": 91666,
-            "p99": 91666,
-            "max": 91666,
+            "p50": 237583,
+            "p95": 237583,
+            "p99": 237583,
+            "max": 237583,
             "samples": 1
           },
           "resource": {
@@ -720,6 +733,7 @@
       },
       "side_b": {
         "engine": "couchbase_lite_embedded",
+        "execution_kind": "not_configured",
         "status": "not_configured",
         "result": null,
         "metrics": null,
@@ -730,12 +744,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 10909.170248510898,
+        "queries_per_s": 4209.055361705173,
         "latency": {
-          "p50": 91666,
-          "p95": 91666,
-          "p99": 91666,
-          "max": 91666,
+          "p50": 237583,
+          "p95": 237583,
+          "p99": 237583,
+          "max": 237583,
           "samples": 1
         },
         "resource": {
@@ -771,12 +785,13 @@
       "lane": "embedded",
       "pairing": {
         "lane": "embedded",
-        "side_a": "residiuum_embedded",
+        "side_a": "logical_harness",
         "side_b": "couchbase_lite_embedded"
       },
       "concurrency": 1,
       "side_a": {
-        "engine": "residiuum_embedded",
+        "engine": "logical_harness",
+        "execution_kind": "logical_simulator",
         "status": "ready",
         "result": {
           "keys_digest": "1c45b196073766995adb10865b34a9908940c3f93f235140e6c8fb639dee7623",
@@ -787,12 +802,12 @@
           "row_count": 64
         },
         "metrics": {
-          "queries_per_s": 2337.81414377557,
+          "queries_per_s": 1480.2928611396478,
           "latency": {
-            "p50": 427750,
-            "p95": 427750,
-            "p99": 427750,
-            "max": 427750,
+            "p50": 675542,
+            "p95": 675542,
+            "p99": 675542,
+            "max": 675542,
             "samples": 1
           },
           "resource": {
@@ -825,6 +840,7 @@
       },
       "side_b": {
         "engine": "couchbase_lite_embedded",
+        "execution_kind": "not_configured",
         "status": "not_configured",
         "result": null,
         "metrics": null,
@@ -835,12 +851,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 2337.81414377557,
+        "queries_per_s": 1480.2928611396478,
         "latency": {
-          "p50": 427750,
-          "p95": 427750,
-          "p99": 427750,
-          "max": 427750,
+          "p50": 675542,
+          "p95": 675542,
+          "p99": 675542,
+          "max": 675542,
           "samples": 1
         },
         "resource": {
@@ -876,12 +892,13 @@
       "lane": "embedded",
       "pairing": {
         "lane": "embedded",
-        "side_a": "residiuum_embedded",
+        "side_a": "logical_harness",
         "side_b": "couchbase_lite_embedded"
       },
       "concurrency": 1,
       "side_a": {
-        "engine": "residiuum_embedded",
+        "engine": "logical_harness",
+        "execution_kind": "logical_simulator",
         "status": "ready",
         "result": {
           "keys_digest": "bb3a577b90e80d1a83d13833229783a360cbc1998c82243000fac81148b3a968",
@@ -892,12 +909,12 @@
           "row_count": 2
         },
         "metrics": {
-          "queries_per_s": 34042.55319148936,
+          "queries_per_s": 13029.315960912052,
           "latency": {
-            "p50": 29375,
-            "p95": 29375,
-            "p99": 29375,
-            "max": 29375,
+            "p50": 76750,
+            "p95": 76750,
+            "p99": 76750,
+            "max": 76750,
             "samples": 1
           },
           "resource": {
@@ -930,6 +947,7 @@
       },
       "side_b": {
         "engine": "couchbase_lite_embedded",
+        "execution_kind": "not_configured",
         "status": "not_configured",
         "result": null,
         "metrics": null,
@@ -940,12 +958,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 34042.55319148936,
+        "queries_per_s": 13029.315960912052,
         "latency": {
-          "p50": 29375,
-          "p95": 29375,
-          "p99": 29375,
-          "max": 29375,
+          "p50": 76750,
+          "p95": 76750,
+          "p99": 76750,
+          "max": 76750,
           "samples": 1
         },
         "resource": {
@@ -981,12 +999,13 @@
       "lane": "embedded",
       "pairing": {
         "lane": "embedded",
-        "side_a": "residiuum_embedded",
+        "side_a": "logical_harness",
         "side_b": "couchbase_lite_embedded"
       },
       "concurrency": 1,
       "side_a": {
-        "engine": "residiuum_embedded",
+        "engine": "logical_harness",
+        "execution_kind": "logical_simulator",
         "status": "ready",
         "result": {
           "keys_digest": "7df22c82473f887e12a3c3d332f698fb3586e9c3ce34b7c1e02d9a637bb37f2a",
@@ -997,12 +1016,12 @@
           "row_count": 5
         },
         "metrics": {
-          "queries_per_s": 22222.222222222223,
+          "queries_per_s": 7868.873098683537,
           "latency": {
-            "p50": 45000,
-            "p95": 45000,
-            "p99": 45000,
-            "max": 45000,
+            "p50": 127083,
+            "p95": 127083,
+            "p99": 127083,
+            "max": 127083,
             "samples": 1
           },
           "resource": {
@@ -1035,6 +1054,7 @@
       },
       "side_b": {
         "engine": "couchbase_lite_embedded",
+        "execution_kind": "not_configured",
         "status": "not_configured",
         "result": null,
         "metrics": null,
@@ -1045,12 +1065,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 22222.222222222223,
+        "queries_per_s": 7868.873098683537,
         "latency": {
-          "p50": 45000,
-          "p95": 45000,
-          "p99": 45000,
-          "max": 45000,
+          "p50": 127083,
+          "p95": 127083,
+          "p99": 127083,
+          "max": 127083,
           "samples": 1
         },
         "resource": {
@@ -1086,12 +1106,13 @@
       "lane": "embedded",
       "pairing": {
         "lane": "embedded",
-        "side_a": "residiuum_embedded",
+        "side_a": "logical_harness",
         "side_b": "couchbase_lite_embedded"
       },
       "concurrency": 1,
       "side_a": {
-        "engine": "residiuum_embedded",
+        "engine": "logical_harness",
+        "execution_kind": "logical_simulator",
         "status": "ready",
         "result": {
           "keys_digest": "1c45b196073766995adb10865b34a9908940c3f93f235140e6c8fb639dee7623",
@@ -1102,12 +1123,12 @@
           "row_count": 64
         },
         "metrics": {
-          "queries_per_s": 15009.3808630394,
+          "queries_per_s": 3316.287614992273,
           "latency": {
-            "p50": 66625,
-            "p95": 66625,
-            "p99": 66625,
-            "max": 66625,
+            "p50": 301542,
+            "p95": 301542,
+            "p99": 301542,
+            "max": 301542,
             "samples": 1
           },
           "resource": {
@@ -1140,6 +1161,7 @@
       },
       "side_b": {
         "engine": "couchbase_lite_embedded",
+        "execution_kind": "not_configured",
         "status": "not_configured",
         "result": null,
         "metrics": null,
@@ -1150,12 +1172,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 15009.3808630394,
+        "queries_per_s": 3316.287614992273,
         "latency": {
-          "p50": 66625,
-          "p95": 66625,
-          "p99": 66625,
-          "max": 66625,
+          "p50": 301542,
+          "p95": 301542,
+          "p99": 301542,
+          "max": 301542,
           "samples": 1
         },
         "resource": {
@@ -1191,12 +1213,13 @@
       "lane": "embedded",
       "pairing": {
         "lane": "embedded",
-        "side_a": "residiuum_embedded",
+        "side_a": "logical_harness",
         "side_b": "couchbase_lite_embedded"
       },
       "concurrency": 1,
       "side_a": {
-        "engine": "residiuum_embedded",
+        "engine": "logical_harness",
+        "execution_kind": "logical_simulator",
         "status": "ready",
         "result": {
           "keys_digest": "7852cc456e308d8c23142016fb9a147cef1277ed2fccc6196395bc4742dff2e3",
@@ -1207,12 +1230,12 @@
           "row_count": 7
         },
         "metrics": {
-          "queries_per_s": 615.9213197469303,
+          "queries_per_s": 192.23682346335013,
           "latency": {
-            "p50": 1623584,
-            "p95": 1623584,
-            "p99": 1623584,
-            "max": 1623584,
+            "p50": 5201917,
+            "p95": 5201917,
+            "p99": 5201917,
+            "max": 5201917,
             "samples": 1
           },
           "resource": {
@@ -1245,6 +1268,7 @@
       },
       "side_b": {
         "engine": "couchbase_lite_embedded",
+        "execution_kind": "not_configured",
         "status": "not_configured",
         "result": null,
         "metrics": null,
@@ -1255,12 +1279,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 615.9213197469303,
+        "queries_per_s": 192.23682346335013,
         "latency": {
-          "p50": 1623584,
-          "p95": 1623584,
-          "p99": 1623584,
-          "max": 1623584,
+          "p50": 5201917,
+          "p95": 5201917,
+          "p99": 5201917,
+          "max": 5201917,
           "samples": 1
         },
         "resource": {
@@ -1291,5 +1315,5 @@
       "scaffold_only": true
     }
   ],
-  "content_hash": "fa07e047dfb6d13c6b7502e4ca32707d9d5bb8e2941b35ea461a73b4512fc6e3"
+  "content_hash": "064e415771f33451aeaca996d20286801dd84864141ce009684bfc3be2cb7827"
 }

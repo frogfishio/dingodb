@@ -24,6 +24,8 @@ impl LaneId {
 }
 
 /// Engine under test or comparator.
+///
+/// **F5:** [`LogicalHarness`] is the pure simulator — never a product Residiuum id.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EngineId {
@@ -31,6 +33,8 @@ pub enum EngineId {
     ResidiuumServer,
     MongoLocal,
     CouchbaseLiteEmbedded,
+    /// Test-only logical evaluator (not product; not competitive).
+    LogicalHarness,
 }
 
 impl EngineId {
@@ -40,13 +44,33 @@ impl EngineId {
             Self::ResidiuumServer => "residiuum_server",
             Self::MongoLocal => "mongo_local",
             Self::CouchbaseLiteEmbedded => "cbl_embedded",
+            Self::LogicalHarness => "logical_harness",
         }
     }
 
+    /// True for product/comparator engines that may appear in Gate-1 competitive cells.
+    pub fn is_competitive_product(self) -> bool {
+        matches!(
+            self,
+            Self::ResidiuumEmbedded
+                | Self::ResidiuumServer
+                | Self::MongoLocal
+                | Self::CouchbaseLiteEmbedded
+        )
+    }
+
+    /// True only for the pure logical simulator.
+    pub fn is_logical_simulator(self) -> bool {
+        matches!(self, Self::LogicalHarness)
+    }
+
     /// Lane this engine may participate in for Gate-1 cells.
+    /// Logical harness scaffolds on Lane E only (not a competitive pairing).
     pub fn primary_lane(self) -> LaneId {
         match self {
-            Self::ResidiuumEmbedded | Self::CouchbaseLiteEmbedded => LaneId::Embedded,
+            Self::ResidiuumEmbedded
+            | Self::CouchbaseLiteEmbedded
+            | Self::LogicalHarness => LaneId::Embedded,
             Self::ResidiuumServer | Self::MongoLocal => LaneId::LocalClientServer,
         }
     }
@@ -61,9 +85,17 @@ pub struct LanePairing {
 }
 
 impl LanePairing {
+    /// Competitive Lane E pairing (product Residiuum vs CBL).
     pub const EMBEDDED: Self = Self {
         lane: LaneId::Embedded,
         side_a: EngineId::ResidiuumEmbedded,
+        side_b: EngineId::CouchbaseLiteEmbedded,
+    };
+
+    /// Scaffold Lane E: logical simulator vs CBL stub (not competitive).
+    pub const SCAFFOLD_LOGICAL_VS_CBL: Self = Self {
+        lane: LaneId::Embedded,
+        side_a: EngineId::LogicalHarness,
         side_b: EngineId::CouchbaseLiteEmbedded,
     };
 
@@ -91,6 +123,11 @@ impl LanePairing {
         }
         Ok(())
     }
+
+    /// Competitive claim requires both sides to be product/comparator engines.
+    pub fn is_competitive(self) -> bool {
+        self.side_a.is_competitive_product() && self.side_b.is_competitive_product()
+    }
 }
 
 #[cfg(test)]
@@ -101,6 +138,11 @@ mod tests {
     fn frozen_pairings_validate() {
         LanePairing::EMBEDDED.validate().unwrap();
         LanePairing::LOCAL_CS.validate().unwrap();
+        LanePairing::SCAFFOLD_LOGICAL_VS_CBL.validate().unwrap();
+        assert!(LanePairing::EMBEDDED.is_competitive());
+        assert!(!LanePairing::SCAFFOLD_LOGICAL_VS_CBL.is_competitive());
+        assert!(EngineId::LogicalHarness.is_logical_simulator());
+        assert!(!EngineId::LogicalHarness.is_competitive_product());
     }
 
     #[test]

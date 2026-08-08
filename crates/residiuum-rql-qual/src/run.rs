@@ -154,7 +154,7 @@ pub fn publish_smoke_evidence(
         }
         let mut cell = scaffold_cell(
             &r.plan_id,
-            LanePairing::EMBEDDED,
+            LanePairing::SCAFFOLD_LOGICAL_VS_CBL,
             r.side_a.clone(),
             r.side_b.clone(),
         );

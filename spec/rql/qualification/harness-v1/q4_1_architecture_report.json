@@ -5,7 +5,8 @@
     "residiuum_embedded",
     "residiuum_server",
     "mongo_local",
-    "cbl_embedded"
+    "cbl_embedded",
+    "logical_harness"
   ],
   "env_fingerprint_schema": "residiuum-rql-qual-env-fingerprint-v1",
   "evidence_bundle_schema": "residiuum-rql-qual-evidence-bundle-v1",

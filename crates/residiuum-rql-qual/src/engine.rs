@@ -41,10 +41,34 @@ pub enum AdapterStatus {
     FeatureDisabled,
 }
 
+/// How the outcome was produced (F5 — automated evidence must not confuse simulators).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ExecutionKind {
+    /// Product Residiuum / real comparator driver path.
+    Product,
+    /// Pure logical harness simulator (not product).
+    LogicalSimulator,
+    /// Adapter loaded shared work but did not execute (Mongo/CBL stubs).
+    NotConfigured,
+}
+
+impl ExecutionKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Product => "product",
+            Self::LogicalSimulator => "logical_simulator",
+            Self::NotConfigured => "not_configured",
+        }
+    }
+}
+
 /// One engine execution outcome for a corpus case / measured cell.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EngineRunOutcome {
     pub engine: EngineId,
+    /// F5: machine-readable execution kind (required for evidence consumers).
+    pub execution_kind: ExecutionKind,
     pub status: AdapterStatus,
     pub result: Option<CanonicalResult>,
     pub metrics: Option<CellMetrics>,
@@ -53,6 +77,16 @@ pub struct EngineRunOutcome {
     /// Shared work content hash when loaded (cross-engine fixture identity).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shared_work_hash: Option<String>,
+}
+
+impl EngineRunOutcome {
+    /// Competitive product Ready requires Product kind + competitive engine id.
+    pub fn is_product_ready(&self) -> bool {
+        self.execution_kind == ExecutionKind::Product
+            && self.engine.is_competitive_product()
+            && self.status == AdapterStatus::Ready
+            && self.result.is_some()
+    }
 }
 
 /// Shared adapter contract for all engines.
@@ -477,9 +511,8 @@ fn metrics_from_run(
 
 impl EngineAdapter for LogicalHarnessEngine {
     fn engine_id(&self) -> EngineId {
-        // Logical side uses Residiuum embedded id for lane-E pairing smoke only
-        // when publishing harness self-evidence; not a product Residiuum claim.
-        EngineId::ResidiuumEmbedded
+        // F5: never ResidiuumEmbedded — automated evidence must not confuse simulators.
+        EngineId::LogicalHarness
     }
 
     fn status(&self) -> AdapterStatus {
@@ -494,6 +527,7 @@ impl EngineAdapter for LogicalHarnessEngine {
     fn execute_case(&mut self, case: &CorpusCaseHandle) -> Result<EngineRunOutcome, AdapterError> {
         Ok(EngineRunOutcome {
             engine: self.engine_id(),
+            execution_kind: ExecutionKind::LogicalSimulator,
             status: AdapterStatus::Ready,
             result: None,
             metrics: None,
@@ -515,6 +549,7 @@ impl EngineAdapter for LogicalHarnessEngine {
 
         Ok(EngineRunOutcome {
             engine: self.engine_id(),
+            execution_kind: ExecutionKind::LogicalSimulator,
             status: AdapterStatus::Ready,
             result: Some(canon),
             metrics: Some(metrics),
@@ -551,6 +586,7 @@ impl EngineAdapter for MongoLocalAdapter {
     fn execute_case(&mut self, case: &CorpusCaseHandle) -> Result<EngineRunOutcome, AdapterError> {
         Ok(EngineRunOutcome {
             engine: self.engine_id(),
+            execution_kind: ExecutionKind::NotConfigured,
             status: AdapterStatus::NotConfigured,
             result: None,
             metrics: None,
@@ -565,6 +601,7 @@ impl EngineAdapter for MongoLocalAdapter {
     fn execute_plan(&mut self, plan: &MeasuredCellPlan) -> Result<EngineRunOutcome, AdapterError> {
         Ok(EngineRunOutcome {
             engine: self.engine_id(),
+            execution_kind: ExecutionKind::NotConfigured,
             status: AdapterStatus::NotConfigured,
             result: None,
             metrics: None,
@@ -598,6 +635,7 @@ impl EngineAdapter for CblEmbeddedAdapter {
     fn execute_case(&mut self, case: &CorpusCaseHandle) -> Result<EngineRunOutcome, AdapterError> {
         Ok(EngineRunOutcome {
             engine: self.engine_id(),
+            execution_kind: ExecutionKind::NotConfigured,
             status: AdapterStatus::NotConfigured,
             result: None,
             metrics: None,
@@ -612,6 +650,7 @@ impl EngineAdapter for CblEmbeddedAdapter {
     fn execute_plan(&mut self, plan: &MeasuredCellPlan) -> Result<EngineRunOutcome, AdapterError> {
         Ok(EngineRunOutcome {
             engine: self.engine_id(),
+            execution_kind: ExecutionKind::NotConfigured,
             status: AdapterStatus::NotConfigured,
             result: None,
             metrics: None,
@@ -645,6 +684,7 @@ impl EngineAdapter for ResidiuumServerAdapter {
     fn execute_case(&mut self, case: &CorpusCaseHandle) -> Result<EngineRunOutcome, AdapterError> {
         Ok(EngineRunOutcome {
             engine: self.engine_id(),
+            execution_kind: ExecutionKind::NotConfigured,
             status: AdapterStatus::NotConfigured,
             result: None,
             metrics: None,
@@ -659,6 +699,7 @@ impl EngineAdapter for ResidiuumServerAdapter {
     fn execute_plan(&mut self, plan: &MeasuredCellPlan) -> Result<EngineRunOutcome, AdapterError> {
         Ok(EngineRunOutcome {
             engine: self.engine_id(),
+            execution_kind: ExecutionKind::NotConfigured,
             status: AdapterStatus::NotConfigured,
             result: None,
             metrics: None,
@@ -703,6 +744,7 @@ impl EngineAdapter for ResidiuumEmbeddedAdapter {
     fn execute_case(&mut self, case: &CorpusCaseHandle) -> Result<EngineRunOutcome, AdapterError> {
         Ok(EngineRunOutcome {
             engine: self.engine_id(),
+            execution_kind: ExecutionKind::Product,
             status: self.status(),
             result: None,
             metrics: None,
@@ -718,6 +760,7 @@ impl EngineAdapter for ResidiuumEmbeddedAdapter {
             let _ = plan;
             return Ok(EngineRunOutcome {
                 engine: self.engine_id(),
+                execution_kind: ExecutionKind::NotConfigured,
                 status: AdapterStatus::FeatureDisabled,
                 result: None,
                 metrics: None,
@@ -744,12 +787,20 @@ pub fn adapter_for(engine: EngineId) -> Box<dyn EngineAdapter> {
         EngineId::ResidiuumServer => Box::new(ResidiuumServerAdapter::default()),
         EngineId::MongoLocal => Box::new(MongoLocalAdapter::default()),
         EngineId::CouchbaseLiteEmbedded => Box::new(CblEmbeddedAdapter::default()),
+        EngineId::LogicalHarness => Box::new(LogicalHarnessEngine::default()),
     }
 }
 
 pub fn synthetic_ready_outcome(engine: EngineId, digest_hex: &str) -> EngineRunOutcome {
     EngineRunOutcome {
         engine,
+        execution_kind: if engine.is_logical_simulator() {
+            ExecutionKind::LogicalSimulator
+        } else if engine.is_competitive_product() {
+            ExecutionKind::Product
+        } else {
+            ExecutionKind::NotConfigured
+        },
         status: AdapterStatus::Ready,
         result: Some(CanonicalResult {
             keys_digest: digest_hex.to_string(),
@@ -812,8 +863,23 @@ mod tests {
             EngineId::ResidiuumServer,
             EngineId::MongoLocal,
             EngineId::CouchbaseLiteEmbedded,
+            EngineId::LogicalHarness,
         ] {
             assert_eq!(adapter_for(e).engine_id(), e);
         }
+    }
+
+    #[test]
+    fn logical_outcome_is_not_product_ready() {
+        let ds = generate_dataset(&DatasetSpec::smoke_default(2));
+        let work = SharedLogicalWork::from_dataset(ds);
+        let mut eng = LogicalHarnessEngine::new();
+        eng.load_shared_work(&work).unwrap();
+        let plan = MeasuredCellPlan::smoke_for(MandatoryCell::KeyGet, 2);
+        let out = eng.execute_plan(&plan).unwrap();
+        assert_eq!(out.engine, EngineId::LogicalHarness);
+        assert_eq!(out.execution_kind, ExecutionKind::LogicalSimulator);
+        assert!(!out.is_product_ready());
+        assert!(out.result.is_some());
     }
 }

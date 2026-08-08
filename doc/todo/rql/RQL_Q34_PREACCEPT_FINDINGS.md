@@ -22,7 +22,7 @@ updated; implementers claim **F1–F9 first** (priority titles).
 | F2 | P1 | Make mandatory Q4 §7.2 cells real runnable variants | **labor in_review**: multipage cursor, R/W writes, avg, enrich×3, cond high_band, concurrency executed |
 | F3 | P1 | Align Point selectivity plan query with generator oracle | **labor in_review**: `sel_bucket_literal` POINT vs HIT |
 | F4 | P1 | Fix 0.01% selectivity generator at campaign scale | **labor in_review**: exact target hits; tests 64/10k/1e6 |
-| F5 | P2 | Distinct logical-harness identity in machine evidence | `engine.rs` ~323 |
+| F5 | P2 | Distinct logical-harness identity in machine evidence | **labor in_review**: `LogicalHarness` + `execution_kind` |
 | F6 | P2 | Stop `\|\|true` metric completeness; explicit residual states | `metrics.rs` ~226 |
 | F7 | P2 | Fix vacuous Q3 inter-page-write + token replay coverage | `rql_q3_adversarial.rs` ~628 |
 | F8 | P2 | Verification must not rewrite checked-in evidence nondeterministically | verify scripts + tests |

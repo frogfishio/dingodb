@@ -29,8 +29,14 @@
       }
     },
     "concurrency": { "type": "integer", "minimum": 1 },
-    "side_a": { "type": "object" },
-    "side_b": { "type": "object" },
+    "side_a": {
+      "type": "object",
+      "description": "EngineRunOutcome; must include engine + execution_kind (product|logical_simulator|not_configured)"
+    },
+    "side_b": {
+      "type": "object",
+      "description": "EngineRunOutcome; must include engine + execution_kind"
+    },
     "equivalent": { "type": ["boolean", "null"] },
     "equivalence_detail": { "type": ["string", "null"] },
     "metrics_a": { "type": ["object", "null"] },
