@@ -413,6 +413,55 @@ fn seed_collections(client: &mut HeapClient, collections: &Map<String, Value>) {
     }
 }
 
+/// Map collection name → default generator when the primary fixture omits it.
+fn companion_generator_for(collection: &str) -> Option<&'static str> {
+    match collection {
+        "orders" => Some("commerce.orders_v1"),
+        "customers" => Some("commerce.customers_v1"),
+        "line_items" => Some("commerce.line_items_v1"),
+        "products" => Some("commerce.products_v1"),
+        "inventory" => Some("commerce.inventory_v1"),
+        "conversations" => Some("messaging.conversations_v1"),
+        "messages" => Some("messaging.messages_v1"),
+        "participants" => Some("messaging.participants_v1"),
+        "entries" => Some("directory.entries_v1"),
+        "categories" => Some("directory.categories_v1"),
+        "locations" => Some("directory.locations_v1"),
+        "devices" => Some("telemetry.devices_v1"),
+        "events" => Some("telemetry.events_v1"),
+        "metrics" => Some("telemetry.metrics_v1"),
+        "projects" => Some("project_management.projects_v1"),
+        "tasks" => Some("project_management.tasks_v1"),
+        "revisions" => Some("project_management.revisions_v1"),
+        "memberships" => Some("project_management.memberships_v1"),
+        _ => None,
+    }
+}
+
+fn merge_companion_collections(
+    root: &Path,
+    cols: &mut Map<String, Value>,
+    names: &BTreeSet<String>,
+    seed: u64,
+    params: &Value,
+) -> Result<(), String> {
+    for name in names {
+        if cols.contains_key(name) {
+            continue;
+        }
+        let Some(gen) = companion_generator_for(name) else {
+            continue;
+        };
+        let mat = materialise_fixture(root, gen, seed, params)?;
+        if let Some(obj) = mat.get("collections").and_then(|c| c.as_object()) {
+            for (k, v) in obj {
+                cols.entry(k.clone()).or_insert_with(|| v.clone());
+            }
+        }
+    }
+    Ok(())
+}
+
 fn ensure_named_collections(client: &mut HeapClient, names: &BTreeSet<String>) {
     let existing: BTreeSet<String> = client
         .list_collections()
@@ -635,19 +684,24 @@ fn rql_q2_1_tier_a_capability_audit() {
         let exec_outcome = (|| -> Result<(u64, bool), (FailureClass, String)> {
             let mat = materialise_fixture(&root, generator_id, seed, &params)
                 .map_err(|e| (FailureClass::Host, e))?;
-            let cols = mat
+            let mut cols = mat
                 .get("collections")
                 .and_then(|c| c.as_object())
+                .cloned()
                 .ok_or_else(|| {
                     (
                         FailureClass::Host,
                         "fixture missing collections object".into(),
                     )
                 })?;
+            // Enrich / multi-collection cases often name a second collection that
+            // is not in the primary generator. Seed companions with the same seed.
+            merge_companion_collections(&root, &mut cols, &names, seed, &params)
+                .map_err(|e| (FailureClass::Host, e))?;
 
             let dir = tempdir().map_err(|e| (FailureClass::Host, e.to_string()))?;
             let mut client = open_heap_client(dir.path());
-            seed_collections(&mut client, cols);
+            seed_collections(&mut client, &cols);
             ensure_named_collections(&mut client, &names);
 
             let mut opts = QueryRunOptions::default();

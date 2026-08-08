@@ -1,7 +1,7 @@
 {
   "format": "residiuum-rql-q1-corpus-v1",
   "profile": "rql-gate1-practical-corpus-v1",
-  "corpus_version": "rql-q1-corpus-v0.4.0",
+  "corpus_version": "rql-q1-corpus-v0.4.1",
   "authority": {
     "programme": "doc/todo/rql/RQL_QUERY_QUALIFICATION_PROGRAM.md",
     "section": "4",
@@ -226,6 +226,29 @@
         "telemetry.events.consistency_available"
       ],
       "case_ids_archived": []
+    },
+    {
+      "corpus_version": "rql-q1-corpus-v0.4.1",
+      "date": "2026-08-08",
+      "summary": "Q2.2b: rewrite 15 enrich RQL sources from corpus `from/on/card` dialect to product `using/matching/expect`; rql status remains source. Companion fixture seeding + _key match are product-side (audit/runtime), not case text. Package accept still principal-owned.",
+      "principal_disposition": "pending",
+      "case_ids_changed": [
+        "commerce.orders.enrich_customer_exactly_one",
+        "commerce.orders.enrich_line_items_many",
+        "commerce.line_items.enrich_product_optional",
+        "messaging.messages.enrich_conversation_exactly_one",
+        "messaging.conversations.enrich_participants_many",
+        "directory.entries.enrich_category_exactly_one",
+        "directory.entries.enrich_location_optional",
+        "telemetry.events.enrich_device_exactly_one",
+        "telemetry.devices.enrich_events_many",
+        "telemetry.metrics.enrich_device_optional",
+        "project_management.tasks.enrich_project_exactly_one",
+        "project_management.projects.enrich_tasks_many",
+        "project_management.projects.enrich_memberships_many",
+        "project_management.memberships.enrich_project_optional",
+        "project_management.revisions.enrich_project_optional"
+      ]
     }
   ],
   "cases": [
@@ -1916,8 +1939,8 @@
       },
       "implementations": {
         "rql": {
-          "status": "pending",
-          "source": "from orders where present(customer.id) enrich customer from customers on customer.id = customers._key exactly_one"
+          "status": "source",
+          "source": "from orders where present(customer.id) enrich customer using customers matching customer.id = _key expect exactly_one"
         },
         "mongo": {
           "status": "pipeline",
@@ -2015,8 +2038,8 @@
       },
       "implementations": {
         "rql": {
-          "status": "pending",
-          "source": "from orders enrich items from line_items on orders._key = line_items.order_id many"
+          "status": "source",
+          "source": "from orders enrich items using line_items matching _key = order_id expect many"
         },
         "mongo": {
           "status": "pipeline",
@@ -2091,8 +2114,8 @@
       },
       "implementations": {
         "rql": {
-          "status": "pending",
-          "source": "from line_items enrich product from products on line_items.product_id = products._key optional"
+          "status": "source",
+          "source": "from line_items enrich product using products matching product_id = _key expect optional"
         },
         "mongo": {
           "status": "pipeline",
@@ -3782,8 +3805,8 @@
       },
       "implementations": {
         "rql": {
-          "status": "pending",
-          "source": "from messages enrich conversation from conversations on messages.conversation_id = conversations._key exactly_one"
+          "status": "source",
+          "source": "from messages enrich conversation using conversations matching conversation_id = _key expect exactly_one"
         },
         "mongo": {
           "status": "pipeline",
@@ -3863,8 +3886,8 @@
       },
       "implementations": {
         "rql": {
-          "status": "pending",
-          "source": "from conversations enrich members from participants on conversations._key = participants.conversation_id many"
+          "status": "source",
+          "source": "from conversations enrich members using participants matching _key = conversation_id expect many"
         },
         "mongo": {
           "status": "pipeline",
@@ -5798,8 +5821,8 @@
       },
       "implementations": {
         "rql": {
-          "status": "pending",
-          "source": "from entries enrich cat from categories on entries.category_id = categories._key exactly_one"
+          "status": "source",
+          "source": "from entries enrich cat using categories matching category_id = _key expect exactly_one"
         },
         "mongo": {
           "status": "pipeline",
@@ -5877,8 +5900,8 @@
       },
       "implementations": {
         "rql": {
-          "status": "pending",
-          "source": "from entries enrich loc from locations on entries.location_id = locations._key optional"
+          "status": "source",
+          "source": "from entries enrich loc using locations matching location_id = _key expect optional"
         },
         "mongo": {
           "status": "pipeline",
@@ -7746,8 +7769,8 @@
       },
       "implementations": {
         "rql": {
-          "status": "pending",
-          "source": "from events enrich dev from devices on events.device_id = devices._key exactly_one"
+          "status": "source",
+          "source": "from events enrich dev using devices matching device_id = _key expect exactly_one"
         },
         "mongo": {
           "status": "pipeline",
@@ -7822,8 +7845,8 @@
       },
       "implementations": {
         "rql": {
-          "status": "pending",
-          "source": "from devices enrich evs from events on devices._key = events.device_id many"
+          "status": "source",
+          "source": "from devices enrich evs using events matching _key = device_id expect many"
         },
         "mongo": {
           "status": "pipeline",
@@ -7896,8 +7919,8 @@
       },
       "implementations": {
         "rql": {
-          "status": "pending",
-          "source": "from metrics enrich dev from devices on metrics.device_id = devices._key optional"
+          "status": "source",
+          "source": "from metrics enrich dev using devices matching device_id = _key expect optional"
         },
         "mongo": {
           "status": "pipeline",
@@ -9973,8 +9996,8 @@
       },
       "implementations": {
         "rql": {
-          "status": "pending",
-          "source": "from tasks enrich prj from projects on tasks.project_id = projects._key exactly_one"
+          "status": "source",
+          "source": "from tasks enrich prj using projects matching project_id = _key expect exactly_one"
         },
         "mongo": {
           "status": "pipeline",
@@ -10049,8 +10072,8 @@
       },
       "implementations": {
         "rql": {
-          "status": "pending",
-          "source": "from projects enrich tsks from tasks on projects._key = tasks.project_id many"
+          "status": "source",
+          "source": "from projects enrich tsks using tasks matching _key = project_id expect many"
         },
         "mongo": {
           "status": "pipeline",
@@ -10122,8 +10145,8 @@
       },
       "implementations": {
         "rql": {
-          "status": "pending",
-          "source": "from projects enrich mbs from memberships on projects._key = memberships.project_id many"
+          "status": "source",
+          "source": "from projects enrich mbs using memberships matching _key = project_id expect many"
         },
         "mongo": {
           "status": "pipeline",
@@ -10196,8 +10219,8 @@
       },
       "implementations": {
         "rql": {
-          "status": "pending",
-          "source": "from memberships enrich prj from projects on memberships.project_id = projects._key optional"
+          "status": "source",
+          "source": "from memberships enrich prj using projects matching project_id = _key expect optional"
         },
         "mongo": {
           "status": "pipeline",
@@ -10934,8 +10957,8 @@
       },
       "implementations": {
         "rql": {
-          "status": "pending",
-          "source": "from revisions enrich prj from projects on revisions.project_id = projects._key optional"
+          "status": "source",
+          "source": "from revisions enrich prj using projects matching project_id = _key expect optional"
         },
         "mongo": {
           "status": "pipeline",

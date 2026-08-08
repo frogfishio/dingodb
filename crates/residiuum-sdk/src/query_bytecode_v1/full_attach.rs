@@ -1126,21 +1126,56 @@ fn parse_enrich_step(
     bindings: &CollectionBindings,
     element_alias: Option<&str>,
 ) -> Result<EnrichStepV1, Error> {
-    // body: <output> using <source> [as <alias>] matching <left> = <right> [where …] expect <card>
+    // Product:  <output> using <source> [as <alias>] matching <left> = <right> [where …] expect <card>
+    // Corpus:   <output> from <source> on <left> = <right> <card>
+    //           (optional collection prefixes on paths are stripped to field paths)
     let mut p = Words::new(body);
     let output = p.next_ident()?;
-    p.expect("using")?;
+    let corpus_dialect = if p.eat("using") {
+        false
+    } else if p.eat("from") {
+        true
+    } else {
+        return Err(Error::QueryInvalid(format!(
+            "enrich expected `using` or `from` near `{}`",
+            p.rest().chars().take(24).collect::<String>()
+        )));
+    };
     let using_name = p.next_ident()?;
     let foreign_alias = if p.eat("as") {
         Some(p.next_ident()?)
     } else {
         None
     };
-    p.expect("matching")?;
-    let left = strip_alias_prefix(Path::parse_dotted(&p.next_path()?)?, element_alias)?;
+    if corpus_dialect {
+        p.expect("on")?;
+    } else {
+        p.expect("matching")?;
+    }
+    let left_raw = p.next_path()?;
     p.expect("=")?;
-    let right = strip_alias_prefix(Path::parse_dotted(&p.next_path()?)?, foreign_alias.as_deref())?;
-    let candidate_where = if p.eat("where") {
+    let right_raw = p.next_path()?;
+    // Corpus paths often qualify both sides (`orders._key`, `customers._key`).
+    // Strip any bound collection name prefix from the left (root) side.
+    let left_coll_hint = if corpus_dialect {
+        left_raw
+            .split('.')
+            .next()
+            .filter(|seg| bindings.by_name.contains_key(*seg))
+    } else {
+        None
+    };
+    let left = normalize_enrich_match_path(
+        Path::parse_dotted(&left_raw)?,
+        element_alias,
+        left_coll_hint,
+    )?;
+    let right = normalize_enrich_match_path(
+        Path::parse_dotted(&right_raw)?,
+        foreign_alias.as_deref(),
+        Some(using_name.as_str()),
+    )?;
+    let candidate_where = if !corpus_dialect && p.eat("where") {
         let where_src = p.take_until_keyword("expect")?;
         if where_src.trim().is_empty() {
             return Err(Error::QueryInvalid(
@@ -1153,7 +1188,9 @@ fn parse_enrich_step(
     } else {
         None
     };
-    p.expect("expect")?;
+    if !corpus_dialect {
+        p.expect("expect")?;
+    }
     let card_s = p.next_ident()?;
     let expect = match card_s.as_str() {
         "exactly_one" => EnrichCardinality::ExactlyOne,
@@ -1204,6 +1241,27 @@ fn strip_alias_prefix(path: Path, alias: Option<&str>) -> Result<Path, Error> {
         )));
     }
     Path::from_segments(path.0.into_iter().skip(1))
+}
+
+/// Normalize enrich match paths: strip optional element/foreign aliases and
+/// optional collection-name prefixes from corpus dialect (`customers._key` → `_key`).
+fn normalize_enrich_match_path(
+    path: Path,
+    alias: Option<&str>,
+    collection_name: Option<&str>,
+) -> Result<Path, Error> {
+    let path = strip_alias_prefix(path, alias)?;
+    if let Some(col) = collection_name {
+        if path.0.first().map(String::as_str) == Some(col) && path.0.len() > 1 {
+            return Path::from_segments(path.0.into_iter().skip(1));
+        }
+    }
+    Ok(path)
+}
+
+/// True when the path names the document store key (`_key` or `$key`).
+fn is_store_key_path(path: &Path) -> bool {
+    path.0.len() == 1 && (path.0[0] == "_key" || path.0[0] == "$key")
 }
 
 /// Tiny whitespace tokenizer for enrich / within clause bodies.
@@ -1453,7 +1511,7 @@ pub(crate) fn attach_enrich_rows(
                 continue;
             }
         }
-        if let Resolve::Present(v) = resolve_path(doc, &step.right) {
+        if let Some(v) = resolve_enrich_match_value(fk, doc, &step.right) {
             by_right
                 .entry(canonical_match_key(&v))
                 .or_default()
@@ -1466,9 +1524,9 @@ pub(crate) fn attach_enrich_rows(
 
     let mut out = Vec::with_capacity(roots.len());
     for (key, root) in roots {
-        let left_key = match resolve_path(root, &step.left) {
-            Resolve::Present(v) => canonical_match_key(&v),
-            Resolve::Absent => {
+        let left_key = match resolve_enrich_match_value(key, root, &step.left) {
+            Some(v) => canonical_match_key(&v),
+            None => {
                 match step.expect {
                     EnrichCardinality::Optional => {
                         let mut row = root.clone();
@@ -1990,12 +2048,30 @@ fn collect_present_left_values(
     left: &Path,
 ) -> BTreeMap<String, JsonValue> {
     let mut out = BTreeMap::new();
-    for (_, root) in roots {
-        if let Resolve::Present(v) = resolve_path(root, left) {
+    for (key, root) in roots {
+        if let Some(v) = resolve_enrich_match_value(key, root, left) {
             out.insert(canonical_match_key(&v), v);
         }
     }
     out
+}
+
+/// Resolve an enrich match path on a document.
+///
+/// `_key` / `$key` means the store document key (not a body field). Audit
+/// fixtures strip `_key` from the JSON body after using it as `put` key.
+fn resolve_enrich_match_value(
+    doc_key: &str,
+    doc: &JsonValue,
+    path: &Path,
+) -> Option<JsonValue> {
+    if is_store_key_path(path) {
+        return Some(JsonValue::String(doc_key.to_string()));
+    }
+    match resolve_path(doc, path) {
+        Resolve::Present(v) => Some(v),
+        Resolve::Absent => None,
+    }
 }
 
 /// Load foreign docs for `using_id` into a CollectionId-keyed cache (RQL-R1).
@@ -2149,6 +2225,46 @@ mod tests {
         assert!(c.base_source.contains("from orders"));
         assert!(!c.base_source.contains("enrich"));
         assert_eq!(c.base.plan.page_size, 10);
+    }
+
+    #[test]
+    fn compile_corpus_enrich_dialect_from_on_card() {
+        let c = compile_rql_full(
+            "from orders enrich customer from customers on customer.id = customers._key exactly_one",
+            &bindings(),
+        )
+        .expect("corpus enrich dialect");
+        assert_eq!(c.root_enrich().len(), 1);
+        let e = c.root_enrich()[0];
+        assert_eq!(e.output, "customer");
+        assert_eq!(e.using_name, "customers");
+        assert_eq!(e.left.dotted(), "customer.id");
+        assert_eq!(e.right.dotted(), "_key");
+        assert_eq!(e.expect, EnrichCardinality::ExactlyOne);
+    }
+
+    #[test]
+    fn attach_enrich_matches_store_key_path() {
+        let roots = vec![(
+            "o1".into(),
+            serde_json::json!({"customer": {"id": "c1"}}),
+        )];
+        let foreign = vec![
+            ("c1".into(), serde_json::json!({"name": "Ada"})),
+            ("c2".into(), serde_json::json!({"name": "Bob"})),
+        ];
+        let step = EnrichStepV1 {
+            output: "customer".into(),
+            using_name: "customers".into(),
+            using_id: cid("customers"),
+            left: Path::parse_dotted("customer.id").unwrap(),
+            right: Path::parse_dotted("_key").unwrap(),
+            candidate_where: None,
+            expect: EnrichCardinality::ExactlyOne,
+        };
+        let out = attach_enrich_rows(&roots, &foreign, &step, &Default::default()).unwrap();
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].1["customer"]["name"], "Ada");
     }
 
     #[test]

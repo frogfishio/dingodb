@@ -691,24 +691,29 @@
       ],
       "case_id": "commerce.orders.enrich_customer_exactly_one",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected `using` near `from customers on custom`",
-        "status": "error"
+        "base_source": "from orders where present(customer.id)",
+        "has_project": false,
+        "pipeline_len": 1,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "commerce",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 27,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "enrichment_cardinality"
       ],
-      "gap_package": "pkg_enrich_corpus_dialect",
-      "product_expressible": false,
-      "rql_status": "pending",
-      "source": "from orders where present(customer.id) enrich customer from customers on customer.id = customers._key exactly_one",
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders where present(customer.id) enrich customer using customers matching customer.id = _key expect exactly_one",
       "tier": "A"
     },
     {
@@ -717,24 +722,29 @@
       ],
       "case_id": "commerce.orders.enrich_line_items_many",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected `using` near `from line_items on order`",
-        "status": "error"
+        "base_source": "from orders",
+        "has_project": false,
+        "pipeline_len": 1,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "commerce",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 32,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "enrichment_cardinality"
       ],
-      "gap_package": "pkg_enrich_corpus_dialect",
-      "product_expressible": false,
-      "rql_status": "pending",
-      "source": "from orders enrich items from line_items on orders._key = line_items.order_id many",
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from orders enrich items using line_items matching _key = order_id expect many",
       "tier": "A"
     },
     {
@@ -743,24 +753,29 @@
       ],
       "case_id": "commerce.line_items.enrich_product_optional",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected `using` near `from products on line_it`",
-        "status": "error"
+        "base_source": "from line_items",
+        "has_project": false,
+        "pipeline_len": 1,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "commerce",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 63,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "enrichment_cardinality"
       ],
-      "gap_package": "pkg_enrich_corpus_dialect",
-      "product_expressible": false,
-      "rql_status": "pending",
-      "source": "from line_items enrich product from products on line_items.product_id = products._key optional",
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from line_items enrich product using products matching product_id = _key expect optional",
       "tier": "A"
     },
     {
@@ -1415,24 +1430,29 @@
       ],
       "case_id": "messaging.messages.enrich_conversation_exactly_one",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected `using` near `from conversations on me`",
-        "status": "error"
+        "base_source": "from messages",
+        "has_project": false,
+        "pipeline_len": 1,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "messaging",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 64,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "enrichment_cardinality"
       ],
-      "gap_package": "pkg_enrich_corpus_dialect",
-      "product_expressible": false,
-      "rql_status": "pending",
-      "source": "from messages enrich conversation from conversations on messages.conversation_id = conversations._key exactly_one",
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from messages enrich conversation using conversations matching conversation_id = _key expect exactly_one",
       "tier": "A"
     },
     {
@@ -1441,24 +1461,29 @@
       ],
       "case_id": "messaging.conversations.enrich_participants_many",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected `using` near `from participants on con`",
-        "status": "error"
+        "base_source": "from conversations",
+        "has_project": false,
+        "pipeline_len": 1,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "messaging",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 24,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "enrichment_cardinality"
       ],
-      "gap_package": "pkg_enrich_corpus_dialect",
-      "product_expressible": false,
-      "rql_status": "pending",
-      "source": "from conversations enrich members from participants on conversations._key = participants.conversation_id many",
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from conversations enrich members using participants matching _key = conversation_id expect many",
       "tier": "A"
     },
     {
@@ -2225,24 +2250,29 @@
       ],
       "case_id": "directory.entries.enrich_category_exactly_one",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected `using` near `from categories on entri`",
-        "status": "error"
+        "base_source": "from entries",
+        "has_project": false,
+        "pipeline_len": 1,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "directory",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 40,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "enrichment_cardinality"
       ],
-      "gap_package": "pkg_enrich_corpus_dialect",
-      "product_expressible": false,
-      "rql_status": "pending",
-      "source": "from entries enrich cat from categories on entries.category_id = categories._key exactly_one",
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries enrich cat using categories matching category_id = _key expect exactly_one",
       "tier": "A"
     },
     {
@@ -2251,24 +2281,29 @@
       ],
       "case_id": "directory.entries.enrich_location_optional",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected `using` near `from locations on entrie`",
-        "status": "error"
+        "base_source": "from entries",
+        "has_project": false,
+        "pipeline_len": 1,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "directory",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 40,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "enrichment_cardinality"
       ],
-      "gap_package": "pkg_enrich_corpus_dialect",
-      "product_expressible": false,
-      "rql_status": "pending",
-      "source": "from entries enrich loc from locations on entries.location_id = locations._key optional",
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from entries enrich loc using locations matching location_id = _key expect optional",
       "tier": "A"
     },
     {
@@ -3003,24 +3038,29 @@
       ],
       "case_id": "telemetry.events.enrich_device_exactly_one",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected `using` near `from devices on events.d`",
-        "status": "error"
+        "base_source": "from events",
+        "has_project": false,
+        "pipeline_len": 1,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "telemetry",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 64,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "enrichment_cardinality"
       ],
-      "gap_package": "pkg_enrich_corpus_dialect",
-      "product_expressible": false,
-      "rql_status": "pending",
-      "source": "from events enrich dev from devices on events.device_id = devices._key exactly_one",
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from events enrich dev using devices matching device_id = _key expect exactly_one",
       "tier": "A"
     },
     {
@@ -3029,24 +3069,29 @@
       ],
       "case_id": "telemetry.devices.enrich_events_many",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected `using` near `from events on devices._`",
-        "status": "error"
+        "base_source": "from devices",
+        "has_project": false,
+        "pipeline_len": 1,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "telemetry",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 24,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "enrichment_cardinality"
       ],
-      "gap_package": "pkg_enrich_corpus_dialect",
-      "product_expressible": false,
-      "rql_status": "pending",
-      "source": "from devices enrich evs from events on devices._key = events.device_id many",
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from devices enrich evs using events matching _key = device_id expect many",
       "tier": "A"
     },
     {
@@ -3055,24 +3100,29 @@
       ],
       "case_id": "telemetry.metrics.enrich_device_optional",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected `using` near `from devices on metrics.`",
-        "status": "error"
+        "base_source": "from metrics",
+        "has_project": false,
+        "pipeline_len": 1,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "telemetry",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 64,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "enrichment_cardinality"
       ],
-      "gap_package": "pkg_enrich_corpus_dialect",
-      "product_expressible": false,
-      "rql_status": "pending",
-      "source": "from metrics enrich dev from devices on metrics.device_id = devices._key optional",
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from metrics enrich dev using devices matching device_id = _key expect optional",
       "tier": "A"
     },
     {
@@ -3902,24 +3952,29 @@
       ],
       "case_id": "project_management.tasks.enrich_project_exactly_one",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected `using` near `from projects on tasks.p`",
-        "status": "error"
+        "base_source": "from tasks",
+        "has_project": false,
+        "pipeline_len": 1,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "project_management",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 64,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "enrichment_cardinality"
       ],
-      "gap_package": "pkg_enrich_corpus_dialect",
-      "product_expressible": false,
-      "rql_status": "pending",
-      "source": "from tasks enrich prj from projects on tasks.project_id = projects._key exactly_one",
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from tasks enrich prj using projects matching project_id = _key expect exactly_one",
       "tier": "A"
     },
     {
@@ -3928,24 +3983,29 @@
       ],
       "case_id": "project_management.projects.enrich_tasks_many",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected `using` near `from tasks on projects._`",
-        "status": "error"
+        "base_source": "from projects",
+        "has_project": false,
+        "pipeline_len": 1,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "project_management",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 20,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "enrichment_cardinality"
       ],
-      "gap_package": "pkg_enrich_corpus_dialect",
-      "product_expressible": false,
-      "rql_status": "pending",
-      "source": "from projects enrich tsks from tasks on projects._key = tasks.project_id many",
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from projects enrich tsks using tasks matching _key = project_id expect many",
       "tier": "A"
     },
     {
@@ -3954,24 +4014,29 @@
       ],
       "case_id": "project_management.projects.enrich_memberships_many",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected `using` near `from memberships on proj`",
-        "status": "error"
+        "base_source": "from projects",
+        "has_project": false,
+        "pipeline_len": 1,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "project_management",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 20,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "enrichment_cardinality"
       ],
-      "gap_package": "pkg_enrich_corpus_dialect",
-      "product_expressible": false,
-      "rql_status": "pending",
-      "source": "from projects enrich mbs from memberships on projects._key = memberships.project_id many",
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from projects enrich mbs using memberships matching _key = project_id expect many",
       "tier": "A"
     },
     {
@@ -3980,24 +4045,29 @@
       ],
       "case_id": "project_management.memberships.enrich_project_optional",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected `using` near `from projects on members`",
-        "status": "error"
+        "base_source": "from memberships",
+        "has_project": false,
+        "pipeline_len": 1,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "project_management",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 59,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "enrichment_cardinality"
       ],
-      "gap_package": "pkg_enrich_corpus_dialect",
-      "product_expressible": false,
-      "rql_status": "pending",
-      "source": "from memberships enrich prj from projects on memberships.project_id = projects._key optional",
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from memberships enrich prj using projects matching project_id = _key expect optional",
       "tier": "A"
     },
     {
@@ -4286,24 +4356,29 @@
       ],
       "case_id": "project_management.revisions.enrich_project_optional",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected `using` near `from projects on revisio`",
-        "status": "error"
+        "base_source": "from revisions",
+        "has_project": false,
+        "pipeline_len": 1,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "project_management",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 48,
+        "status": "ok"
       },
       "expected_kind": "deferred_q2",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "enrichment_cardinality"
       ],
-      "gap_package": "pkg_enrich_corpus_dialect",
-      "product_expressible": false,
-      "rql_status": "pending",
-      "source": "from revisions enrich prj from projects on revisions.project_id = projects._key optional",
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
+      "rql_status": "source",
+      "source": "from revisions enrich prj using projects matching project_id = _key expect optional",
       "tier": "A"
     },
     {
@@ -4431,32 +4506,11 @@
       "tier": "A"
     }
   ],
-  "corpus_version": "rql-q1-corpus-v0.4.0",
+  "corpus_version": "rql-q1-corpus-v0.4.1",
   "format": "residiuum-rql-q2-1-capability-audit-v1",
-  "generated_unix_s": 1786152637,
-  "git_sha": "69f7f50a22582ac44f2ee31c36b8a00ba523f6d3",
+  "generated_unix_s": 1786153423,
+  "git_sha": "cdd41c21204cb7ee44e68c151cb29fa731d217c6",
   "packages": [
-    {
-      "blocked_case_count": 15,
-      "case_ids": [
-        "commerce.orders.enrich_customer_exactly_one",
-        "commerce.orders.enrich_line_items_many",
-        "commerce.line_items.enrich_product_optional",
-        "messaging.messages.enrich_conversation_exactly_one",
-        "messaging.conversations.enrich_participants_many",
-        "directory.entries.enrich_category_exactly_one",
-        "directory.entries.enrich_location_optional",
-        "telemetry.events.enrich_device_exactly_one",
-        "telemetry.devices.enrich_events_many",
-        "telemetry.metrics.enrich_device_optional",
-        "project_management.tasks.enrich_project_exactly_one",
-        "project_management.projects.enrich_tasks_many",
-        "project_management.projects.enrich_memberships_many",
-        "project_management.memberships.enrich_project_optional",
-        "project_management.revisions.enrich_project_optional"
-      ],
-      "package_id": "pkg_enrich_corpus_dialect"
-    },
     {
       "blocked_case_count": 7,
       "case_ids": [
@@ -4513,7 +4567,6 @@
   ],
   "profile": "rql-gate1-practical-corpus-v1",
   "recommended_implementation_package_order": [
-    "pkg_enrich_corpus_dialect",
     "pkg_array_predicate_surface",
     "pkg_budget_partial_coverage",
     "pkg_computed_conditional_project",
@@ -4521,16 +4574,16 @@
     "pkg_enrich_semantics"
   ],
   "summary": {
-    "compile_ok": 112,
-    "execute_ok": 107,
+    "compile_ok": 127,
+    "execute_ok": 122,
     "expected_refusal_ok": 2,
     "failure_class_counts": {
       "expected_refusal": 2,
       "semantic": 15,
-      "syntax": 23
+      "syntax": 8
     },
-    "gap_case_count": 38,
-    "product_expressible": 107,
+    "gap_case_count": 23,
+    "product_expressible": 122,
     "tier_a_cases": 147
   }
 }
