@@ -97,4 +97,4 @@ Device-cold claims require `attempted_page_cache_drop` only.
 
 ## 9. Next
 
-**Q4.3** — metrics collectors, Mongo/CBL/server adapters, evidence publication of executed cells.
+**Q4.3** — metrics collectors, Mongo/CBL/server adapters, evidence publication — see [RQL_Q4_3_METRICS_ADAPTERS.md](./RQL_Q4_3_METRICS_ADAPTERS.md) (labor `in_review`).

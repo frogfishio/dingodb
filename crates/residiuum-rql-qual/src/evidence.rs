@@ -286,7 +286,7 @@ pub type _CanonicalResultAlias = CanonicalResult;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engine::{synthetic_ready_outcome, MongoLocalStub, EngineAdapter};
+    use crate::engine::{synthetic_ready_outcome, EngineAdapter};
     use crate::fixture::CorpusCaseHandle;
     use crate::lane::LanePairing;
     use std::path::PathBuf;
@@ -309,7 +309,7 @@ mod tests {
         assert_eq!(env.query_defaults.page_size, 64);
 
         let mut bundle = EvidenceBundle::new(env, "q4-1-scaffold");
-        let mut mongo = MongoLocalStub;
+        let mut mongo = crate::engine::MongoLocalAdapter::default();
         let case = CorpusCaseHandle {
             case_id: "x".into(),
             tier: "A".into(),

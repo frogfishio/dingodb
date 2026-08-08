@@ -31,6 +31,8 @@ env: `doc/todo/rql/RQL_Q0_ENV_MANIFEST.md`
 | `generator` | Deterministic logical docs + content hash |
 | `lifecycle` | §7.3 classes; cold/reopen honesty |
 | `cell_plan` | Cell plans + concurrency/selectivity/lifecycle matrices |
+| `shared_work` | Cross-engine logical fixture identity (content hash) |
+| `run` | Smoke runner + evidence bundle publication |
 
 ## Features
 

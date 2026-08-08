@@ -1,0 +1,1295 @@
+{
+  "format": "residiuum-rql-qual-evidence-bundle-v1",
+  "harness_profile": "residiuum-rql-qual-harness-v1",
+  "env": {
+    "format": "residiuum-rql-qual-env-fingerprint-v1",
+    "harness_profile": "residiuum-rql-qual-harness-v1",
+    "git_sha": "33bc9ca1be11d98082e3ef3047751d0995544f9b",
+    "dirty": true,
+    "residiuum_version": "0.2.2",
+    "rustc": "rustc 1.92.0 (ded5c06cf 2025-12-08)",
+    "os": "macos",
+    "arch": "aarch64",
+    "hostname_class": "controlled_host_unspecified",
+    "recorded_unix_s": 1786161952,
+    "mongo_pin": "8.2.12",
+    "cbl_pin": "4.1.0",
+    "cbl_full_sync": true,
+    "query_defaults": {
+      "consistency_mode": "Available",
+      "coverage_policy": "Complete",
+      "page_size": 64
+    }
+  },
+  "campaign_id": "q4-3-unit",
+  "notes": [
+    "Q4.1 scaffold — not Gate-1; not competitive",
+    "Mongo/CBL adapters not configured until Q4.3",
+    "Q4.3 smoke — not competitive / not Gate-1",
+    "side_a=logical_harness digests; side_b=CBL NotConfigured with shared_work",
+    "lane_s_fixture_identity ok=true hash=3e3cf40abbd8c1320c99245d36817ea699ca357fece9981ffba2e67a8dd3cb5e"
+  ],
+  "cells": [
+    {
+      "cell_id": "cell_key_get_smoke_c1",
+      "case_id": "cell_key_get_smoke_c1",
+      "lane": "embedded",
+      "pairing": {
+        "lane": "embedded",
+        "side_a": "residiuum_embedded",
+        "side_b": "couchbase_lite_embedded"
+      },
+      "concurrency": 1,
+      "side_a": {
+        "engine": "residiuum_embedded",
+        "status": "ready",
+        "result": {
+          "keys_digest": "684da7bb288def1fc8e6d66715b495a54a792b64353824b916dab93e814359a8",
+          "values_digest": "c1f76517600b12f64088bf801f47809aabb8a1b84d0e1f26d22e1c86441310e2",
+          "multiplicity": "multiset",
+          "order_sensitive": false,
+          "coverage_complete": true,
+          "row_count": 1
+        },
+        "metrics": {
+          "queries_per_s": 94858.66059571238,
+          "latency": {
+            "p50": 10542,
+            "p95": 10542,
+            "p99": 10542,
+            "max": 10542,
+            "samples": 1
+          },
+          "resource": {
+            "cpu_time_ns": null,
+            "rss_bytes": null,
+            "peak_rss_bytes": null,
+            "physical_bytes_read": null,
+            "physical_bytes_written": null,
+            "read_amplification": null
+          },
+          "path": {
+            "documents_examined": 64,
+            "index_entries_examined": null,
+            "index_size_bytes": null,
+            "index_build_ns": null,
+            "indexed_write_penalty_ns": null,
+            "explain_plan_digest": "logical:c1f76517600b12f64088bf801f47809aabb8a1b84d0e1f26d22e1c86441310e2"
+          },
+          "lifecycle": "warm_steady",
+          "cold_method": "not_cold_warm_steady",
+          "deferred_work_units": 0,
+          "deferred_drained": true,
+          "result_digest_echo": "c1f76517600b12f64088bf801f47809aabb8a1b84d0e1f26d22e1c86441310e2",
+          "coverage_complete": true,
+          "validity_ok": true
+        },
+        "refuse_code": null,
+        "detail": "logical_harness plan=cell_key_get_smoke_c1 examined=64",
+        "shared_work_hash": "3e3cf40abbd8c1320c99245d36817ea699ca357fece9981ffba2e67a8dd3cb5e"
+      },
+      "side_b": {
+        "engine": "couchbase_lite_embedded",
+        "status": "not_configured",
+        "result": null,
+        "metrics": null,
+        "refuse_code": "adapter_not_configured:cbl_embedded",
+        "detail": "shared logical work loaded=true; plan=cell_key_get_smoke_c1 (CBL native residual)",
+        "shared_work_hash": "3e3cf40abbd8c1320c99245d36817ea699ca357fece9981ffba2e67a8dd3cb5e"
+      },
+      "equivalent": null,
+      "equivalence_detail": "one or both sides missing canonical result",
+      "metrics_a": {
+        "queries_per_s": 94858.66059571238,
+        "latency": {
+          "p50": 10542,
+          "p95": 10542,
+          "p99": 10542,
+          "max": 10542,
+          "samples": 1
+        },
+        "resource": {
+          "cpu_time_ns": null,
+          "rss_bytes": null,
+          "peak_rss_bytes": null,
+          "physical_bytes_read": null,
+          "physical_bytes_written": null,
+          "read_amplification": null
+        },
+        "path": {
+          "documents_examined": 64,
+          "index_entries_examined": null,
+          "index_size_bytes": null,
+          "index_build_ns": null,
+          "indexed_write_penalty_ns": null,
+          "explain_plan_digest": "logical:c1f76517600b12f64088bf801f47809aabb8a1b84d0e1f26d22e1c86441310e2"
+        },
+        "lifecycle": "warm_steady",
+        "cold_method": "not_cold_warm_steady",
+        "deferred_work_units": 0,
+        "deferred_drained": true,
+        "result_digest_echo": "c1f76517600b12f64088bf801f47809aabb8a1b84d0e1f26d22e1c86441310e2",
+        "coverage_complete": true,
+        "validity_ok": true
+      },
+      "metrics_b": null,
+      "scaffold_only": true
+    },
+    {
+      "cell_id": "cell_indexed_eq_multi_sel_smoke_c1",
+      "case_id": "cell_indexed_eq_multi_sel_smoke_c1",
+      "lane": "embedded",
+      "pairing": {
+        "lane": "embedded",
+        "side_a": "residiuum_embedded",
+        "side_b": "couchbase_lite_embedded"
+      },
+      "concurrency": 1,
+      "side_a": {
+        "engine": "residiuum_embedded",
+        "status": "ready",
+        "result": {
+          "keys_digest": "7852cc456e308d8c23142016fb9a147cef1277ed2fccc6196395bc4742dff2e3",
+          "values_digest": "de466d71416fe3d6fe66f50fb321099e4282229608175e540e24f45b7a913350",
+          "multiplicity": "multiset",
+          "order_sensitive": false,
+          "coverage_complete": true,
+          "row_count": 7
+        },
+        "metrics": {
+          "queries_per_s": 26875.940657923027,
+          "latency": {
+            "p50": 37208,
+            "p95": 37208,
+            "p99": 37208,
+            "max": 37208,
+            "samples": 1
+          },
+          "resource": {
+            "cpu_time_ns": null,
+            "rss_bytes": null,
+            "peak_rss_bytes": null,
+            "physical_bytes_read": null,
+            "physical_bytes_written": null,
+            "read_amplification": null
+          },
+          "path": {
+            "documents_examined": 64,
+            "index_entries_examined": null,
+            "index_size_bytes": null,
+            "index_build_ns": null,
+            "indexed_write_penalty_ns": null,
+            "explain_plan_digest": "logical:de466d71416fe3d6fe66f50fb321099e4282229608175e540e24f45b7a913350"
+          },
+          "lifecycle": "warm_steady",
+          "cold_method": "not_cold_warm_steady",
+          "deferred_work_units": 0,
+          "deferred_drained": true,
+          "result_digest_echo": "de466d71416fe3d6fe66f50fb321099e4282229608175e540e24f45b7a913350",
+          "coverage_complete": true,
+          "validity_ok": true
+        },
+        "refuse_code": null,
+        "detail": "logical_harness plan=cell_indexed_eq_multi_sel_smoke_c1 examined=64",
+        "shared_work_hash": "70da77022cd2fdba5f601d7b86e22f1ff7cf52b327f34715b15ad3fe293cb89d"
+      },
+      "side_b": {
+        "engine": "couchbase_lite_embedded",
+        "status": "not_configured",
+        "result": null,
+        "metrics": null,
+        "refuse_code": "adapter_not_configured:cbl_embedded",
+        "detail": "shared logical work loaded=true; plan=cell_indexed_eq_multi_sel_smoke_c1 (CBL native residual)",
+        "shared_work_hash": "70da77022cd2fdba5f601d7b86e22f1ff7cf52b327f34715b15ad3fe293cb89d"
+      },
+      "equivalent": null,
+      "equivalence_detail": "one or both sides missing canonical result",
+      "metrics_a": {
+        "queries_per_s": 26875.940657923027,
+        "latency": {
+          "p50": 37208,
+          "p95": 37208,
+          "p99": 37208,
+          "max": 37208,
+          "samples": 1
+        },
+        "resource": {
+          "cpu_time_ns": null,
+          "rss_bytes": null,
+          "peak_rss_bytes": null,
+          "physical_bytes_read": null,
+          "physical_bytes_written": null,
+          "read_amplification": null
+        },
+        "path": {
+          "documents_examined": 64,
+          "index_entries_examined": null,
+          "index_size_bytes": null,
+          "index_build_ns": null,
+          "indexed_write_penalty_ns": null,
+          "explain_plan_digest": "logical:de466d71416fe3d6fe66f50fb321099e4282229608175e540e24f45b7a913350"
+        },
+        "lifecycle": "warm_steady",
+        "cold_method": "not_cold_warm_steady",
+        "deferred_work_units": 0,
+        "deferred_drained": true,
+        "result_digest_echo": "de466d71416fe3d6fe66f50fb321099e4282229608175e540e24f45b7a913350",
+        "coverage_complete": true,
+        "validity_ok": true
+      },
+      "metrics_b": null,
+      "scaffold_only": true
+    },
+    {
+      "cell_id": "cell_range_compound_smoke_c1",
+      "case_id": "cell_range_compound_smoke_c1",
+      "lane": "embedded",
+      "pairing": {
+        "lane": "embedded",
+        "side_a": "residiuum_embedded",
+        "side_b": "couchbase_lite_embedded"
+      },
+      "concurrency": 1,
+      "side_a": {
+        "engine": "residiuum_embedded",
+        "status": "ready",
+        "result": {
+          "keys_digest": "8435b3e2da4e22357e2b3f5b70872749e54fc059ed364d2fd4e801975243d21e",
+          "values_digest": "cf72aa884077e08e21d859d3a9252898c2b85a64ade2735f71719ed191d36e21",
+          "multiplicity": "multiset",
+          "order_sensitive": false,
+          "coverage_complete": true,
+          "row_count": 8
+        },
+        "metrics": {
+          "queries_per_s": 32921.81069958848,
+          "latency": {
+            "p50": 30375,
+            "p95": 30375,
+            "p99": 30375,
+            "max": 30375,
+            "samples": 1
+          },
+          "resource": {
+            "cpu_time_ns": null,
+            "rss_bytes": null,
+            "peak_rss_bytes": null,
+            "physical_bytes_read": null,
+            "physical_bytes_written": null,
+            "read_amplification": null
+          },
+          "path": {
+            "documents_examined": 64,
+            "index_entries_examined": null,
+            "index_size_bytes": null,
+            "index_build_ns": null,
+            "indexed_write_penalty_ns": null,
+            "explain_plan_digest": "logical:cf72aa884077e08e21d859d3a9252898c2b85a64ade2735f71719ed191d36e21"
+          },
+          "lifecycle": "warm_steady",
+          "cold_method": "not_cold_warm_steady",
+          "deferred_work_units": 0,
+          "deferred_drained": true,
+          "result_digest_echo": "cf72aa884077e08e21d859d3a9252898c2b85a64ade2735f71719ed191d36e21",
+          "coverage_complete": true,
+          "validity_ok": true
+        },
+        "refuse_code": null,
+        "detail": "logical_harness plan=cell_range_compound_smoke_c1 examined=64",
+        "shared_work_hash": "2aae15176388f7b1e8b9fc5532b5979191f99dd4909955eb7f46e6dc0c608cc5"
+      },
+      "side_b": {
+        "engine": "couchbase_lite_embedded",
+        "status": "not_configured",
+        "result": null,
+        "metrics": null,
+        "refuse_code": "adapter_not_configured:cbl_embedded",
+        "detail": "shared logical work loaded=true; plan=cell_range_compound_smoke_c1 (CBL native residual)",
+        "shared_work_hash": "2aae15176388f7b1e8b9fc5532b5979191f99dd4909955eb7f46e6dc0c608cc5"
+      },
+      "equivalent": null,
+      "equivalence_detail": "one or both sides missing canonical result",
+      "metrics_a": {
+        "queries_per_s": 32921.81069958848,
+        "latency": {
+          "p50": 30375,
+          "p95": 30375,
+          "p99": 30375,
+          "max": 30375,
+          "samples": 1
+        },
+        "resource": {
+          "cpu_time_ns": null,
+          "rss_bytes": null,
+          "peak_rss_bytes": null,
+          "physical_bytes_read": null,
+          "physical_bytes_written": null,
+          "read_amplification": null
+        },
+        "path": {
+          "documents_examined": 64,
+          "index_entries_examined": null,
+          "index_size_bytes": null,
+          "index_build_ns": null,
+          "indexed_write_penalty_ns": null,
+          "explain_plan_digest": "logical:cf72aa884077e08e21d859d3a9252898c2b85a64ade2735f71719ed191d36e21"
+        },
+        "lifecycle": "warm_steady",
+        "cold_method": "not_cold_warm_steady",
+        "deferred_work_units": 0,
+        "deferred_drained": true,
+        "result_digest_echo": "cf72aa884077e08e21d859d3a9252898c2b85a64ade2735f71719ed191d36e21",
+        "coverage_complete": true,
+        "validity_ok": true
+      },
+      "metrics_b": null,
+      "scaffold_only": true
+    },
+    {
+      "cell_id": "cell_nested_array_pred_smoke_c1",
+      "case_id": "cell_nested_array_pred_smoke_c1",
+      "lane": "embedded",
+      "pairing": {
+        "lane": "embedded",
+        "side_a": "residiuum_embedded",
+        "side_b": "couchbase_lite_embedded"
+      },
+      "concurrency": 1,
+      "side_a": {
+        "engine": "residiuum_embedded",
+        "status": "ready",
+        "result": {
+          "keys_digest": "e68a650db70f28f66a3b099684df8de9f0854324c3267b6acbc3448b0fbb2880",
+          "values_digest": "fac43a3938b4d1526927f0fe8518e297a85a6af304b7e436cc49c61854fbe66d",
+          "multiplicity": "multiset",
+          "order_sensitive": false,
+          "coverage_complete": true,
+          "row_count": 11
+        },
+        "metrics": {
+          "queries_per_s": 13355.59265442404,
+          "latency": {
+            "p50": 74875,
+            "p95": 74875,
+            "p99": 74875,
+            "max": 74875,
+            "samples": 1
+          },
+          "resource": {
+            "cpu_time_ns": null,
+            "rss_bytes": null,
+            "peak_rss_bytes": null,
+            "physical_bytes_read": null,
+            "physical_bytes_written": null,
+            "read_amplification": null
+          },
+          "path": {
+            "documents_examined": 64,
+            "index_entries_examined": null,
+            "index_size_bytes": null,
+            "index_build_ns": null,
+            "indexed_write_penalty_ns": null,
+            "explain_plan_digest": "logical:fac43a3938b4d1526927f0fe8518e297a85a6af304b7e436cc49c61854fbe66d"
+          },
+          "lifecycle": "warm_steady",
+          "cold_method": "not_cold_warm_steady",
+          "deferred_work_units": 0,
+          "deferred_drained": true,
+          "result_digest_echo": "fac43a3938b4d1526927f0fe8518e297a85a6af304b7e436cc49c61854fbe66d",
+          "coverage_complete": true,
+          "validity_ok": true
+        },
+        "refuse_code": null,
+        "detail": "logical_harness plan=cell_nested_array_pred_smoke_c1 examined=64",
+        "shared_work_hash": "28916a517bdedb79380ead9b4494bfe4aab9ec856426fb97047d7ecbc4f120d1"
+      },
+      "side_b": {
+        "engine": "couchbase_lite_embedded",
+        "status": "not_configured",
+        "result": null,
+        "metrics": null,
+        "refuse_code": "adapter_not_configured:cbl_embedded",
+        "detail": "shared logical work loaded=true; plan=cell_nested_array_pred_smoke_c1 (CBL native residual)",
+        "shared_work_hash": "28916a517bdedb79380ead9b4494bfe4aab9ec856426fb97047d7ecbc4f120d1"
+      },
+      "equivalent": null,
+      "equivalence_detail": "one or both sides missing canonical result",
+      "metrics_a": {
+        "queries_per_s": 13355.59265442404,
+        "latency": {
+          "p50": 74875,
+          "p95": 74875,
+          "p99": 74875,
+          "max": 74875,
+          "samples": 1
+        },
+        "resource": {
+          "cpu_time_ns": null,
+          "rss_bytes": null,
+          "peak_rss_bytes": null,
+          "physical_bytes_read": null,
+          "physical_bytes_written": null,
+          "read_amplification": null
+        },
+        "path": {
+          "documents_examined": 64,
+          "index_entries_examined": null,
+          "index_size_bytes": null,
+          "index_build_ns": null,
+          "indexed_write_penalty_ns": null,
+          "explain_plan_digest": "logical:fac43a3938b4d1526927f0fe8518e297a85a6af304b7e436cc49c61854fbe66d"
+        },
+        "lifecycle": "warm_steady",
+        "cold_method": "not_cold_warm_steady",
+        "deferred_work_units": 0,
+        "deferred_drained": true,
+        "result_digest_echo": "fac43a3938b4d1526927f0fe8518e297a85a6af304b7e436cc49c61854fbe66d",
+        "coverage_complete": true,
+        "validity_ok": true
+      },
+      "metrics_b": null,
+      "scaffold_only": true
+    },
+    {
+      "cell_id": "cell_project_covered_smoke_c1",
+      "case_id": "cell_project_covered_smoke_c1",
+      "lane": "embedded",
+      "pairing": {
+        "lane": "embedded",
+        "side_a": "residiuum_embedded",
+        "side_b": "couchbase_lite_embedded"
+      },
+      "concurrency": 1,
+      "side_a": {
+        "engine": "residiuum_embedded",
+        "status": "ready",
+        "result": {
+          "keys_digest": "1c45b196073766995adb10865b34a9908940c3f93f235140e6c8fb639dee7623",
+          "values_digest": "fb55524392eef43d5834c266898058532e532b0ea47cc63078d2f0de90abd9a1",
+          "multiplicity": "multiset",
+          "order_sensitive": false,
+          "coverage_complete": true,
+          "row_count": 64
+        },
+        "metrics": {
+          "queries_per_s": 14687.954408589516,
+          "latency": {
+            "p50": 68083,
+            "p95": 68083,
+            "p99": 68083,
+            "max": 68083,
+            "samples": 1
+          },
+          "resource": {
+            "cpu_time_ns": null,
+            "rss_bytes": null,
+            "peak_rss_bytes": null,
+            "physical_bytes_read": null,
+            "physical_bytes_written": null,
+            "read_amplification": null
+          },
+          "path": {
+            "documents_examined": 64,
+            "index_entries_examined": null,
+            "index_size_bytes": null,
+            "index_build_ns": null,
+            "indexed_write_penalty_ns": null,
+            "explain_plan_digest": "logical:fb55524392eef43d5834c266898058532e532b0ea47cc63078d2f0de90abd9a1"
+          },
+          "lifecycle": "warm_steady",
+          "cold_method": "not_cold_warm_steady",
+          "deferred_work_units": 0,
+          "deferred_drained": true,
+          "result_digest_echo": "fb55524392eef43d5834c266898058532e532b0ea47cc63078d2f0de90abd9a1",
+          "coverage_complete": true,
+          "validity_ok": true
+        },
+        "refuse_code": null,
+        "detail": "logical_harness plan=cell_project_covered_smoke_c1 examined=64",
+        "shared_work_hash": "14bb5229d4ebb0fdc10741010d12b51c37aa95a0f7565dadc8a0c9ae2fa011f9"
+      },
+      "side_b": {
+        "engine": "couchbase_lite_embedded",
+        "status": "not_configured",
+        "result": null,
+        "metrics": null,
+        "refuse_code": "adapter_not_configured:cbl_embedded",
+        "detail": "shared logical work loaded=true; plan=cell_project_covered_smoke_c1 (CBL native residual)",
+        "shared_work_hash": "14bb5229d4ebb0fdc10741010d12b51c37aa95a0f7565dadc8a0c9ae2fa011f9"
+      },
+      "equivalent": null,
+      "equivalence_detail": "one or both sides missing canonical result",
+      "metrics_a": {
+        "queries_per_s": 14687.954408589516,
+        "latency": {
+          "p50": 68083,
+          "p95": 68083,
+          "p99": 68083,
+          "max": 68083,
+          "samples": 1
+        },
+        "resource": {
+          "cpu_time_ns": null,
+          "rss_bytes": null,
+          "peak_rss_bytes": null,
+          "physical_bytes_read": null,
+          "physical_bytes_written": null,
+          "read_amplification": null
+        },
+        "path": {
+          "documents_examined": 64,
+          "index_entries_examined": null,
+          "index_size_bytes": null,
+          "index_build_ns": null,
+          "indexed_write_penalty_ns": null,
+          "explain_plan_digest": "logical:fb55524392eef43d5834c266898058532e532b0ea47cc63078d2f0de90abd9a1"
+        },
+        "lifecycle": "warm_steady",
+        "cold_method": "not_cold_warm_steady",
+        "deferred_work_units": 0,
+        "deferred_drained": true,
+        "result_digest_echo": "fb55524392eef43d5834c266898058532e532b0ea47cc63078d2f0de90abd9a1",
+        "coverage_complete": true,
+        "validity_ok": true
+      },
+      "metrics_b": null,
+      "scaffold_only": true
+    },
+    {
+      "cell_id": "cell_top_k_smoke_c1",
+      "case_id": "cell_top_k_smoke_c1",
+      "lane": "embedded",
+      "pairing": {
+        "lane": "embedded",
+        "side_a": "residiuum_embedded",
+        "side_b": "couchbase_lite_embedded"
+      },
+      "concurrency": 1,
+      "side_a": {
+        "engine": "residiuum_embedded",
+        "status": "ready",
+        "result": {
+          "keys_digest": "f396958ffc68ebeff9af17069a9e498d811bd9ccbffc0abd0bf877faf4bdcc26",
+          "values_digest": "b3a4975854a7467435ec308c612eb317a89b29a535be5fc4a7829b246ea0ed3d",
+          "multiplicity": "ordered",
+          "order_sensitive": true,
+          "coverage_complete": true,
+          "row_count": 10
+        },
+        "metrics": {
+          "queries_per_s": 6290.930365691782,
+          "latency": {
+            "p50": 158959,
+            "p95": 158959,
+            "p99": 158959,
+            "max": 158959,
+            "samples": 1
+          },
+          "resource": {
+            "cpu_time_ns": null,
+            "rss_bytes": null,
+            "peak_rss_bytes": null,
+            "physical_bytes_read": null,
+            "physical_bytes_written": null,
+            "read_amplification": null
+          },
+          "path": {
+            "documents_examined": 64,
+            "index_entries_examined": null,
+            "index_size_bytes": null,
+            "index_build_ns": null,
+            "indexed_write_penalty_ns": null,
+            "explain_plan_digest": "logical:b3a4975854a7467435ec308c612eb317a89b29a535be5fc4a7829b246ea0ed3d"
+          },
+          "lifecycle": "warm_steady",
+          "cold_method": "not_cold_warm_steady",
+          "deferred_work_units": 0,
+          "deferred_drained": true,
+          "result_digest_echo": "b3a4975854a7467435ec308c612eb317a89b29a535be5fc4a7829b246ea0ed3d",
+          "coverage_complete": true,
+          "validity_ok": true
+        },
+        "refuse_code": null,
+        "detail": "logical_harness plan=cell_top_k_smoke_c1 examined=64",
+        "shared_work_hash": "58612c2c3e88815a891d041077a2b06d988c398a6f5e6762c106007e6d326648"
+      },
+      "side_b": {
+        "engine": "couchbase_lite_embedded",
+        "status": "not_configured",
+        "result": null,
+        "metrics": null,
+        "refuse_code": "adapter_not_configured:cbl_embedded",
+        "detail": "shared logical work loaded=true; plan=cell_top_k_smoke_c1 (CBL native residual)",
+        "shared_work_hash": "58612c2c3e88815a891d041077a2b06d988c398a6f5e6762c106007e6d326648"
+      },
+      "equivalent": null,
+      "equivalence_detail": "one or both sides missing canonical result",
+      "metrics_a": {
+        "queries_per_s": 6290.930365691782,
+        "latency": {
+          "p50": 158959,
+          "p95": 158959,
+          "p99": 158959,
+          "max": 158959,
+          "samples": 1
+        },
+        "resource": {
+          "cpu_time_ns": null,
+          "rss_bytes": null,
+          "peak_rss_bytes": null,
+          "physical_bytes_read": null,
+          "physical_bytes_written": null,
+          "read_amplification": null
+        },
+        "path": {
+          "documents_examined": 64,
+          "index_entries_examined": null,
+          "index_size_bytes": null,
+          "index_build_ns": null,
+          "indexed_write_penalty_ns": null,
+          "explain_plan_digest": "logical:b3a4975854a7467435ec308c612eb317a89b29a535be5fc4a7829b246ea0ed3d"
+        },
+        "lifecycle": "warm_steady",
+        "cold_method": "not_cold_warm_steady",
+        "deferred_work_units": 0,
+        "deferred_drained": true,
+        "result_digest_echo": "b3a4975854a7467435ec308c612eb317a89b29a535be5fc4a7829b246ea0ed3d",
+        "coverage_complete": true,
+        "validity_ok": true
+      },
+      "metrics_b": null,
+      "scaffold_only": true
+    },
+    {
+      "cell_id": "cell_cursor_first_deep_smoke_c1",
+      "case_id": "cell_cursor_first_deep_smoke_c1",
+      "lane": "embedded",
+      "pairing": {
+        "lane": "embedded",
+        "side_a": "residiuum_embedded",
+        "side_b": "couchbase_lite_embedded"
+      },
+      "concurrency": 1,
+      "side_a": {
+        "engine": "residiuum_embedded",
+        "status": "ready",
+        "result": {
+          "keys_digest": "4880034d11f046f4a88e7379b7e9876282c9ff9f82c809ed873ecdb2a9a23eb5",
+          "values_digest": "f2aadace8ced5a38722c9adceec22c37dd74f4472882358ddd309c5e1ba7e3e0",
+          "multiplicity": "ordered",
+          "order_sensitive": true,
+          "coverage_complete": true,
+          "row_count": 8
+        },
+        "metrics": {
+          "queries_per_s": 47523.999619808004,
+          "latency": {
+            "p50": 21042,
+            "p95": 21042,
+            "p99": 21042,
+            "max": 21042,
+            "samples": 1
+          },
+          "resource": {
+            "cpu_time_ns": null,
+            "rss_bytes": null,
+            "peak_rss_bytes": null,
+            "physical_bytes_read": null,
+            "physical_bytes_written": null,
+            "read_amplification": null
+          },
+          "path": {
+            "documents_examined": 64,
+            "index_entries_examined": null,
+            "index_size_bytes": null,
+            "index_build_ns": null,
+            "indexed_write_penalty_ns": null,
+            "explain_plan_digest": "logical:f2aadace8ced5a38722c9adceec22c37dd74f4472882358ddd309c5e1ba7e3e0"
+          },
+          "lifecycle": "warm_steady",
+          "cold_method": "not_cold_warm_steady",
+          "deferred_work_units": 0,
+          "deferred_drained": true,
+          "result_digest_echo": "f2aadace8ced5a38722c9adceec22c37dd74f4472882358ddd309c5e1ba7e3e0",
+          "coverage_complete": true,
+          "validity_ok": true
+        },
+        "refuse_code": null,
+        "detail": "logical_harness plan=cell_cursor_first_deep_smoke_c1 examined=64",
+        "shared_work_hash": "a06735daeddc9e834ca8bf58591e70d0c6d345a84ab92057a685e9c3fd1366ce"
+      },
+      "side_b": {
+        "engine": "couchbase_lite_embedded",
+        "status": "not_configured",
+        "result": null,
+        "metrics": null,
+        "refuse_code": "adapter_not_configured:cbl_embedded",
+        "detail": "shared logical work loaded=true; plan=cell_cursor_first_deep_smoke_c1 (CBL native residual)",
+        "shared_work_hash": "a06735daeddc9e834ca8bf58591e70d0c6d345a84ab92057a685e9c3fd1366ce"
+      },
+      "equivalent": null,
+      "equivalence_detail": "one or both sides missing canonical result",
+      "metrics_a": {
+        "queries_per_s": 47523.999619808004,
+        "latency": {
+          "p50": 21042,
+          "p95": 21042,
+          "p99": 21042,
+          "max": 21042,
+          "samples": 1
+        },
+        "resource": {
+          "cpu_time_ns": null,
+          "rss_bytes": null,
+          "peak_rss_bytes": null,
+          "physical_bytes_read": null,
+          "physical_bytes_written": null,
+          "read_amplification": null
+        },
+        "path": {
+          "documents_examined": 64,
+          "index_entries_examined": null,
+          "index_size_bytes": null,
+          "index_build_ns": null,
+          "indexed_write_penalty_ns": null,
+          "explain_plan_digest": "logical:f2aadace8ced5a38722c9adceec22c37dd74f4472882358ddd309c5e1ba7e3e0"
+        },
+        "lifecycle": "warm_steady",
+        "cold_method": "not_cold_warm_steady",
+        "deferred_work_units": 0,
+        "deferred_drained": true,
+        "result_digest_echo": "f2aadace8ced5a38722c9adceec22c37dd74f4472882358ddd309c5e1ba7e3e0",
+        "coverage_complete": true,
+        "validity_ok": true
+      },
+      "metrics_b": null,
+      "scaffold_only": true
+    },
+    {
+      "cell_id": "cell_enrich_card_smoke_c1",
+      "case_id": "cell_enrich_card_smoke_c1",
+      "lane": "embedded",
+      "pairing": {
+        "lane": "embedded",
+        "side_a": "residiuum_embedded",
+        "side_b": "couchbase_lite_embedded"
+      },
+      "concurrency": 1,
+      "side_a": {
+        "engine": "residiuum_embedded",
+        "status": "ready",
+        "result": {
+          "keys_digest": "1c45b196073766995adb10865b34a9908940c3f93f235140e6c8fb639dee7623",
+          "values_digest": "2bb53b1a7e287ffbd2f6fefdbff01889a6ded8a4d30fb0101c9f5f5b2fc303f0",
+          "multiplicity": "multiset",
+          "order_sensitive": false,
+          "coverage_complete": true,
+          "row_count": 64
+        },
+        "metrics": {
+          "queries_per_s": 4662.917680851262,
+          "latency": {
+            "p50": 214458,
+            "p95": 214458,
+            "p99": 214458,
+            "max": 214458,
+            "samples": 1
+          },
+          "resource": {
+            "cpu_time_ns": null,
+            "rss_bytes": null,
+            "peak_rss_bytes": null,
+            "physical_bytes_read": null,
+            "physical_bytes_written": null,
+            "read_amplification": null
+          },
+          "path": {
+            "documents_examined": 64,
+            "index_entries_examined": null,
+            "index_size_bytes": null,
+            "index_build_ns": null,
+            "indexed_write_penalty_ns": null,
+            "explain_plan_digest": "logical:2bb53b1a7e287ffbd2f6fefdbff01889a6ded8a4d30fb0101c9f5f5b2fc303f0"
+          },
+          "lifecycle": "warm_steady",
+          "cold_method": "not_cold_warm_steady",
+          "deferred_work_units": 0,
+          "deferred_drained": true,
+          "result_digest_echo": "2bb53b1a7e287ffbd2f6fefdbff01889a6ded8a4d30fb0101c9f5f5b2fc303f0",
+          "coverage_complete": true,
+          "validity_ok": true
+        },
+        "refuse_code": null,
+        "detail": "logical_harness plan=cell_enrich_card_smoke_c1 examined=64",
+        "shared_work_hash": "f26d0e800b06e3765a9769995c938d1fbb554ad57843f7e2a1f6ed63296681be"
+      },
+      "side_b": {
+        "engine": "couchbase_lite_embedded",
+        "status": "not_configured",
+        "result": null,
+        "metrics": null,
+        "refuse_code": "adapter_not_configured:cbl_embedded",
+        "detail": "shared logical work loaded=true; plan=cell_enrich_card_smoke_c1 (CBL native residual)",
+        "shared_work_hash": "f26d0e800b06e3765a9769995c938d1fbb554ad57843f7e2a1f6ed63296681be"
+      },
+      "equivalent": null,
+      "equivalence_detail": "one or both sides missing canonical result",
+      "metrics_a": {
+        "queries_per_s": 4662.917680851262,
+        "latency": {
+          "p50": 214458,
+          "p95": 214458,
+          "p99": 214458,
+          "max": 214458,
+          "samples": 1
+        },
+        "resource": {
+          "cpu_time_ns": null,
+          "rss_bytes": null,
+          "peak_rss_bytes": null,
+          "physical_bytes_read": null,
+          "physical_bytes_written": null,
+          "read_amplification": null
+        },
+        "path": {
+          "documents_examined": 64,
+          "index_entries_examined": null,
+          "index_size_bytes": null,
+          "index_build_ns": null,
+          "indexed_write_penalty_ns": null,
+          "explain_plan_digest": "logical:2bb53b1a7e287ffbd2f6fefdbff01889a6ded8a4d30fb0101c9f5f5b2fc303f0"
+        },
+        "lifecycle": "warm_steady",
+        "cold_method": "not_cold_warm_steady",
+        "deferred_work_units": 0,
+        "deferred_drained": true,
+        "result_digest_echo": "2bb53b1a7e287ffbd2f6fefdbff01889a6ded8a4d30fb0101c9f5f5b2fc303f0",
+        "coverage_complete": true,
+        "validity_ok": true
+      },
+      "metrics_b": null,
+      "scaffold_only": true
+    },
+    {
+      "cell_id": "cell_group_card_smoke_c1",
+      "case_id": "cell_group_card_smoke_c1",
+      "lane": "embedded",
+      "pairing": {
+        "lane": "embedded",
+        "side_a": "residiuum_embedded",
+        "side_b": "couchbase_lite_embedded"
+      },
+      "concurrency": 1,
+      "side_a": {
+        "engine": "residiuum_embedded",
+        "status": "ready",
+        "result": {
+          "keys_digest": "bb3a577b90e80d1a83d13833229783a360cbc1998c82243000fac81148b3a968",
+          "values_digest": "bfb3cd9125ff7d7972a46185092a325c8ca610b5f95f255bab5e07f6a04278b3",
+          "multiplicity": "multiset",
+          "order_sensitive": false,
+          "coverage_complete": true,
+          "row_count": 2
+        },
+        "metrics": {
+          "queries_per_s": 26607.774791794163,
+          "latency": {
+            "p50": 37583,
+            "p95": 37583,
+            "p99": 37583,
+            "max": 37583,
+            "samples": 1
+          },
+          "resource": {
+            "cpu_time_ns": null,
+            "rss_bytes": null,
+            "peak_rss_bytes": null,
+            "physical_bytes_read": null,
+            "physical_bytes_written": null,
+            "read_amplification": null
+          },
+          "path": {
+            "documents_examined": 64,
+            "index_entries_examined": null,
+            "index_size_bytes": null,
+            "index_build_ns": null,
+            "indexed_write_penalty_ns": null,
+            "explain_plan_digest": "logical:bfb3cd9125ff7d7972a46185092a325c8ca610b5f95f255bab5e07f6a04278b3"
+          },
+          "lifecycle": "warm_steady",
+          "cold_method": "not_cold_warm_steady",
+          "deferred_work_units": 0,
+          "deferred_drained": true,
+          "result_digest_echo": "bfb3cd9125ff7d7972a46185092a325c8ca610b5f95f255bab5e07f6a04278b3",
+          "coverage_complete": true,
+          "validity_ok": true
+        },
+        "refuse_code": null,
+        "detail": "logical_harness plan=cell_group_card_smoke_c1 examined=64",
+        "shared_work_hash": "9da1c37eaccbe96c078059cf5a35e168eb8e7182ca833e6168d8219cf98ceb07"
+      },
+      "side_b": {
+        "engine": "couchbase_lite_embedded",
+        "status": "not_configured",
+        "result": null,
+        "metrics": null,
+        "refuse_code": "adapter_not_configured:cbl_embedded",
+        "detail": "shared logical work loaded=true; plan=cell_group_card_smoke_c1 (CBL native residual)",
+        "shared_work_hash": "9da1c37eaccbe96c078059cf5a35e168eb8e7182ca833e6168d8219cf98ceb07"
+      },
+      "equivalent": null,
+      "equivalence_detail": "one or both sides missing canonical result",
+      "metrics_a": {
+        "queries_per_s": 26607.774791794163,
+        "latency": {
+          "p50": 37583,
+          "p95": 37583,
+          "p99": 37583,
+          "max": 37583,
+          "samples": 1
+        },
+        "resource": {
+          "cpu_time_ns": null,
+          "rss_bytes": null,
+          "peak_rss_bytes": null,
+          "physical_bytes_read": null,
+          "physical_bytes_written": null,
+          "read_amplification": null
+        },
+        "path": {
+          "documents_examined": 64,
+          "index_entries_examined": null,
+          "index_size_bytes": null,
+          "index_build_ns": null,
+          "indexed_write_penalty_ns": null,
+          "explain_plan_digest": "logical:bfb3cd9125ff7d7972a46185092a325c8ca610b5f95f255bab5e07f6a04278b3"
+        },
+        "lifecycle": "warm_steady",
+        "cold_method": "not_cold_warm_steady",
+        "deferred_work_units": 0,
+        "deferred_drained": true,
+        "result_digest_echo": "bfb3cd9125ff7d7972a46185092a325c8ca610b5f95f255bab5e07f6a04278b3",
+        "coverage_complete": true,
+        "validity_ok": true
+      },
+      "metrics_b": null,
+      "scaffold_only": true
+    },
+    {
+      "cell_id": "cell_agg_stats_smoke_c1",
+      "case_id": "cell_agg_stats_smoke_c1",
+      "lane": "embedded",
+      "pairing": {
+        "lane": "embedded",
+        "side_a": "residiuum_embedded",
+        "side_b": "couchbase_lite_embedded"
+      },
+      "concurrency": 1,
+      "side_a": {
+        "engine": "residiuum_embedded",
+        "status": "ready",
+        "result": {
+          "keys_digest": "7df22c82473f887e12a3c3d332f698fb3586e9c3ce34b7c1e02d9a637bb37f2a",
+          "values_digest": "1e4f50fe1aa0700700f795996c08c7f6d269b799c4ccffe2b03b4c867156e860",
+          "multiplicity": "multiset",
+          "order_sensitive": false,
+          "coverage_complete": true,
+          "row_count": 5
+        },
+        "metrics": {
+          "queries_per_s": 23575.453238088503,
+          "latency": {
+            "p50": 42417,
+            "p95": 42417,
+            "p99": 42417,
+            "max": 42417,
+            "samples": 1
+          },
+          "resource": {
+            "cpu_time_ns": null,
+            "rss_bytes": null,
+            "peak_rss_bytes": null,
+            "physical_bytes_read": null,
+            "physical_bytes_written": null,
+            "read_amplification": null
+          },
+          "path": {
+            "documents_examined": 64,
+            "index_entries_examined": null,
+            "index_size_bytes": null,
+            "index_build_ns": null,
+            "indexed_write_penalty_ns": null,
+            "explain_plan_digest": "logical:1e4f50fe1aa0700700f795996c08c7f6d269b799c4ccffe2b03b4c867156e860"
+          },
+          "lifecycle": "warm_steady",
+          "cold_method": "not_cold_warm_steady",
+          "deferred_work_units": 0,
+          "deferred_drained": true,
+          "result_digest_echo": "1e4f50fe1aa0700700f795996c08c7f6d269b799c4ccffe2b03b4c867156e860",
+          "coverage_complete": true,
+          "validity_ok": true
+        },
+        "refuse_code": null,
+        "detail": "logical_harness plan=cell_agg_stats_smoke_c1 examined=64",
+        "shared_work_hash": "244aed4952224b9f2f736409b24be4c339cb3276f3b574ce03b64344bc13132e"
+      },
+      "side_b": {
+        "engine": "couchbase_lite_embedded",
+        "status": "not_configured",
+        "result": null,
+        "metrics": null,
+        "refuse_code": "adapter_not_configured:cbl_embedded",
+        "detail": "shared logical work loaded=true; plan=cell_agg_stats_smoke_c1 (CBL native residual)",
+        "shared_work_hash": "244aed4952224b9f2f736409b24be4c339cb3276f3b574ce03b64344bc13132e"
+      },
+      "equivalent": null,
+      "equivalence_detail": "one or both sides missing canonical result",
+      "metrics_a": {
+        "queries_per_s": 23575.453238088503,
+        "latency": {
+          "p50": 42417,
+          "p95": 42417,
+          "p99": 42417,
+          "max": 42417,
+          "samples": 1
+        },
+        "resource": {
+          "cpu_time_ns": null,
+          "rss_bytes": null,
+          "peak_rss_bytes": null,
+          "physical_bytes_read": null,
+          "physical_bytes_written": null,
+          "read_amplification": null
+        },
+        "path": {
+          "documents_examined": 64,
+          "index_entries_examined": null,
+          "index_size_bytes": null,
+          "index_build_ns": null,
+          "indexed_write_penalty_ns": null,
+          "explain_plan_digest": "logical:1e4f50fe1aa0700700f795996c08c7f6d269b799c4ccffe2b03b4c867156e860"
+        },
+        "lifecycle": "warm_steady",
+        "cold_method": "not_cold_warm_steady",
+        "deferred_work_units": 0,
+        "deferred_drained": true,
+        "result_digest_echo": "1e4f50fe1aa0700700f795996c08c7f6d269b799c4ccffe2b03b4c867156e860",
+        "coverage_complete": true,
+        "validity_ok": true
+      },
+      "metrics_b": null,
+      "scaffold_only": true
+    },
+    {
+      "cell_id": "cell_conditional_computed_smoke_c1",
+      "case_id": "cell_conditional_computed_smoke_c1",
+      "lane": "embedded",
+      "pairing": {
+        "lane": "embedded",
+        "side_a": "residiuum_embedded",
+        "side_b": "couchbase_lite_embedded"
+      },
+      "concurrency": 1,
+      "side_a": {
+        "engine": "residiuum_embedded",
+        "status": "ready",
+        "result": {
+          "keys_digest": "1c45b196073766995adb10865b34a9908940c3f93f235140e6c8fb639dee7623",
+          "values_digest": "91cc448445f179ca604e58a7a5011ec1f53b4ed155a970adaf69c7fc686a7e0b",
+          "multiplicity": "multiset",
+          "order_sensitive": false,
+          "coverage_complete": true,
+          "row_count": 64
+        },
+        "metrics": {
+          "queries_per_s": 15384.615384615385,
+          "latency": {
+            "p50": 65000,
+            "p95": 65000,
+            "p99": 65000,
+            "max": 65000,
+            "samples": 1
+          },
+          "resource": {
+            "cpu_time_ns": null,
+            "rss_bytes": null,
+            "peak_rss_bytes": null,
+            "physical_bytes_read": null,
+            "physical_bytes_written": null,
+            "read_amplification": null
+          },
+          "path": {
+            "documents_examined": 64,
+            "index_entries_examined": null,
+            "index_size_bytes": null,
+            "index_build_ns": null,
+            "indexed_write_penalty_ns": null,
+            "explain_plan_digest": "logical:91cc448445f179ca604e58a7a5011ec1f53b4ed155a970adaf69c7fc686a7e0b"
+          },
+          "lifecycle": "warm_steady",
+          "cold_method": "not_cold_warm_steady",
+          "deferred_work_units": 0,
+          "deferred_drained": true,
+          "result_digest_echo": "91cc448445f179ca604e58a7a5011ec1f53b4ed155a970adaf69c7fc686a7e0b",
+          "coverage_complete": true,
+          "validity_ok": true
+        },
+        "refuse_code": null,
+        "detail": "logical_harness plan=cell_conditional_computed_smoke_c1 examined=64",
+        "shared_work_hash": "27fd0df6dffa25c353364cec2bd5c4ec17c075149de69ed8297c082d180eb6a8"
+      },
+      "side_b": {
+        "engine": "couchbase_lite_embedded",
+        "status": "not_configured",
+        "result": null,
+        "metrics": null,
+        "refuse_code": "adapter_not_configured:cbl_embedded",
+        "detail": "shared logical work loaded=true; plan=cell_conditional_computed_smoke_c1 (CBL native residual)",
+        "shared_work_hash": "27fd0df6dffa25c353364cec2bd5c4ec17c075149de69ed8297c082d180eb6a8"
+      },
+      "equivalent": null,
+      "equivalence_detail": "one or both sides missing canonical result",
+      "metrics_a": {
+        "queries_per_s": 15384.615384615385,
+        "latency": {
+          "p50": 65000,
+          "p95": 65000,
+          "p99": 65000,
+          "max": 65000,
+          "samples": 1
+        },
+        "resource": {
+          "cpu_time_ns": null,
+          "rss_bytes": null,
+          "peak_rss_bytes": null,
+          "physical_bytes_read": null,
+          "physical_bytes_written": null,
+          "read_amplification": null
+        },
+        "path": {
+          "documents_examined": 64,
+          "index_entries_examined": null,
+          "index_size_bytes": null,
+          "index_build_ns": null,
+          "indexed_write_penalty_ns": null,
+          "explain_plan_digest": "logical:91cc448445f179ca604e58a7a5011ec1f53b4ed155a970adaf69c7fc686a7e0b"
+        },
+        "lifecycle": "warm_steady",
+        "cold_method": "not_cold_warm_steady",
+        "deferred_work_units": 0,
+        "deferred_drained": true,
+        "result_digest_echo": "91cc448445f179ca604e58a7a5011ec1f53b4ed155a970adaf69c7fc686a7e0b",
+        "coverage_complete": true,
+        "validity_ok": true
+      },
+      "metrics_b": null,
+      "scaffold_only": true
+    },
+    {
+      "cell_id": "cell_mixed_rw_smoke_c1",
+      "case_id": "cell_mixed_rw_smoke_c1",
+      "lane": "embedded",
+      "pairing": {
+        "lane": "embedded",
+        "side_a": "residiuum_embedded",
+        "side_b": "couchbase_lite_embedded"
+      },
+      "concurrency": 1,
+      "side_a": {
+        "engine": "residiuum_embedded",
+        "status": "ready",
+        "result": {
+          "keys_digest": "7852cc456e308d8c23142016fb9a147cef1277ed2fccc6196395bc4742dff2e3",
+          "values_digest": "12f969d817fee0600dd6988f919c0e26065c16fa931ecd5558baa1d5b80527b6",
+          "multiplicity": "multiset",
+          "order_sensitive": false,
+          "coverage_complete": true,
+          "row_count": 7
+        },
+        "metrics": {
+          "queries_per_s": 26666.666666666668,
+          "latency": {
+            "p50": 37500,
+            "p95": 37500,
+            "p99": 37500,
+            "max": 37500,
+            "samples": 1
+          },
+          "resource": {
+            "cpu_time_ns": null,
+            "rss_bytes": null,
+            "peak_rss_bytes": null,
+            "physical_bytes_read": null,
+            "physical_bytes_written": null,
+            "read_amplification": null
+          },
+          "path": {
+            "documents_examined": 64,
+            "index_entries_examined": null,
+            "index_size_bytes": null,
+            "index_build_ns": null,
+            "indexed_write_penalty_ns": null,
+            "explain_plan_digest": "logical:12f969d817fee0600dd6988f919c0e26065c16fa931ecd5558baa1d5b80527b6"
+          },
+          "lifecycle": "warm_steady",
+          "cold_method": "not_cold_warm_steady",
+          "deferred_work_units": 0,
+          "deferred_drained": true,
+          "result_digest_echo": "12f969d817fee0600dd6988f919c0e26065c16fa931ecd5558baa1d5b80527b6",
+          "coverage_complete": true,
+          "validity_ok": true
+        },
+        "refuse_code": null,
+        "detail": "logical_harness plan=cell_mixed_rw_smoke_c1 examined=64",
+        "shared_work_hash": "1429f10d7aabe580304c9eef2668e5583b0665e16d44c5339e1de6d5f1ca6fad"
+      },
+      "side_b": {
+        "engine": "couchbase_lite_embedded",
+        "status": "not_configured",
+        "result": null,
+        "metrics": null,
+        "refuse_code": "adapter_not_configured:cbl_embedded",
+        "detail": "shared logical work loaded=true; plan=cell_mixed_rw_smoke_c1 (CBL native residual)",
+        "shared_work_hash": "1429f10d7aabe580304c9eef2668e5583b0665e16d44c5339e1de6d5f1ca6fad"
+      },
+      "equivalent": null,
+      "equivalence_detail": "one or both sides missing canonical result",
+      "metrics_a": {
+        "queries_per_s": 26666.666666666668,
+        "latency": {
+          "p50": 37500,
+          "p95": 37500,
+          "p99": 37500,
+          "max": 37500,
+          "samples": 1
+        },
+        "resource": {
+          "cpu_time_ns": null,
+          "rss_bytes": null,
+          "peak_rss_bytes": null,
+          "physical_bytes_read": null,
+          "physical_bytes_written": null,
+          "read_amplification": null
+        },
+        "path": {
+          "documents_examined": 64,
+          "index_entries_examined": null,
+          "index_size_bytes": null,
+          "index_build_ns": null,
+          "indexed_write_penalty_ns": null,
+          "explain_plan_digest": "logical:12f969d817fee0600dd6988f919c0e26065c16fa931ecd5558baa1d5b80527b6"
+        },
+        "lifecycle": "warm_steady",
+        "cold_method": "not_cold_warm_steady",
+        "deferred_work_units": 0,
+        "deferred_drained": true,
+        "result_digest_echo": "12f969d817fee0600dd6988f919c0e26065c16fa931ecd5558baa1d5b80527b6",
+        "coverage_complete": true,
+        "validity_ok": true
+      },
+      "metrics_b": null,
+      "scaffold_only": true
+    }
+  ],
+  "content_hash": "9aac5b91065ccc0882699e8d6d59094d7d484c4334394d7ed7ae06e2c969d1ff"
+}
