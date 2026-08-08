@@ -38,7 +38,8 @@ env: `doc/todo/rql/RQL_Q0_ENV_MANIFEST.md`
 
 ```sh
 cargo test -p residiuum-rql-qual
-cargo test -p residiuum-rql-qual --features residiuum-embedded
+# Product embedded adapter (F1): must stay green — also run by verify-rql-q4-harness.sh
+cargo test -p residiuum-rql-qual --features residiuum-embedded --lib
 ```
 
 ## Verify

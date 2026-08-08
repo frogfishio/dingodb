@@ -32,8 +32,12 @@ need "$ROOT/spec/rql/qualification/corpus-v1/corpus-v1.json"
 command -v cargo >/dev/null 2>&1 || fail "cargo required"
 grep -q 'residiuum-rql-qual' "$ROOT/Cargo.toml" || fail "workspace member missing"
 
-ok "unit tests (Q4.1–Q4.3 structural)"
+ok "unit tests (Q4.1–Q4.3 structural, default features)"
 cargo test -p residiuum-rql-qual
+
+# F1: product adapter must not silently rot — compile + tests with feature on.
+ok "residiuum-embedded feature (product adapter compile + smoke)"
+cargo test -p residiuum-rql-qual --features residiuum-embedded --lib
 
 REPORT1="$ROOT/spec/rql/qualification/harness-v1/q4_1_architecture_report.json"
 REPORT2="$ROOT/spec/rql/qualification/harness-v1/q4_2_dataset_cells_report.json"

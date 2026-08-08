@@ -18,7 +18,7 @@ updated; implementers claim **F1–F9 first** (priority titles).
 
 | ID | Pri | Board title | Primary paths |
 |---|---|---|---|
-| F1 | P1 | Fix residiuum-embedded adapter compile + feature-gated CI | `residiuum_embedded.rs` ~145; `verify-rql-q4-harness.sh` |
+| F1 | P1 | Fix residiuum-embedded adapter compile + feature-gated CI | **labor in_review**: `e.code().as_str()`; verify enables feature |
 | F2 | P1 | Make mandatory Q4 §7.2 cells real runnable variants | `engine.rs`, `cell_plan.rs` |
 | F3 | P1 | Align Point selectivity plan query with generator oracle | `cell_plan.rs` ~313; `engine.rs` ~141 |
 | F4 | P1 | Fix 0.01% selectivity generator at campaign scale | `generator.rs` ~202 |
@@ -31,8 +31,8 @@ updated; implementers claim **F1–F9 first** (priority titles).
 ## Verification (principal)
 
 - `bash scripts/verify-rql-q3.sh` — green (default path)
-- `bash scripts/verify-rql-q4-harness.sh` — green (default 33)
-- `cargo test -p residiuum-rql-qual --features residiuum-embedded --no-run` — **fails** (F1)
+- `bash scripts/verify-rql-q4-harness.sh` — default + **feature embedded** (F1 labor)
+- `cargo test -p residiuum-rql-qual --features residiuum-embedded --lib` — **35/35** after F1 (was compile fail)
 
 ## Non-claims
 

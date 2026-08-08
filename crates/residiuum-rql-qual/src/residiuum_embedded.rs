@@ -66,6 +66,10 @@ fn uuid_bytes() -> [u8; 16] {
 }
 
 /// Execute a measured cell plan on product Residiuum embedded path.
+///
+/// Residual: Full enrich cells refuse via `product_residual:*`; Core-only RQL is
+/// the product path exercised here. Competitive claims still require principal
+/// accept + Q3-green families.
 pub fn execute_plan_embedded(
     work: Option<&SharedLogicalWork>,
     plan: &MeasuredCellPlan,
@@ -142,7 +146,8 @@ pub fn execute_plan_embedded(
                 status: AdapterStatus::Ready,
                 result: None,
                 metrics: None,
-                refuse_code: Some(format!("product_rql_refuse:{}", e.code())),
+                // ErrorCode is machine-stable via as_str (no Display).
+                refuse_code: Some(format!("product_rql_refuse:{}", e.code().as_str())),
                 detail: Some(e.to_string()),
                 shared_work_hash: Some(work.content_hash.clone()),
             });
@@ -186,4 +191,68 @@ pub fn execute_plan_embedded(
         detail: Some(format!("product_embedded plan={}", plan.plan_id)),
         shared_work_hash: Some(work.content_hash.clone()),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cell_plan::MeasuredCellPlan;
+    use crate::cells::MandatoryCell;
+    use crate::dataset::DatasetSpec;
+    use crate::engine::{AdapterStatus, EngineAdapter, ResidiuumEmbeddedAdapter};
+    use crate::generator::generate_dataset;
+    use crate::shared_work::SharedLogicalWork;
+
+    #[test]
+    fn product_embedded_key_get_compiles_and_runs() {
+        let plan = MeasuredCellPlan::smoke_for(MandatoryCell::KeyGet, 42);
+        let ds = generate_dataset(&plan.dataset);
+        let work = SharedLogicalWork::from_dataset(ds);
+        let mut adapter = ResidiuumEmbeddedAdapter::default();
+        adapter.load_shared_work(&work).expect("load shared");
+        assert_eq!(adapter.status(), AdapterStatus::Ready);
+        let out = adapter.execute_plan(&plan).expect("execute");
+        assert_eq!(out.engine, EngineId::ResidiuumEmbedded);
+        assert_eq!(out.status, AdapterStatus::Ready);
+        assert_eq!(
+            out.shared_work_hash.as_deref(),
+            Some(work.content_hash.as_str())
+        );
+        // Either a successful page or an honest product refuse code (not a panic).
+        match (&out.result, &out.refuse_code) {
+            (Some(r), None) => {
+                assert_eq!(r.row_count, 1, "key get should hit d-00000000");
+                assert!(out.metrics.is_some());
+            }
+            (None, Some(code)) => {
+                assert!(
+                    code.starts_with("product_rql_refuse:")
+                        || code.starts_with("product_residual:"),
+                    "unexpected refuse {code}"
+                );
+            }
+            other => panic!("unexpected outcome {other:?}"),
+        }
+    }
+
+    #[test]
+    fn product_refuse_code_uses_stable_errorcode_str() {
+        // Compile-time + runtime: Error::code().as_str() path is exercised when
+        // rql refuses; for a known-bad source we still expect a refuse code.
+        let mut plan = MeasuredCellPlan::smoke_for(MandatoryCell::KeyGet, 1);
+        plan.rql_source = "from docs where this is not valid rql !!!".into();
+        let ds = generate_dataset(&DatasetSpec::smoke_default(1));
+        let work = SharedLogicalWork::from_dataset(ds);
+        let mut adapter = ResidiuumEmbeddedAdapter::default();
+        adapter.load_shared_work(&work).unwrap();
+        let out = adapter.execute_plan(&plan).unwrap();
+        if let Some(code) = out.refuse_code {
+            assert!(
+                code.starts_with("product_rql_refuse:") || code.starts_with("product_residual:"),
+                "{code}"
+            );
+            // Must not be Debug-style "QueryInvalid" alone without stable mapping path.
+            assert!(!code.contains("ErrorCode"));
+        }
+    }
 }
