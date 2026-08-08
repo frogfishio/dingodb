@@ -46,6 +46,25 @@ pub struct IndexPlan {
     pub required: bool,
 }
 
+/// Enrich cardinality expectation for §7.2 cell 8.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EnrichExpect {
+    Optional,
+    ExactlyOne,
+    Many,
+}
+
+impl EnrichExpect {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Optional => "optional",
+            Self::ExactlyOne => "exactly_one",
+            Self::Many => "many",
+        }
+    }
+}
+
 /// One runnable measured-cell plan (not yet a competitive result).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MeasuredCellPlan {
@@ -61,7 +80,10 @@ pub struct MeasuredCellPlan {
     pub indexes: Vec<IndexPlan>,
     pub order_sensitive: bool,
     pub page_size: Option<u32>,
+    /// When true, logical/product must multipage (first + deep) not first-only.
+    pub require_deep_cursor: bool,
     pub rw_mix: Option<ReadWriteMix>,
+    pub enrich_expect: Option<EnrichExpect>,
     pub server_lane_ineligible: bool,
     pub notes: String,
 }
@@ -76,6 +98,11 @@ impl MeasuredCellPlan {
         dataset.selectivity = sel;
         dataset.cardinality = card;
 
+        let require_deep_cursor = matches!(cell, MandatoryCell::FirstAndDeepCursor);
+        let enrich_expect = match cell {
+            MandatoryCell::EnrichCardinalities => Some(EnrichExpect::Optional),
+            _ => None,
+        };
         Self {
             cell,
             plan_id: format!("{}_smoke_c1", cell.id()),
@@ -87,7 +114,9 @@ impl MeasuredCellPlan {
             indexes,
             order_sensitive,
             page_size,
+            require_deep_cursor,
             rw_mix,
+            enrich_expect,
             server_lane_ineligible: cell.server_lane_ineligible_by_default(),
             notes,
         }
@@ -218,7 +247,7 @@ fn cell_defaults(
             DocShape::Flat,
             SelectivityClass::Broad,
             CardinalityClass::High,
-            "First page + deep continuation (page_size=8); concat residual until APP-6 oracle."
+            "First + deep multipage continuation (page_size=8); full concat = unpaged."
                 .into(),
         ),
         MandatoryCell::EnrichCardinalities => (
@@ -232,7 +261,8 @@ fn cell_defaults(
             DocShape::Flat,
             SelectivityClass::Broad,
             CardinalityClass::Medium,
-            "1:1/optional/1:N enrich; Full path; server_lane_ineligible.".into(),
+            "Enrich optional default; variants exactly_one/many via enrich_variants()."
+                .into(),
         ),
         MandatoryCell::GroupLowHighCard => {
             dataset.cardinality = CardinalityClass::Low;
@@ -249,7 +279,8 @@ fn cell_defaults(
             )
         }
         MandatoryCell::AggCountSumMinMaxAvg => (
-            "from docs group by region count sum(amount) min(amount) max(amount)".into(),
+            "from docs group by region count sum(amount) min(amount) max(amount) avg(amount)"
+                .into(),
             vec![],
             false,
             None,
@@ -257,11 +288,12 @@ fn cell_defaults(
             DocShape::Flat,
             SelectivityClass::Broad,
             CardinalityClass::Medium,
-            "Aggregates count/sum/min/max (avg residual if Core surface incomplete).".into(),
+            "Aggregates count/sum/min/max/avg (logical always; product Core may refuse avg)."
+                .into(),
         ),
         MandatoryCell::ConditionalComputed => (
-            // App Core may refuse some computed forms — plan records intention.
-            r#"from docs where amount >= 0 project amount, region"#.into(),
+            // Intention: high_band = amount when amount>=100 else null (logical).
+            r#"from docs project amount, region, high_band"#.into(),
             vec![],
             false,
             None,
@@ -269,7 +301,7 @@ fn cell_defaults(
             DocShape::Flat,
             SelectivityClass::Broad,
             CardinalityClass::Medium,
-            "Conditional/computed shaping intention; Core project paths.".into(),
+            "Conditional high_band: amount if amount>=100 else null (logical computed).".into(),
         ),
         MandatoryCell::MixedReadWrite => (
             r#"from docs where sel_bucket = "HIT""#.into(),
@@ -280,7 +312,8 @@ fn cell_defaults(
             DocShape::Flat,
             SelectivityClass::S10,
             CardinalityClass::Medium,
-            "Mixed R/W 90/10 (and 70/30 variant); writers interleave under Available.".into(),
+            "Mixed R/W 90/10 (and 70/30 via rw_mix_variants); logical performs writes."
+                .into(),
         ),
     }
 }
@@ -290,6 +323,53 @@ pub fn smoke_portfolio(seed: u64) -> Vec<MeasuredCellPlan> {
     MandatoryCell::ALL
         .iter()
         .map(|c| MeasuredCellPlan::smoke_for(*c, seed))
+        .collect()
+}
+
+/// §7.2 expanded smoke: base 12 + enrich cardinality variants + R/W 70/30
+/// + concurrency matrix on key-get (executed by runner).
+pub fn section_7_2_expanded_portfolio(seed: u64) -> Vec<MeasuredCellPlan> {
+    let mut out = smoke_portfolio(seed);
+    out.extend(enrich_variants(seed));
+    out.extend(rw_mix_variants(seed));
+    let key = MeasuredCellPlan::smoke_for(MandatoryCell::KeyGet, seed);
+    out.extend(concurrency_matrix(&key, 2));
+    out
+}
+
+/// Enrich optional / exactly_one / many plan variants.
+pub fn enrich_variants(seed: u64) -> Vec<MeasuredCellPlan> {
+    [
+        EnrichExpect::Optional,
+        EnrichExpect::ExactlyOne,
+        EnrichExpect::Many,
+    ]
+    .into_iter()
+    .map(|ex| {
+        let mut p = MeasuredCellPlan::smoke_for(MandatoryCell::EnrichCardinalities, seed);
+        p.enrich_expect = Some(ex);
+        p.rql_source = format!(
+            "from docs enrich customer using customers matching customer_id = id expect {}",
+            ex.as_str()
+        );
+        p.plan_id = format!("{}_{}", MandatoryCell::EnrichCardinalities.id(), ex.as_str());
+        p.notes = format!("Enrich expect={}", ex.as_str());
+        p
+    })
+    .collect()
+}
+
+/// Mixed R/W 90/10 and 70/30 variants.
+pub fn rw_mix_variants(seed: u64) -> Vec<MeasuredCellPlan> {
+    [ReadWriteMix::R90W10, ReadWriteMix::R70W30]
+        .into_iter()
+        .map(|mix| {
+            let mut p = MeasuredCellPlan::smoke_for(MandatoryCell::MixedReadWrite, seed);
+            p.rw_mix = Some(mix);
+            p.plan_id = format!("{}_{}", MandatoryCell::MixedReadWrite.id(), mix.as_str());
+            p.notes = format!("Mixed R/W {}", mix.as_str());
+            p
+        })
         .collect()
 }
 
@@ -344,6 +424,7 @@ pub fn lifecycle_matrix(seed: u64) -> Vec<MeasuredCellPlan> {
 /// Machine report for Q4.2 labor evidence.
 pub fn q4_2_report_json() -> serde_json::Value {
     let smoke = smoke_portfolio(0x04_42);
+    let expanded = section_7_2_expanded_portfolio(0x04_42);
     let conc = concurrency_matrix(&smoke[0], 2);
     let sel = selectivity_matrix(0x04_42);
     let life = lifecycle_matrix(0x04_42);
@@ -353,6 +434,7 @@ pub fn q4_2_report_json() -> serde_json::Value {
         "summary": {
             "mandatory_cells": MandatoryCell::ALL.len(),
             "smoke_plans": smoke.len(),
+            "section_7_2_expanded_plans": expanded.len(),
             "concurrency_matrix_len": conc.len(),
             "selectivity_matrix_len": sel.len(),
             "lifecycle_matrix_len": life.len(),
@@ -360,6 +442,7 @@ pub fn q4_2_report_json() -> serde_json::Value {
             "oversubscribed_slot": OVERSUBSCRIBED_SLOT,
             "cold_reopen_claims_device_cold": false,
             "default_cold_method_reopen": ColdMethod::StoreReopen.as_str(),
+            "f2_real_cells": true,
         },
         "payload_classes": PayloadClass::PRIMARY.iter().map(|p| p.as_str()).collect::<Vec<_>>(),
         "shapes": DocShape::ALL.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
@@ -397,6 +480,31 @@ mod tests {
             .find(|p| p.cell == MandatoryCell::EnrichCardinalities)
             .unwrap();
         assert!(enrich.server_lane_ineligible);
+        let cursor = plans
+            .iter()
+            .find(|p| p.cell == MandatoryCell::FirstAndDeepCursor)
+            .unwrap();
+        assert!(cursor.require_deep_cursor);
+        let agg = plans
+            .iter()
+            .find(|p| p.cell == MandatoryCell::AggCountSumMinMaxAvg)
+            .unwrap();
+        assert!(agg.rql_source.contains("avg"));
+        let cond = plans
+            .iter()
+            .find(|p| p.cell == MandatoryCell::ConditionalComputed)
+            .unwrap();
+        assert!(cond.rql_source.contains("high_band"));
+    }
+
+    #[test]
+    fn section_7_2_expanded_includes_variants() {
+        let plans = section_7_2_expanded_portfolio(1);
+        assert!(plans.len() >= 22);
+        assert!(plans.iter().any(|p| p.plan_id.contains("exactly_one")));
+        assert!(plans.iter().any(|p| p.plan_id.contains("many")));
+        assert!(plans.iter().any(|p| p.plan_id.contains("rw_70_30")));
+        assert!(plans.iter().any(|p| p.concurrency == 8));
     }
 
     #[test]

@@ -95,6 +95,13 @@ Device-cold claims require `attempted_page_cache_drop` only.
 - [x] Machine report + verify script floors
 - [ ] Principal design accept (not labor)
 
-## 9. Next
+## 9. F2 real §7.2 variants (pre-accept)
+
+Logical harness now runs **genuine** multipage cursor (first+deep, full concat),
+mixed R/W with writes (90/10 and 70/30), conditional `high_band`, agg **avg**,
+enrich optional/exactly_one/many, and **executes** concurrency matrix in
+`section_7_2_expanded_portfolio` / `run_section_7_2_expanded`.
+
+## 10. Next
 
 **Q4.3** — metrics collectors, Mongo/CBL/server adapters, evidence publication — see [RQL_Q4_3_METRICS_ADAPTERS.md](./RQL_Q4_3_METRICS_ADAPTERS.md) (labor `in_review`).

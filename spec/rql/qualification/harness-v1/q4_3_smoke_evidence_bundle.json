@@ -4,14 +4,14 @@
   "env": {
     "format": "residiuum-rql-qual-env-fingerprint-v1",
     "harness_profile": "residiuum-rql-qual-harness-v1",
-    "git_sha": "8a70402e918d058350ba2e95822946316102b310",
+    "git_sha": "567f472a566785e6465b3151e699a84709566aa7",
     "dirty": true,
     "residiuum_version": "0.2.2",
     "rustc": "rustc 1.92.0 (ded5c06cf 2025-12-08)",
     "os": "macos",
     "arch": "aarch64",
     "hostname_class": "controlled_host_unspecified",
-    "recorded_unix_s": 1786164599,
+    "recorded_unix_s": 1786164976,
     "mongo_pin": "8.2.12",
     "cbl_pin": "4.1.0",
     "cbl_full_sync": true,
@@ -52,12 +52,12 @@
           "row_count": 1
         },
         "metrics": {
-          "queries_per_s": 34934.49781659389,
+          "queries_per_s": 28368.794326241135,
           "latency": {
-            "p50": 28625,
-            "p95": 28625,
-            "p99": 28625,
-            "max": 28625,
+            "p50": 35250,
+            "p95": 35250,
+            "p99": 35250,
+            "max": 35250,
             "samples": 1
           },
           "resource": {
@@ -85,7 +85,7 @@
           "validity_ok": true
         },
         "refuse_code": null,
-        "detail": "logical_harness plan=cell_key_get_smoke_c1 examined=64",
+        "detail": "logical_harness plan=cell_key_get_smoke_c1 examined=64 ",
         "shared_work_hash": "3e3cf40abbd8c1320c99245d36817ea699ca357fece9981ffba2e67a8dd3cb5e"
       },
       "side_b": {
@@ -100,12 +100,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 34934.49781659389,
+        "queries_per_s": 28368.794326241135,
         "latency": {
-          "p50": 28625,
-          "p95": 28625,
-          "p99": 28625,
-          "max": 28625,
+          "p50": 35250,
+          "p95": 35250,
+          "p99": 35250,
+          "max": 35250,
           "samples": 1
         },
         "resource": {
@@ -157,12 +157,12 @@
           "row_count": 7
         },
         "metrics": {
-          "queries_per_s": 7578.111383081108,
+          "queries_per_s": 13422.818791946309,
           "latency": {
-            "p50": 131959,
-            "p95": 131959,
-            "p99": 131959,
-            "max": 131959,
+            "p50": 74500,
+            "p95": 74500,
+            "p99": 74500,
+            "max": 74500,
             "samples": 1
           },
           "resource": {
@@ -190,7 +190,7 @@
           "validity_ok": true
         },
         "refuse_code": null,
-        "detail": "logical_harness plan=cell_indexed_eq_multi_sel_smoke_c1 examined=64",
+        "detail": "logical_harness plan=cell_indexed_eq_multi_sel_smoke_c1 examined=64 ",
         "shared_work_hash": "70da77022cd2fdba5f601d7b86e22f1ff7cf52b327f34715b15ad3fe293cb89d"
       },
       "side_b": {
@@ -205,12 +205,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 7578.111383081108,
+        "queries_per_s": 13422.818791946309,
         "latency": {
-          "p50": 131959,
-          "p95": 131959,
-          "p99": 131959,
-          "max": 131959,
+          "p50": 74500,
+          "p95": 74500,
+          "p99": 74500,
+          "max": 74500,
           "samples": 1
         },
         "resource": {
@@ -262,12 +262,12 @@
           "row_count": 8
         },
         "metrics": {
-          "queries_per_s": 5449.591280653951,
+          "queries_per_s": 3727.865796831314,
           "latency": {
-            "p50": 183500,
-            "p95": 183500,
-            "p99": 183500,
-            "max": 183500,
+            "p50": 268250,
+            "p95": 268250,
+            "p99": 268250,
+            "max": 268250,
             "samples": 1
           },
           "resource": {
@@ -295,7 +295,7 @@
           "validity_ok": true
         },
         "refuse_code": null,
-        "detail": "logical_harness plan=cell_range_compound_smoke_c1 examined=64",
+        "detail": "logical_harness plan=cell_range_compound_smoke_c1 examined=64 ",
         "shared_work_hash": "2aae15176388f7b1e8b9fc5532b5979191f99dd4909955eb7f46e6dc0c608cc5"
       },
       "side_b": {
@@ -310,12 +310,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 5449.591280653951,
+        "queries_per_s": 3727.865796831314,
         "latency": {
-          "p50": 183500,
-          "p95": 183500,
-          "p99": 183500,
-          "max": 183500,
+          "p50": 268250,
+          "p95": 268250,
+          "p99": 268250,
+          "max": 268250,
           "samples": 1
         },
         "resource": {
@@ -367,12 +367,12 @@
           "row_count": 11
         },
         "metrics": {
-          "queries_per_s": 2947.678703021371,
+          "queries_per_s": 1253.7880070161978,
           "latency": {
-            "p50": 339250,
-            "p95": 339250,
-            "p99": 339250,
-            "max": 339250,
+            "p50": 797583,
+            "p95": 797583,
+            "p99": 797583,
+            "max": 797583,
             "samples": 1
           },
           "resource": {
@@ -400,7 +400,7 @@
           "validity_ok": true
         },
         "refuse_code": null,
-        "detail": "logical_harness plan=cell_nested_array_pred_smoke_c1 examined=64",
+        "detail": "logical_harness plan=cell_nested_array_pred_smoke_c1 examined=64 ",
         "shared_work_hash": "28916a517bdedb79380ead9b4494bfe4aab9ec856426fb97047d7ecbc4f120d1"
       },
       "side_b": {
@@ -415,12 +415,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 2947.678703021371,
+        "queries_per_s": 1253.7880070161978,
         "latency": {
-          "p50": 339250,
-          "p95": 339250,
-          "p99": 339250,
-          "max": 339250,
+          "p50": 797583,
+          "p95": 797583,
+          "p99": 797583,
+          "max": 797583,
           "samples": 1
         },
         "resource": {
@@ -465,19 +465,19 @@
         "status": "ready",
         "result": {
           "keys_digest": "1c45b196073766995adb10865b34a9908940c3f93f235140e6c8fb639dee7623",
-          "values_digest": "fb55524392eef43d5834c266898058532e532b0ea47cc63078d2f0de90abd9a1",
+          "values_digest": "cf19689827e0826723758783f551df0963c3fce8693ec47c49fd863cd75ea7fb",
           "multiplicity": "multiset",
           "order_sensitive": false,
           "coverage_complete": true,
           "row_count": 64
         },
         "metrics": {
-          "queries_per_s": 5480.683331597784,
+          "queries_per_s": 4743.068006109072,
           "latency": {
-            "p50": 182459,
-            "p95": 182459,
-            "p99": 182459,
-            "max": 182459,
+            "p50": 210834,
+            "p95": 210834,
+            "p99": 210834,
+            "max": 210834,
             "samples": 1
           },
           "resource": {
@@ -494,18 +494,18 @@
             "index_size_bytes": null,
             "index_build_ns": null,
             "indexed_write_penalty_ns": null,
-            "explain_plan_digest": "logical:fb55524392eef43d5834c266898058532e532b0ea47cc63078d2f0de90abd9a1"
+            "explain_plan_digest": "logical:cf19689827e0826723758783f551df0963c3fce8693ec47c49fd863cd75ea7fb"
           },
           "lifecycle": "warm_steady",
           "cold_method": "not_cold_warm_steady",
           "deferred_work_units": 0,
           "deferred_drained": true,
-          "result_digest_echo": "fb55524392eef43d5834c266898058532e532b0ea47cc63078d2f0de90abd9a1",
+          "result_digest_echo": "cf19689827e0826723758783f551df0963c3fce8693ec47c49fd863cd75ea7fb",
           "coverage_complete": true,
           "validity_ok": true
         },
         "refuse_code": null,
-        "detail": "logical_harness plan=cell_project_covered_smoke_c1 examined=64",
+        "detail": "logical_harness plan=cell_project_covered_smoke_c1 examined=64 ",
         "shared_work_hash": "14bb5229d4ebb0fdc10741010d12b51c37aa95a0f7565dadc8a0c9ae2fa011f9"
       },
       "side_b": {
@@ -520,12 +520,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 5480.683331597784,
+        "queries_per_s": 4743.068006109072,
         "latency": {
-          "p50": 182459,
-          "p95": 182459,
-          "p99": 182459,
-          "max": 182459,
+          "p50": 210834,
+          "p95": 210834,
+          "p99": 210834,
+          "max": 210834,
           "samples": 1
         },
         "resource": {
@@ -542,13 +542,13 @@
           "index_size_bytes": null,
           "index_build_ns": null,
           "indexed_write_penalty_ns": null,
-          "explain_plan_digest": "logical:fb55524392eef43d5834c266898058532e532b0ea47cc63078d2f0de90abd9a1"
+          "explain_plan_digest": "logical:cf19689827e0826723758783f551df0963c3fce8693ec47c49fd863cd75ea7fb"
         },
         "lifecycle": "warm_steady",
         "cold_method": "not_cold_warm_steady",
         "deferred_work_units": 0,
         "deferred_drained": true,
-        "result_digest_echo": "fb55524392eef43d5834c266898058532e532b0ea47cc63078d2f0de90abd9a1",
+        "result_digest_echo": "cf19689827e0826723758783f551df0963c3fce8693ec47c49fd863cd75ea7fb",
         "coverage_complete": true,
         "validity_ok": true
       },
@@ -577,12 +577,12 @@
           "row_count": 10
         },
         "metrics": {
-          "queries_per_s": 1843.7427978796957,
+          "queries_per_s": 897.7998516834645,
           "latency": {
-            "p50": 542375,
-            "p95": 542375,
-            "p99": 542375,
-            "max": 542375,
+            "p50": 1113834,
+            "p95": 1113834,
+            "p99": 1113834,
+            "max": 1113834,
             "samples": 1
           },
           "resource": {
@@ -610,7 +610,7 @@
           "validity_ok": true
         },
         "refuse_code": null,
-        "detail": "logical_harness plan=cell_top_k_smoke_c1 examined=64",
+        "detail": "logical_harness plan=cell_top_k_smoke_c1 examined=64 ",
         "shared_work_hash": "58612c2c3e88815a891d041077a2b06d988c398a6f5e6762c106007e6d326648"
       },
       "side_b": {
@@ -625,12 +625,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 1843.7427978796957,
+        "queries_per_s": 897.7998516834645,
         "latency": {
-          "p50": 542375,
-          "p95": 542375,
-          "p99": 542375,
-          "max": 542375,
+          "p50": 1113834,
+          "p95": 1113834,
+          "p99": 1113834,
+          "max": 1113834,
           "samples": 1
         },
         "resource": {
@@ -674,20 +674,20 @@
         "engine": "residiuum_embedded",
         "status": "ready",
         "result": {
-          "keys_digest": "4880034d11f046f4a88e7379b7e9876282c9ff9f82c809ed873ecdb2a9a23eb5",
-          "values_digest": "f2aadace8ced5a38722c9adceec22c37dd74f4472882358ddd309c5e1ba7e3e0",
+          "keys_digest": "1c45b196073766995adb10865b34a9908940c3f93f235140e6c8fb639dee7623",
+          "values_digest": "308415c642c59ee61d587c5c7facb1e35a1aea54b09af1abe5d4f697f74c590a",
           "multiplicity": "ordered",
           "order_sensitive": true,
           "coverage_complete": true,
-          "row_count": 8
+          "row_count": 64
         },
         "metrics": {
-          "queries_per_s": 15635.016182241749,
+          "queries_per_s": 3625.3820246308455,
           "latency": {
-            "p50": 63959,
-            "p95": 63959,
-            "p99": 63959,
-            "max": 63959,
+            "p50": 275833,
+            "p95": 275833,
+            "p99": 275833,
+            "max": 275833,
             "samples": 1
           },
           "resource": {
@@ -704,18 +704,18 @@
             "index_size_bytes": null,
             "index_build_ns": null,
             "indexed_write_penalty_ns": null,
-            "explain_plan_digest": "logical:f2aadace8ced5a38722c9adceec22c37dd74f4472882358ddd309c5e1ba7e3e0"
+            "explain_plan_digest": "logical:308415c642c59ee61d587c5c7facb1e35a1aea54b09af1abe5d4f697f74c590a"
           },
           "lifecycle": "warm_steady",
           "cold_method": "not_cold_warm_steady",
           "deferred_work_units": 0,
           "deferred_drained": true,
-          "result_digest_echo": "f2aadace8ced5a38722c9adceec22c37dd74f4472882358ddd309c5e1ba7e3e0",
+          "result_digest_echo": "308415c642c59ee61d587c5c7facb1e35a1aea54b09af1abe5d4f697f74c590a",
           "coverage_complete": true,
           "validity_ok": true
         },
         "refuse_code": null,
-        "detail": "logical_harness plan=cell_cursor_first_deep_smoke_c1 examined=64",
+        "detail": "logical_harness plan=cell_cursor_first_deep_smoke_c1 examined=64 cursor pages=8 page_sz=8 first_keys=8 deep_start=56 deep_keys=8",
         "shared_work_hash": "a06735daeddc9e834ca8bf58591e70d0c6d345a84ab92057a685e9c3fd1366ce"
       },
       "side_b": {
@@ -730,12 +730,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 15635.016182241749,
+        "queries_per_s": 3625.3820246308455,
         "latency": {
-          "p50": 63959,
-          "p95": 63959,
-          "p99": 63959,
-          "max": 63959,
+          "p50": 275833,
+          "p95": 275833,
+          "p99": 275833,
+          "max": 275833,
           "samples": 1
         },
         "resource": {
@@ -752,13 +752,13 @@
           "index_size_bytes": null,
           "index_build_ns": null,
           "indexed_write_penalty_ns": null,
-          "explain_plan_digest": "logical:f2aadace8ced5a38722c9adceec22c37dd74f4472882358ddd309c5e1ba7e3e0"
+          "explain_plan_digest": "logical:308415c642c59ee61d587c5c7facb1e35a1aea54b09af1abe5d4f697f74c590a"
         },
         "lifecycle": "warm_steady",
         "cold_method": "not_cold_warm_steady",
         "deferred_work_units": 0,
         "deferred_drained": true,
-        "result_digest_echo": "f2aadace8ced5a38722c9adceec22c37dd74f4472882358ddd309c5e1ba7e3e0",
+        "result_digest_echo": "308415c642c59ee61d587c5c7facb1e35a1aea54b09af1abe5d4f697f74c590a",
         "coverage_complete": true,
         "validity_ok": true
       },
@@ -787,12 +787,12 @@
           "row_count": 64
         },
         "metrics": {
-          "queries_per_s": 1416.9323414806943,
+          "queries_per_s": 305.6156260047114,
           "latency": {
-            "p50": 705750,
-            "p95": 705750,
-            "p99": 705750,
-            "max": 705750,
+            "p50": 3272084,
+            "p95": 3272084,
+            "p99": 3272084,
+            "max": 3272084,
             "samples": 1
           },
           "resource": {
@@ -820,7 +820,7 @@
           "validity_ok": true
         },
         "refuse_code": null,
-        "detail": "logical_harness plan=cell_enrich_card_smoke_c1 examined=64",
+        "detail": "logical_harness plan=cell_enrich_card_smoke_c1 examined=64 enrich_expect=optional",
         "shared_work_hash": "f26d0e800b06e3765a9769995c938d1fbb554ad57843f7e2a1f6ed63296681be"
       },
       "side_b": {
@@ -835,12 +835,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 1416.9323414806943,
+        "queries_per_s": 305.6156260047114,
         "latency": {
-          "p50": 705750,
-          "p95": 705750,
-          "p99": 705750,
-          "max": 705750,
+          "p50": 3272084,
+          "p95": 3272084,
+          "p99": 3272084,
+          "max": 3272084,
           "samples": 1
         },
         "resource": {
@@ -885,19 +885,19 @@
         "status": "ready",
         "result": {
           "keys_digest": "bb3a577b90e80d1a83d13833229783a360cbc1998c82243000fac81148b3a968",
-          "values_digest": "bfb3cd9125ff7d7972a46185092a325c8ca610b5f95f255bab5e07f6a04278b3",
+          "values_digest": "9fc8e97fc3d757edbf1dbe03b28284be34e928f7c6d541b816c5e08250feeb11",
           "multiplicity": "multiset",
           "order_sensitive": false,
           "coverage_complete": true,
           "row_count": 2
         },
         "metrics": {
-          "queries_per_s": 7699.711260827719,
+          "queries_per_s": 7858.546168958743,
           "latency": {
-            "p50": 129875,
-            "p95": 129875,
-            "p99": 129875,
-            "max": 129875,
+            "p50": 127250,
+            "p95": 127250,
+            "p99": 127250,
+            "max": 127250,
             "samples": 1
           },
           "resource": {
@@ -914,18 +914,18 @@
             "index_size_bytes": null,
             "index_build_ns": null,
             "indexed_write_penalty_ns": null,
-            "explain_plan_digest": "logical:bfb3cd9125ff7d7972a46185092a325c8ca610b5f95f255bab5e07f6a04278b3"
+            "explain_plan_digest": "logical:9fc8e97fc3d757edbf1dbe03b28284be34e928f7c6d541b816c5e08250feeb11"
           },
           "lifecycle": "warm_steady",
           "cold_method": "not_cold_warm_steady",
           "deferred_work_units": 0,
           "deferred_drained": true,
-          "result_digest_echo": "bfb3cd9125ff7d7972a46185092a325c8ca610b5f95f255bab5e07f6a04278b3",
+          "result_digest_echo": "9fc8e97fc3d757edbf1dbe03b28284be34e928f7c6d541b816c5e08250feeb11",
           "coverage_complete": true,
           "validity_ok": true
         },
         "refuse_code": null,
-        "detail": "logical_harness plan=cell_group_card_smoke_c1 examined=64",
+        "detail": "logical_harness plan=cell_group_card_smoke_c1 examined=64 ",
         "shared_work_hash": "9da1c37eaccbe96c078059cf5a35e168eb8e7182ca833e6168d8219cf98ceb07"
       },
       "side_b": {
@@ -940,12 +940,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 7699.711260827719,
+        "queries_per_s": 7858.546168958743,
         "latency": {
-          "p50": 129875,
-          "p95": 129875,
-          "p99": 129875,
-          "max": 129875,
+          "p50": 127250,
+          "p95": 127250,
+          "p99": 127250,
+          "max": 127250,
           "samples": 1
         },
         "resource": {
@@ -962,13 +962,13 @@
           "index_size_bytes": null,
           "index_build_ns": null,
           "indexed_write_penalty_ns": null,
-          "explain_plan_digest": "logical:bfb3cd9125ff7d7972a46185092a325c8ca610b5f95f255bab5e07f6a04278b3"
+          "explain_plan_digest": "logical:9fc8e97fc3d757edbf1dbe03b28284be34e928f7c6d541b816c5e08250feeb11"
         },
         "lifecycle": "warm_steady",
         "cold_method": "not_cold_warm_steady",
         "deferred_work_units": 0,
         "deferred_drained": true,
-        "result_digest_echo": "bfb3cd9125ff7d7972a46185092a325c8ca610b5f95f255bab5e07f6a04278b3",
+        "result_digest_echo": "9fc8e97fc3d757edbf1dbe03b28284be34e928f7c6d541b816c5e08250feeb11",
         "coverage_complete": true,
         "validity_ok": true
       },
@@ -990,19 +990,19 @@
         "status": "ready",
         "result": {
           "keys_digest": "7df22c82473f887e12a3c3d332f698fb3586e9c3ce34b7c1e02d9a637bb37f2a",
-          "values_digest": "1e4f50fe1aa0700700f795996c08c7f6d269b799c4ccffe2b03b4c867156e860",
+          "values_digest": "578d8cb8d72988d93a4f3aef9537690e94f14f031b5e9650b94182b014509b1e",
           "multiplicity": "multiset",
           "order_sensitive": false,
           "coverage_complete": true,
           "row_count": 5
         },
         "metrics": {
-          "queries_per_s": 7777.017358302744,
+          "queries_per_s": 7077.591637117722,
           "latency": {
-            "p50": 128584,
-            "p95": 128584,
-            "p99": 128584,
-            "max": 128584,
+            "p50": 141291,
+            "p95": 141291,
+            "p99": 141291,
+            "max": 141291,
             "samples": 1
           },
           "resource": {
@@ -1019,18 +1019,18 @@
             "index_size_bytes": null,
             "index_build_ns": null,
             "indexed_write_penalty_ns": null,
-            "explain_plan_digest": "logical:1e4f50fe1aa0700700f795996c08c7f6d269b799c4ccffe2b03b4c867156e860"
+            "explain_plan_digest": "logical:578d8cb8d72988d93a4f3aef9537690e94f14f031b5e9650b94182b014509b1e"
           },
           "lifecycle": "warm_steady",
           "cold_method": "not_cold_warm_steady",
           "deferred_work_units": 0,
           "deferred_drained": true,
-          "result_digest_echo": "1e4f50fe1aa0700700f795996c08c7f6d269b799c4ccffe2b03b4c867156e860",
+          "result_digest_echo": "578d8cb8d72988d93a4f3aef9537690e94f14f031b5e9650b94182b014509b1e",
           "coverage_complete": true,
           "validity_ok": true
         },
         "refuse_code": null,
-        "detail": "logical_harness plan=cell_agg_stats_smoke_c1 examined=64",
+        "detail": "logical_harness plan=cell_agg_stats_smoke_c1 examined=64 agg includes avg_amount",
         "shared_work_hash": "244aed4952224b9f2f736409b24be4c339cb3276f3b574ce03b64344bc13132e"
       },
       "side_b": {
@@ -1045,12 +1045,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 7777.017358302744,
+        "queries_per_s": 7077.591637117722,
         "latency": {
-          "p50": 128584,
-          "p95": 128584,
-          "p99": 128584,
-          "max": 128584,
+          "p50": 141291,
+          "p95": 141291,
+          "p99": 141291,
+          "max": 141291,
           "samples": 1
         },
         "resource": {
@@ -1067,13 +1067,13 @@
           "index_size_bytes": null,
           "index_build_ns": null,
           "indexed_write_penalty_ns": null,
-          "explain_plan_digest": "logical:1e4f50fe1aa0700700f795996c08c7f6d269b799c4ccffe2b03b4c867156e860"
+          "explain_plan_digest": "logical:578d8cb8d72988d93a4f3aef9537690e94f14f031b5e9650b94182b014509b1e"
         },
         "lifecycle": "warm_steady",
         "cold_method": "not_cold_warm_steady",
         "deferred_work_units": 0,
         "deferred_drained": true,
-        "result_digest_echo": "1e4f50fe1aa0700700f795996c08c7f6d269b799c4ccffe2b03b4c867156e860",
+        "result_digest_echo": "578d8cb8d72988d93a4f3aef9537690e94f14f031b5e9650b94182b014509b1e",
         "coverage_complete": true,
         "validity_ok": true
       },
@@ -1095,19 +1095,19 @@
         "status": "ready",
         "result": {
           "keys_digest": "1c45b196073766995adb10865b34a9908940c3f93f235140e6c8fb639dee7623",
-          "values_digest": "91cc448445f179ca604e58a7a5011ec1f53b4ed155a970adaf69c7fc686a7e0b",
+          "values_digest": "96c50fb82f2a4ef32090b09c5d2b203926374dd68f885335e9d0b024794c8d82",
           "multiplicity": "multiset",
           "order_sensitive": false,
           "coverage_complete": true,
           "row_count": 64
         },
         "metrics": {
-          "queries_per_s": 5522.299043537806,
+          "queries_per_s": 5048.388806712338,
           "latency": {
-            "p50": 181084,
-            "p95": 181084,
-            "p99": 181084,
-            "max": 181084,
+            "p50": 198083,
+            "p95": 198083,
+            "p99": 198083,
+            "max": 198083,
             "samples": 1
           },
           "resource": {
@@ -1124,18 +1124,18 @@
             "index_size_bytes": null,
             "index_build_ns": null,
             "indexed_write_penalty_ns": null,
-            "explain_plan_digest": "logical:91cc448445f179ca604e58a7a5011ec1f53b4ed155a970adaf69c7fc686a7e0b"
+            "explain_plan_digest": "logical:96c50fb82f2a4ef32090b09c5d2b203926374dd68f885335e9d0b024794c8d82"
           },
           "lifecycle": "warm_steady",
           "cold_method": "not_cold_warm_steady",
           "deferred_work_units": 0,
           "deferred_drained": true,
-          "result_digest_echo": "91cc448445f179ca604e58a7a5011ec1f53b4ed155a970adaf69c7fc686a7e0b",
+          "result_digest_echo": "96c50fb82f2a4ef32090b09c5d2b203926374dd68f885335e9d0b024794c8d82",
           "coverage_complete": true,
           "validity_ok": true
         },
         "refuse_code": null,
-        "detail": "logical_harness plan=cell_conditional_computed_smoke_c1 examined=64",
+        "detail": "logical_harness plan=cell_conditional_computed_smoke_c1 examined=64 conditional high_band computed",
         "shared_work_hash": "27fd0df6dffa25c353364cec2bd5c4ec17c075149de69ed8297c082d180eb6a8"
       },
       "side_b": {
@@ -1150,12 +1150,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 5522.299043537806,
+        "queries_per_s": 5048.388806712338,
         "latency": {
-          "p50": 181084,
-          "p95": 181084,
-          "p99": 181084,
-          "max": 181084,
+          "p50": 198083,
+          "p95": 198083,
+          "p99": 198083,
+          "max": 198083,
           "samples": 1
         },
         "resource": {
@@ -1172,13 +1172,13 @@
           "index_size_bytes": null,
           "index_build_ns": null,
           "indexed_write_penalty_ns": null,
-          "explain_plan_digest": "logical:91cc448445f179ca604e58a7a5011ec1f53b4ed155a970adaf69c7fc686a7e0b"
+          "explain_plan_digest": "logical:96c50fb82f2a4ef32090b09c5d2b203926374dd68f885335e9d0b024794c8d82"
         },
         "lifecycle": "warm_steady",
         "cold_method": "not_cold_warm_steady",
         "deferred_work_units": 0,
         "deferred_drained": true,
-        "result_digest_echo": "91cc448445f179ca604e58a7a5011ec1f53b4ed155a970adaf69c7fc686a7e0b",
+        "result_digest_echo": "96c50fb82f2a4ef32090b09c5d2b203926374dd68f885335e9d0b024794c8d82",
         "coverage_complete": true,
         "validity_ok": true
       },
@@ -1207,12 +1207,12 @@
           "row_count": 7
         },
         "metrics": {
-          "queries_per_s": 8179.959100204499,
+          "queries_per_s": 147.92444256153064,
           "latency": {
-            "p50": 122250,
-            "p95": 122250,
-            "p99": 122250,
-            "max": 122250,
+            "p50": 6760208,
+            "p95": 6760208,
+            "p99": 6760208,
+            "max": 6760208,
             "samples": 1
           },
           "resource": {
@@ -1224,7 +1224,7 @@
             "read_amplification": null
           },
           "path": {
-            "documents_examined": 64,
+            "documents_examined": 6146,
             "index_entries_examined": null,
             "index_size_bytes": null,
             "index_build_ns": null,
@@ -1240,7 +1240,7 @@
           "validity_ok": true
         },
         "refuse_code": null,
-        "detail": "logical_harness plan=cell_mixed_rw_smoke_c1 examined=64",
+        "detail": "logical_harness plan=cell_mixed_rw_smoke_c1 examined=6146 mixed_rw mix=rw_90_10 reads=88 writes=12 final_docs=76",
         "shared_work_hash": "1429f10d7aabe580304c9eef2668e5583b0665e16d44c5339e1de6d5f1ca6fad"
       },
       "side_b": {
@@ -1255,12 +1255,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 8179.959100204499,
+        "queries_per_s": 147.92444256153064,
         "latency": {
-          "p50": 122250,
-          "p95": 122250,
-          "p99": 122250,
-          "max": 122250,
+          "p50": 6760208,
+          "p95": 6760208,
+          "p99": 6760208,
+          "max": 6760208,
           "samples": 1
         },
         "resource": {
@@ -1272,7 +1272,7 @@
           "read_amplification": null
         },
         "path": {
-          "documents_examined": 64,
+          "documents_examined": 6146,
           "index_entries_examined": null,
           "index_size_bytes": null,
           "index_build_ns": null,
@@ -1291,5 +1291,5 @@
       "scaffold_only": true
     }
   ],
-  "content_hash": "b96c701298c83ac21011bee2e9ef71355f720926b160e1fd243ee9100744f7dd"
+  "content_hash": "b8263efb0242eab3804677ba0968692fff158023a3934332dc874ca9c4321385"
 }

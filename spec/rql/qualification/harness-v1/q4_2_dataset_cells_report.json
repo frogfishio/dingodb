@@ -48,9 +48,11 @@
     ],
     "concurrency_matrix_len": 5,
     "default_cold_method_reopen": "store_reopen",
+    "f2_real_cells": true,
     "lifecycle_matrix_len": 7,
     "mandatory_cells": 12,
     "oversubscribed_slot": "oversubscribed_host_declared",
+    "section_7_2_expanded_plans": 22,
     "selectivity_matrix_len": 5,
     "smoke_plans": 12
   }

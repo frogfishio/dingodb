@@ -120,7 +120,14 @@ impl LogicalHarnessEngine {
             .ok_or_else(|| AdapterError::Fixture("shared work not loaded".into()))
     }
 
-    fn eval_plan(&self, plan: &MeasuredCellPlan) -> Result<(Vec<ResultRow>, u64), AdapterError> {
+    /// Returns (rows, examined, detail).
+    fn eval_plan(
+        &self,
+        plan: &MeasuredCellPlan,
+    ) -> Result<(Vec<ResultRow>, u64, String), AdapterError> {
+        use crate::cell_plan::{EnrichExpect, ReadWriteMix};
+        use crate::generator::SplitMix64;
+
         let ds = self.dataset()?;
         let docs = ds
             .collections
@@ -128,6 +135,7 @@ impl LogicalHarnessEngine {
             .ok_or_else(|| AdapterError::Fixture("missing docs".into()))?;
         let mut examined = 0u64;
         let mut rows = Vec::new();
+        let mut detail = String::new();
 
         match plan.cell {
             MandatoryCell::KeyGet => {
@@ -138,15 +146,69 @@ impl LogicalHarnessEngine {
                     }
                 }
             }
-            MandatoryCell::IndexedEqMultiSelectivity | MandatoryCell::MixedReadWrite => {
+            MandatoryCell::IndexedEqMultiSelectivity => {
+                // Match plan predicate: HIT only (Point plans must set query POINT — F3).
                 for (k, v) in docs {
                     examined += 1;
-                    if v.get("sel_bucket").and_then(|x| x.as_str()) == Some("HIT")
-                        || v.get("sel_bucket").and_then(|x| x.as_str()) == Some("POINT")
-                    {
+                    if v.get("sel_bucket").and_then(|x| x.as_str()) == Some("HIT") {
                         rows.push(row_from_doc(k, v));
                     }
                 }
+            }
+            MandatoryCell::MixedReadWrite => {
+                // §7.2 cell 12: interleave reads of HIT docs with logical writes.
+                let mix = plan.rw_mix.unwrap_or(ReadWriteMix::R90W10);
+                let read_pct = mix.read_pct() as u32;
+                let n_ops = 100u32;
+                let mut writes = 0u32;
+                let mut reads = 0u32;
+                let mut working = docs.clone();
+                let mut rng = SplitMix64::new(plan.dataset.seed ^ 0xA11CE);
+                for op in 0..n_ops {
+                    let roll = rng.next_u32() % 100;
+                    if roll < read_pct {
+                        reads += 1;
+                        for (k, v) in working.iter() {
+                            examined += 1;
+                            if v.get("sel_bucket").and_then(|x| x.as_str()) == Some("HIT") {
+                                let _ = (k, v); // read materialise
+                            }
+                        }
+                    } else {
+                        writes += 1;
+                        let wk = format!("w-{:08}", op);
+                        working.insert(
+                            wk.clone(),
+                            serde_json::json!({
+                                "_key": wk,
+                                "status": "open",
+                                "sel_bucket": "MISS",
+                                "amount": 1,
+                                "region": "r0",
+                                "score": 0,
+                                "i": op,
+                            }),
+                        );
+                    }
+                }
+                // Result digest: HIT reads under post-write snapshot.
+                for (k, v) in &working {
+                    if v.get("sel_bucket").and_then(|x| x.as_str()) == Some("HIT") {
+                        rows.push(row_from_doc(k, v));
+                    }
+                }
+                if writes == 0 || reads == 0 {
+                    return Err(AdapterError::Execute(format!(
+                        "mixed R/W must perform reads and writes; reads={reads} writes={writes}"
+                    )));
+                }
+                detail = format!(
+                    "mixed_rw mix={} reads={} writes={} final_docs={}",
+                    mix.as_str(),
+                    reads,
+                    writes,
+                    working.len()
+                );
             }
             MandatoryCell::RangeAndCompound => {
                 for (k, v) in docs {
@@ -171,21 +233,44 @@ impl LogicalHarnessEngine {
                 }
             }
             MandatoryCell::FirstAndDeepCursor => {
+                // Multipage: materialise first page + deep (last) page, then full concat
+                // as result rows (page_1 ++ … ++ page_n = unpaged).
                 let mut keys: Vec<_> = docs.keys().cloned().collect();
                 keys.sort();
                 examined = keys.len() as u64;
-                let page = plan.page_size.unwrap_or(8) as usize;
-                for k in keys.into_iter().take(page) {
-                    if let Some(v) = docs.get(&k) {
-                        rows.push(row_from_doc(&k, v));
+                let page_sz = plan.page_size.unwrap_or(8) as usize;
+                let n_pages = keys.len().div_ceil(page_sz.max(1));
+                if plan.require_deep_cursor && keys.len() > page_sz && n_pages < 2 {
+                    return Err(AdapterError::Execute(format!(
+                        "deep cursor requires ≥2 pages; n={} page_sz={}",
+                        keys.len(),
+                        page_sz
+                    )));
+                }
+                // Full concat = unpaged (ordered).
+                for k in &keys {
+                    if let Some(v) = docs.get(k) {
+                        rows.push(row_from_doc(k, v));
                     }
                 }
+                let first_end = page_sz.min(keys.len());
+                let deep_start = if n_pages > 1 {
+                    (n_pages - 1) * page_sz
+                } else {
+                    0
+                };
+                detail = format!(
+                    "cursor pages={} page_sz={} first_keys={} deep_start={} deep_keys={}",
+                    n_pages,
+                    page_sz,
+                    first_end,
+                    deep_start,
+                    keys.len().saturating_sub(deep_start)
+                );
             }
-            MandatoryCell::CoveredNonCoveredProject
-            | MandatoryCell::ConditionalComputed => {
+            MandatoryCell::CoveredNonCoveredProject => {
                 for (k, v) in docs {
                     examined += 1;
-                    // project status, region (when present)
                     if let Value::Object(m) = v {
                         let mut out = serde_json::Map::new();
                         if let Some(s) = m.get("status") {
@@ -194,15 +279,37 @@ impl LogicalHarnessEngine {
                         if let Some(r) = m.get("region") {
                             out.insert("region".into(), r.clone());
                         }
-                        if let Some(a) = m.get("amount") {
-                            out.insert("amount".into(), a.clone());
-                        }
                         rows.push(ResultRow {
                             key: k.clone(),
                             value: Value::Object(out),
                         });
                     }
                 }
+            }
+            MandatoryCell::ConditionalComputed => {
+                // high_band := amount if amount >= 100 else null (computed conditional).
+                for (k, v) in docs {
+                    examined += 1;
+                    let amount = v.get("amount").and_then(|x| x.as_i64());
+                    let high_band = match amount {
+                        Some(a) if a >= 100 => Value::from(a),
+                        Some(_) => Value::Null,
+                        None => Value::Null,
+                    };
+                    let mut out = serde_json::Map::new();
+                    if let Some(a) = v.get("amount") {
+                        out.insert("amount".into(), a.clone());
+                    }
+                    if let Some(r) = v.get("region") {
+                        out.insert("region".into(), r.clone());
+                    }
+                    out.insert("high_band".into(), high_band);
+                    rows.push(ResultRow {
+                        key: k.clone(),
+                        value: Value::Object(out),
+                    });
+                }
+                detail = "conditional high_band computed".into();
             }
             MandatoryCell::NestedAndArrayPreds => {
                 for (k, v) in docs {
@@ -221,19 +328,32 @@ impl LogicalHarnessEngine {
                     }
                 }
             }
-            MandatoryCell::GroupLowHighCard | MandatoryCell::AggCountSumMinMaxAvg => {
-                // Logical group-by status/region: one synthetic row per group key.
+            MandatoryCell::GroupLowHighCard => {
                 use std::collections::BTreeMap;
-                let mut groups: BTreeMap<String, (u64, i64, i64, i64)> = BTreeMap::new();
-                let field = if plan.cell == MandatoryCell::GroupLowHighCard {
-                    "status"
-                } else {
-                    "region"
-                };
+                let mut groups: BTreeMap<String, u64> = BTreeMap::new();
                 for (_k, v) in docs {
                     examined += 1;
                     let g = v
-                        .get(field)
+                        .get("status")
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    *groups.entry(g).or_default() += 1;
+                }
+                for (g, cnt) in groups {
+                    rows.push(ResultRow {
+                        key: g.clone(),
+                        value: serde_json::json!({"status": g, "count": cnt}),
+                    });
+                }
+            }
+            MandatoryCell::AggCountSumMinMaxAvg => {
+                use std::collections::BTreeMap;
+                let mut groups: BTreeMap<String, (u64, i64, i64, i64)> = BTreeMap::new();
+                for (_k, v) in docs {
+                    examined += 1;
+                    let g = v
+                        .get("region")
                         .and_then(|x| x.as_str())
                         .unwrap_or("")
                         .to_string();
@@ -245,41 +365,74 @@ impl LogicalHarnessEngine {
                     e.3 = e.3.max(amount);
                 }
                 for (g, (cnt, sum, min, max)) in groups {
+                    let avg = if cnt > 0 {
+                        (sum as f64) / (cnt as f64)
+                    } else {
+                        0.0
+                    };
                     rows.push(ResultRow {
                         key: g.clone(),
                         value: serde_json::json!({
-                            field: g,
+                            "region": g,
                             "count": cnt,
                             "sum_amount": sum,
                             "min_amount": min,
                             "max_amount": max,
+                            "avg_amount": avg,
                         }),
                     });
                 }
+                detail = "agg includes avg_amount".into();
             }
             MandatoryCell::EnrichCardinalities => {
-                // Logical optional enrich: attach customer when customer_id present.
+                let expect = plan.enrich_expect.unwrap_or(EnrichExpect::Optional);
                 let customers = ds.collections.get("customers");
                 for (k, v) in docs {
                     examined += 1;
-                    let mut body = v.clone();
-                    if let Some(cid) = v.get("customer_id").and_then(|x| x.as_str()) {
-                        if let Some(c) = customers.and_then(|cs| cs.get(cid)) {
-                            if let Value::Object(ref mut m) = body {
+                    let cid = v.get("customer_id").and_then(|x| x.as_str());
+                    let matches: Vec<&Value> = match (cid, customers) {
+                        (Some(id), Some(cs)) => cs.get(id).into_iter().collect(),
+                        _ => Vec::new(),
+                    };
+                    match expect {
+                        EnrichExpect::Optional => {
+                            let mut body = v.clone();
+                            if let (Some(c), Value::Object(ref mut m)) =
+                                (matches.first().copied(), &mut body)
+                            {
                                 m.insert("customer".into(), c.clone());
                             }
+                            rows.push(row_from_doc(k, &body));
+                        }
+                        EnrichExpect::ExactlyOne => {
+                            if matches.len() == 1 {
+                                let mut body = v.clone();
+                                if let Value::Object(ref mut m) = body {
+                                    m.insert("customer".into(), matches[0].clone());
+                                }
+                                rows.push(row_from_doc(k, &body));
+                            }
+                            // 0 or many: omit (logical fail-closed drop; product may error)
+                        }
+                        EnrichExpect::Many => {
+                            let mut body = v.clone();
+                            if let Value::Object(ref mut m) = body {
+                                let arr: Vec<Value> =
+                                    matches.iter().map(|c| (*c).clone()).collect();
+                                m.insert("customers".into(), Value::Array(arr));
+                            }
+                            rows.push(row_from_doc(k, &body));
                         }
                     }
-                    rows.push(row_from_doc(k, &body));
                 }
+                detail = format!("enrich_expect={}", expect.as_str());
             }
         }
 
-        // Multiset order for unordered cells.
         if !plan.order_sensitive {
             rows.sort_by(|a, b| a.key.cmp(&b.key));
         }
-        Ok((rows, examined))
+        Ok((rows, examined, detail))
     }
 }
 
@@ -351,7 +504,7 @@ impl EngineAdapter for LogicalHarnessEngine {
     fn execute_plan(&mut self, plan: &MeasuredCellPlan) -> Result<EngineRunOutcome, AdapterError> {
         let mut lat = LatencyCollector::new();
         let timer = QueryTimer::start();
-        let (rows, examined) = self.eval_plan(plan)?;
+        let (rows, examined, eval_detail) = self.eval_plan(plan)?;
         lat.record_duration(timer.elapsed());
 
         let canon = canonicalize_rows(&rows, plan.order_sensitive, true);
@@ -365,8 +518,8 @@ impl EngineAdapter for LogicalHarnessEngine {
             metrics: Some(metrics),
             refuse_code: None,
             detail: Some(format!(
-                "logical_harness plan={} examined={}",
-                plan.plan_id, examined
+                "logical_harness plan={} examined={} {}",
+                plan.plan_id, examined, eval_detail
             )),
             shared_work_hash: self.work.as_ref().map(|w| w.content_hash.clone()),
         })

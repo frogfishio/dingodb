@@ -6,7 +6,7 @@
 //!
 //! Publishes hashed evidence bundles. **Not competitive** / not Gate-1.
 
-use crate::cell_plan::{smoke_portfolio, MeasuredCellPlan};
+use crate::cell_plan::{section_7_2_expanded_portfolio, smoke_portfolio, MeasuredCellPlan};
 use crate::engine::{
     AdapterStatus, CblEmbeddedAdapter, EngineAdapter, EngineRunOutcome, LogicalHarnessEngine,
     MongoLocalAdapter,
@@ -43,6 +43,16 @@ pub struct SmokeCellResult {
 /// Run smoke portfolio: logical harness (A) + CBL adapter (B) with shared work.
 pub fn run_smoke_lane_embedded(seed: u64) -> Result<Vec<SmokeCellResult>, RunError> {
     let plans = smoke_portfolio(seed);
+    let mut out = Vec::with_capacity(plans.len());
+    for plan in plans {
+        out.push(run_one_embedded_pair(&plan)?);
+    }
+    Ok(out)
+}
+
+/// F2: expanded §7.2 portfolio (enrich/rw/concurrency variants) executed.
+pub fn run_section_7_2_expanded(seed: u64) -> Result<Vec<SmokeCellResult>, RunError> {
+    let plans = section_7_2_expanded_portfolio(seed);
     let mut out = Vec::with_capacity(plans.len());
     for plan in plans {
         out.push(run_one_embedded_pair(&plan)?);
@@ -243,6 +253,56 @@ mod tests {
                 Some(r.shared_hash.as_str())
             );
         }
+    }
+
+    #[test]
+    fn section_7_2_expanded_executes_variants() {
+        let results = run_section_7_2_expanded(7).expect("expanded");
+        // 12 smoke + 3 enrich + 2 rw + 5 concurrency = 22
+        assert!(
+            results.len() >= 22,
+            "expected ≥22 plans, got {}",
+            results.len()
+        );
+        let mut saw_deep = false;
+        let mut saw_writes = false;
+        for r in &results {
+            assert!(r.side_a.result.is_some(), "{}", r.plan_id);
+            let d = r.side_a.detail.as_deref().unwrap_or("");
+            if d.contains("cursor pages=") && d.contains("deep_start=") {
+                saw_deep = true;
+            }
+            if d.contains("writes=") {
+                // detail format: writes=N with N>0
+                if d.contains("writes=0") {
+                    panic!("mixed R/W produced zero writes: {d}");
+                }
+                saw_writes = true;
+            }
+        }
+        assert!(saw_deep, "expected deep cursor detail");
+        assert!(saw_writes, "expected mixed R/W writes");
+        assert!(
+            results.iter().any(|r| r.plan_id.contains("agg_stats")),
+            "expected agg plan"
+        );
+        assert!(
+            results.iter().any(|r| r.plan_id.contains("many")),
+            "expected enrich many variant"
+        );
+        assert!(
+            results.iter().any(|r| r.plan_id.contains("_c8")),
+            "expected concurrency 8 plan executed"
+        );
+        assert!(
+            results.iter().any(|r| r.plan_id.contains("high_band")
+                || r.side_a
+                    .detail
+                    .as_deref()
+                    .unwrap_or("")
+                    .contains("conditional high_band")),
+            "expected conditional computed"
+        );
     }
 
     #[test]
