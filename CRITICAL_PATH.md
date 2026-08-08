@@ -202,6 +202,15 @@ cross-engine harness, controlled baseline, optimisation sequence and final RQL
 exit decision. `RQL0_GAP_LEDGER.md` remains the implementation inventory; it is
 not a competing qualification roadmap.
 
+Application-path qualification authority:
+[ASYNC_DRIVER_SPINE_SPEC.md](./doc/todo/application-driver/ASYNC_DRIVER_SPINE_SPEC.md).
+The Driver Spine is admitted only as infrastructure required to exercise RQL
+through a realistic async application path: bounded pooling, streamed query
+results, deadlines/cancellation, retry and receipt truth, embedded scheduling,
+and server read concurrency. This does not admit broad SDK proliferation,
+Atomics implementation, cluster routing, or non-Rust bindings before their
+critical-path gates.
+
 RQL-0 still forbids adding syntax until its semantics and execution owner are
 named. Execution owner under Decision 0 is the **one bytecode runtime**, not a
 new Rust façade.

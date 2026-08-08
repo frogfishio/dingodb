@@ -1,0 +1,34 @@
+{
+  "authority": "doc/todo/rql/RQL_Q4_1_HARNESS_ARCHITECTURE.md",
+  "crate": "residiuum-rql-qual",
+  "engines": [
+    "residiuum_embedded",
+    "residiuum_server",
+    "mongo_local",
+    "cbl_embedded"
+  ],
+  "env_fingerprint_schema": "residiuum-rql-qual-env-fingerprint-v1",
+  "evidence_bundle_schema": "residiuum-rql-qual-evidence-bundle-v1",
+  "format": "residiuum-rql-q4-1-architecture-report-v1",
+  "harness_profile": "residiuum-rql-qual-harness-v1",
+  "lanes": [
+    "embedded",
+    "local_client_server"
+  ],
+  "mandatory_cells": 12,
+  "modules": [
+    "lane",
+    "fixture",
+    "engine",
+    "canonicalize",
+    "metrics",
+    "evidence",
+    "cells"
+  ],
+  "non_claims": [
+    "not_gate1",
+    "not_competitive",
+    "mongo_cbl_stubs",
+    "q4_package_not_accepted"
+  ]
+}

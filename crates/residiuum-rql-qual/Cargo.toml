@@ -1,0 +1,36 @@
+[package]
+name = "residiuum-rql-qual"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license = "MPL-2.0"
+authors.workspace = true
+description = "RQL-Q4 cross-engine qualification harness (development). Lanes, fixtures, adapters, evidence — no competitive claims."
+publish = false
+readme = "README.md"
+
+[features]
+default = []
+# Product Residiuum embedded adapter (Heap + CollectionClient::rql).
+# Off by default so structural CI stays light; enable for local product cells.
+residiuum-embedded = [
+  "dep:residiuum-sdk",
+  "dep:residiuum-heap",
+  "dep:residiuum-store",
+  "dep:tempfile",
+]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+residiuum-sdk = { workspace = true, optional = true }
+residiuum-heap = { workspace = true, optional = true }
+residiuum-store = { workspace = true, optional = true, default-features = false }
+tempfile = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+serde_json = { workspace = true }

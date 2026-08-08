@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://residiuum.local/spec/rql/qualification/harness-v1/cell-result-v1.schema.json",
+  "title": "residiuum-rql-qual-cell-result-v1",
+  "type": "object",
+  "required": [
+    "cell_id",
+    "lane",
+    "pairing",
+    "concurrency",
+    "side_a",
+    "side_b",
+    "scaffold_only"
+  ],
+  "properties": {
+    "cell_id": { "type": "string" },
+    "case_id": { "type": ["string", "null"] },
+    "lane": {
+      "type": "string",
+      "enum": ["embedded", "local_client_server"]
+    },
+    "pairing": {
+      "type": "object",
+      "required": ["lane", "side_a", "side_b"],
+      "properties": {
+        "lane": { "type": "string" },
+        "side_a": { "type": "string" },
+        "side_b": { "type": "string" }
+      }
+    },
+    "concurrency": { "type": "integer", "minimum": 1 },
+    "side_a": { "type": "object" },
+    "side_b": { "type": "object" },
+    "equivalent": { "type": ["boolean", "null"] },
+    "equivalence_detail": { "type": ["string", "null"] },
+    "metrics_a": { "type": ["object", "null"] },
+    "metrics_b": { "type": ["object", "null"] },
+    "scaffold_only": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

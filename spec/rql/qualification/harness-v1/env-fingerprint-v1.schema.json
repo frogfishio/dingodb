@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://residiuum.local/spec/rql/qualification/harness-v1/env-fingerprint-v1.schema.json",
+  "title": "residiuum-rql-qual-env-fingerprint-v1",
+  "type": "object",
+  "required": [
+    "format",
+    "harness_profile",
+    "git_sha",
+    "dirty",
+    "residiuum_version",
+    "os",
+    "arch",
+    "mongo_pin",
+    "cbl_pin",
+    "cbl_full_sync",
+    "query_defaults"
+  ],
+  "properties": {
+    "format": { "const": "residiuum-rql-qual-env-fingerprint-v1" },
+    "harness_profile": { "type": "string" },
+    "git_sha": { "type": "string", "minLength": 7 },
+    "dirty": { "type": "boolean" },
+    "residiuum_version": { "type": "string" },
+    "rustc": { "type": ["string", "null"] },
+    "os": { "type": "string" },
+    "arch": { "type": "string" },
+    "hostname_class": { "type": "string" },
+    "recorded_unix_s": { "type": "integer", "minimum": 0 },
+    "mongo_pin": { "type": "string" },
+    "cbl_pin": { "type": "string" },
+    "cbl_full_sync": { "type": "boolean" },
+    "query_defaults": {
+      "type": "object",
+      "required": ["consistency_mode", "coverage_policy", "page_size"],
+      "properties": {
+        "consistency_mode": { "type": "string" },
+        "coverage_policy": { "type": "string" },
+        "page_size": { "type": "integer", "minimum": 1 }
+      }
+    }
+  },
+  "additionalProperties": true
+}

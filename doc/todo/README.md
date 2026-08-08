@@ -14,6 +14,12 @@ Immediate order:
 4. [Application Baseline](application-baseline/)
 5. [Heap Application Ready](heap-application-ready/)
 
+Critical-path supporting infrastructure:
+
+- [Application Driver Spine](application-driver/) — async Rust, bounded
+  pooling, streamed RQL, cancellation/retry truth, and server read concurrency;
+  only slices required by the active RQL gate are admitted
+
 Later programs:
 
 - [RRE and collection contracts](rre/)

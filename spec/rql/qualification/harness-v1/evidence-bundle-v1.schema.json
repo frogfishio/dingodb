@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://residiuum.local/spec/rql/qualification/harness-v1/evidence-bundle-v1.schema.json",
+  "title": "residiuum-rql-qual-evidence-bundle-v1",
+  "type": "object",
+  "required": [
+    "format",
+    "harness_profile",
+    "env",
+    "campaign_id",
+    "notes",
+    "cells"
+  ],
+  "properties": {
+    "format": { "const": "residiuum-rql-qual-evidence-bundle-v1" },
+    "harness_profile": { "type": "string" },
+    "env": { "type": "object" },
+    "campaign_id": { "type": "string" },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "cells": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "content_hash": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}

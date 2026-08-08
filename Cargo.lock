@@ -1162,6 +1162,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "residiuum-rql-qual"
+version = "0.2.2"
+dependencies = [
+ "hex",
+ "residiuum-heap",
+ "residiuum-sdk",
+ "residiuum-store",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "residiuum-sda"
 version = "0.2.2"
 dependencies = [
