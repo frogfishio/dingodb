@@ -456,7 +456,7 @@ does Atomics become the active critical-path programme.
 | RQL-Q1 Practical corpus | `active` (Q1.2 Commerce+Messaging bulk; Q1.3–Q1.4 open) | Immutable corpus accepted |
 | RQL-Q2 Capability closure | `backlog` | Tier A 100%; one QVM runtime |
 | RQL-Q3 Semantic qualification | Q3.1–Q3.3 `in_review` | principal package accept residual |
-| RQL-Q4 Harness | Q4.1 `in_review` (scaffold) | residual Q4.2–Q4.3; principal design accept |
+| RQL-Q4 Harness | Q4.1–Q4.2 `in_review` (scaffold) | residual Q4.3 adapters/metrics; principal design accept |
 | RQL-Q5 Baseline | `backlog` | Baseline accepted; gates frozen |
 | RQL-Q6 Optimisation | `backlog` | Bottlenecks closed or accepted |
 | RQL-Q7 Final qualification | `backlog` | Gate 1 pass/fail |
@@ -476,7 +476,7 @@ Product project: `019fda36-f8f4-7f40-9a9b-a86cfae1466e`
 | RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | Q1.2 Commerce+Messaging `in_review`; claim Q1.3 next |
 | RQL-Q2 Capability closure | `019fda4c-1227-7c93-b7e6-292141ec7a78` | backlog; spawn gap packages after audit |
 | RQL-Q3 Semantic qualification | `019fda4c-5994-77e2-a2c9-aaa0c3097b29` | active (Q3.1–Q3.3 in_review; one-command `verify-rql-q3.sh`) |
-| RQL-Q4 Harness | `019fda4c-59bf-7320-a0cb-35f92c50fc45` | active (Q4.1 scaffold `in_review`; no competitive claims) |
+| RQL-Q4 Harness | `019fda4c-59bf-7320-a0cb-35f92c50fc45` | active (Q4.1–Q4.2 scaffold `in_review`; no competitive claims) |
 | RQL-Q5 Baseline | `019fda4c-59e4-76c3-9f24-ce13fbdbbd4e` | backlog |
 | RQL-Q6 Optimisation | `019fda4c-a695-7ff1-8fbf-f4d407b0ba87` | backlog; concrete opts only from Q5 queue |
 | RQL-Q7 Final / Gate-1 | `019fda4c-a6c4-7b40-b15a-f8190ca62d03` | backlog |

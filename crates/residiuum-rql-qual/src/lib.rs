@@ -1,20 +1,24 @@
 //! Residiuum RQL-Q4 cross-engine qualification harness (`residiuum-rql-qual`).
 //!
-//! **Q4.1 scope:** architecture skeleton — lanes, fixture handles, engine adapter
-//! trait, result canonicalisation digests, §7.4 metric types, evidence bundle
-//! writer aligned with Q0 env fingerprint.
+//! **Q4.1:** architecture skeleton — lanes, fixtures, adapters, evidence.
+//! **Q4.2:** dataset axes, deterministic generators, lifecycle honesty,
+//! mandatory cell plans + concurrency/selectivity/lifecycle matrices.
 //!
 //! **Non-claims:** not Gate-1; not competitive; Mongo/CBL adapters are stubs;
-//! Residiuum product execute path is optional (`residiuum-embedded` feature).
+//! product execute path residual (optional `residiuum-embedded` / Q4.3).
 
 #![forbid(unsafe_code)]
 
 pub mod canonicalize;
+pub mod cell_plan;
 pub mod cells;
+pub mod dataset;
 pub mod engine;
 pub mod evidence;
 pub mod fixture;
+pub mod generator;
 pub mod lane;
+pub mod lifecycle;
 pub mod metrics;
 
 /// Profile stamp for harness artefacts (distinct from product QVM profiles).

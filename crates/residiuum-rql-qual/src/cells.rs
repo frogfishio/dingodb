@@ -1,6 +1,7 @@
 //! Mandatory measured cell registry (programme §7.2).
 //!
-//! Q4.1 records **ids and labels only**. Generators + runners land in Q4.2.
+//! Plans, generators, and matrices: [`crate::cell_plan`], [`crate::dataset`],
+//! [`crate::generator`].
 
 use serde::{Deserialize, Serialize};
 

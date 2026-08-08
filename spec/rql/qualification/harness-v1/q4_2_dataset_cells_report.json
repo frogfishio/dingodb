@@ -1,0 +1,57 @@
+{
+  "authority": "doc/todo/rql/RQL_Q4_2_DATASET_CELLS.md",
+  "distributions": [
+    "uniform",
+    "zipf_hot_key",
+    "time_ordered"
+  ],
+  "format": "residiuum-rql-q4-2-dataset-cells-report-v1",
+  "harness_profile": "residiuum-rql-qual-harness-v1",
+  "non_claims": [
+    "not_gate1",
+    "not_competitive",
+    "not_q4_package_accept",
+    "execute_residual_q4_3"
+  ],
+  "payload_classes": [
+    "approx_1kib",
+    "approx_8kib",
+    "approx_64kib"
+  ],
+  "shapes": [
+    "flat",
+    "deeply_nested",
+    "sparse_heterogeneous",
+    "array_heavy"
+  ],
+  "smoke_plan_ids": [
+    "cell_key_get_smoke_c1",
+    "cell_indexed_eq_multi_sel_smoke_c1",
+    "cell_range_compound_smoke_c1",
+    "cell_nested_array_pred_smoke_c1",
+    "cell_project_covered_smoke_c1",
+    "cell_top_k_smoke_c1",
+    "cell_cursor_first_deep_smoke_c1",
+    "cell_enrich_card_smoke_c1",
+    "cell_group_card_smoke_c1",
+    "cell_agg_stats_smoke_c1",
+    "cell_conditional_computed_smoke_c1",
+    "cell_mixed_rw_smoke_c1"
+  ],
+  "summary": {
+    "cold_reopen_claims_device_cold": false,
+    "concurrency_levels": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "concurrency_matrix_len": 5,
+    "default_cold_method_reopen": "store_reopen",
+    "lifecycle_matrix_len": 7,
+    "mandatory_cells": 12,
+    "oversubscribed_slot": "oversubscribed_host_declared",
+    "selectivity_matrix_len": 5,
+    "smoke_plans": 12
+  }
+}

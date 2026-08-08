@@ -108,5 +108,5 @@ Architecture report:
 
 ## 10. Next
 
-- **Q4.2** — dataset generators + mandatory cell runners  
+- **Q4.2** — dataset generators + mandatory cell plans — see [RQL_Q4_2_DATASET_CELLS.md](./RQL_Q4_2_DATASET_CELLS.md) (labor `in_review`)  
 - **Q4.3** — metrics collectors + Mongo/CBL/server adapters + evidence publication path  

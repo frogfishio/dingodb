@@ -27,6 +27,10 @@ env: `doc/todo/rql/RQL_Q0_ENV_MANIFEST.md`
 | `metrics` | §7.4 metric envelopes (types only in Q4.1) |
 | `evidence` | Env fingerprint + evidence bundle writer |
 | `cells` | Mandatory measured cell registry (ids) |
+| `dataset` | §7.1 axes (shape, payload, memory ratio, dist, card, sel) |
+| `generator` | Deterministic logical docs + content hash |
+| `lifecycle` | §7.3 classes; cold/reopen honesty |
+| `cell_plan` | Cell plans + concurrency/selectivity/lifecycle matrices |
 
 ## Features
 
