@@ -32,6 +32,23 @@ use std::time::Instant;
 use super::core_page::{equality_constraints, DocScan};
 use super::kernel::CompiledKernelWhere;
 
+
+/// Bind the immutable document key for RQL `_key` path predicates and projects.
+///
+/// Store bodies deliberately omit `_key` (key lives in the key stream). Corpus
+/// and logical oracles use `_key` in `where` / `project`. Inject only when
+/// absent so fixtures that already carry `_key` are unchanged.
+fn with_logical_key(key: &str, doc: JsonValue) -> JsonValue {
+    match doc {
+        JsonValue::Object(mut m) => {
+            m.entry("_key".to_string())
+                .or_insert_with(|| JsonValue::String(key.to_string()));
+            JsonValue::Object(m)
+        }
+        other => other,
+    }
+}
+
 fn json_byte_len(v: &JsonValue) -> u64 {
     serde_json::to_vec(v).map(|b| b.len() as u64).unwrap_or(0)
 }
@@ -81,6 +98,7 @@ fn has_later_match<S: DocScan>(
                 {
                     return Ok(false);
                 }
+                let doc = with_logical_key(&key, doc);
                 if where_k.eval_doc(&doc)? {
                     return Ok(true);
                 }
@@ -434,6 +452,7 @@ impl<'a> CoreFrame<'a> {
                 let mut kept = Vec::with_capacity(self.working.len());
                 for (key, doc) in self.working.drain(..) {
                     check_governance(self.options, self.started)?;
+                    let doc = with_logical_key(&key, doc);
                     if self.where_k.eval_doc(&doc)? {
                         kept.push((key, doc));
                     }
@@ -472,6 +491,7 @@ impl<'a> CoreFrame<'a> {
                     });
                 }
                 Some(doc) => {
+                    let doc = with_logical_key(&key, doc);
                     let blen = json_byte_len(&doc);
                     if self.stop_if_bytes_would_exceed(blen)? {
                         return Ok(());
@@ -522,6 +542,7 @@ impl<'a> CoreFrame<'a> {
                         self.examined_docs += 1;
                     }
                     Some(doc) => {
+                        let doc = with_logical_key(&key, doc);
                         let blen = json_byte_len(&doc);
                         if self.stop_if_bytes_would_exceed(blen)? {
                             return Ok(());

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# RQL-Q3.1: independent semantic oracle suite (test-only; no product path).
-# Exit 0 = hand units + corpus oracle_ok floor green. Does not accept the package.
+# RQL-Q3: independent oracle (Q3.1) + differential matrix (Q3.2).
+# Exit 0 = suites green. Does not accept the package.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -15,52 +15,52 @@ need() {
 }
 
 need "$ROOT/crates/residiuum-sdk/tests/rql_q3_semantic_oracle.rs"
+need "$ROOT/crates/residiuum-sdk/tests/rql_q3_differential_matrix.rs"
 need "$ROOT/doc/todo/rql/RQL_Q3_1_SEMANTIC_ORACLE.md"
+need "$ROOT/doc/todo/rql/RQL_Q3_2_DIFFERENTIAL_MATRIX.md"
 need "$ROOT/spec/rql/qualification/corpus-v1/corpus-v1.json"
 need "$ROOT/tools/rql_q1/materialise_fixture.py"
 
 command -v cargo >/dev/null 2>&1 || fail "cargo required"
 command -v python3 >/dev/null 2>&1 || fail "python3 required"
 
-ok "running cargo test -p residiuum-sdk --test rql_q3_semantic_oracle"
+ok "Q3.1 oracle suite"
 cargo test -p residiuum-sdk --test rql_q3_semantic_oracle
 
-REPORT="$ROOT/spec/rql/qualification/corpus-v1/q3_1_oracle_report.json"
-need "$REPORT"
+ok "Q3.2 differential matrix suite"
+cargo test -p residiuum-sdk --test rql_q3_differential_matrix
 
-python3 - "$REPORT" <<'PY'
+REPORT1="$ROOT/spec/rql/qualification/corpus-v1/q3_1_oracle_report.json"
+REPORT2="$ROOT/spec/rql/qualification/corpus-v1/q3_2_differential_report.json"
+need "$REPORT1"
+need "$REPORT2"
+
+python3 - "$REPORT1" "$REPORT2" <<'PY'
 import json, sys
-path = sys.argv[1]
-with open(path, encoding="utf-8") as f:
-    doc = json.load(f)
-if doc.get("format") != "residiuum-rql-q3-1-oracle-report-v1":
-    print(f"verify-rql-q3-oracle: FAIL: bad format {doc.get('format')!r}", file=sys.stderr)
-    sys.exit(1)
-if doc.get("oracle_profile") != "residiuum-rql-q3-semantic-oracle-v1":
-    print(f"verify-rql-q3-oracle: FAIL: bad oracle_profile", file=sys.stderr)
-    sys.exit(1)
-b = doc.get("boundary") or {}
-if b.get("product_callable") is not False:
-    print("verify-rql-q3-oracle: FAIL: product_callable must be false", file=sys.stderr)
-    sys.exit(1)
-if b.get("uses_index_selection") is not False:
-    print("verify-rql-q3-oracle: FAIL: uses_index_selection must be false", file=sys.stderr)
-    sys.exit(1)
-if b.get("uses_execute_rql_full") is not False:
-    print("verify-rql-q3-oracle: FAIL: uses_execute_rql_full must be false", file=sys.stderr)
-    sys.exit(1)
-s = doc.get("summary") or {}
-ok = int(s.get("oracle_ok") or 0)
-mm = int(s.get("digest_mismatch") or 0)
-ef = int(s.get("oracle_eval_fail") or 0)
-ff = int(s.get("oracle_fixture_fail") or 0)
-if mm != 0 or ef != 0 or ff != 0:
-    print(f"verify-rql-q3-oracle: FAIL: mismatch={mm} eval_fail={ef} fixture_fail={ff}", file=sys.stderr)
-    sys.exit(1)
-if ok < 90:
-    print(f"verify-rql-q3-oracle: FAIL: oracle_ok floor 90, got {ok}", file=sys.stderr)
-    sys.exit(1)
-print(f"verify-rql-q3-oracle: report ok oracle_ok={ok} unsupported={s.get('oracle_unsupported')}")
+
+def load(path):
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+r1, r2 = load(sys.argv[1]), load(sys.argv[2])
+if r1.get("format") != "residiuum-rql-q3-1-oracle-report-v1":
+    raise SystemExit(f"bad q3.1 format {r1.get('format')!r}")
+if r2.get("format") != "residiuum-rql-q3-2-differential-report-v1":
+    raise SystemExit(f"bad q3.2 format {r2.get('format')!r}")
+s1, s2 = r1.get("summary") or {}, r2.get("summary") or {}
+if int(s1.get("digest_mismatch") or 0) or int(s1.get("oracle_eval_fail") or 0):
+    raise SystemExit(f"q3.1 residual fail: {s1}")
+if int(s1.get("oracle_ok") or 0) < 90:
+    raise SystemExit(f"q3.1 oracle_ok floor: {s1}")
+if int(s2.get("matrix_diverge") or 0) or int(s2.get("errors") or 0) or int(s2.get("reopen_fail") or 0):
+    raise SystemExit(f"q3.2 residual fail: {s2}")
+if int(s2.get("matrix_equal") or 0) < 90:
+    raise SystemExit(f"q3.2 matrix_equal floor: {s2}")
+print(
+    f"verify-rql-q3-oracle: report ok "
+    f"oracle_ok={s1.get('oracle_ok')} matrix_equal={s2.get('matrix_equal')} "
+    f"unsupported={s2.get('unsupported')}"
+)
 PY
 
-ok "PASS (Q3.1 labor evidence only — not package accept)"
+ok "PASS (Q3.1+Q3.2 labor evidence only — not package accept)"

@@ -455,7 +455,7 @@ does Atomics become the active critical-path programme.
 | RQL-Q0 Target freeze | **`accept`** (2026-08-07; SHA e1f5c670…) | Tier and comparator profile accepted |
 | RQL-Q1 Practical corpus | `active` (Q1.2 Commerce+Messaging bulk; Q1.3–Q1.4 open) | Immutable corpus accepted |
 | RQL-Q2 Capability closure | `backlog` | Tier A 100%; one QVM runtime |
-| RQL-Q3 Semantic qualification | `todo` / Q3.1 `in_review` | Q3.1 oracle labor; residual Q3.2–Q3.3 |
+| RQL-Q3 Semantic qualification | Q3.1–Q3.2 `in_review` | residual Q3.3 adversarial |
 | RQL-Q4 Harness | `backlog` | Cross-engine harness accepted |
 | RQL-Q5 Baseline | `backlog` | Baseline accepted; gates frozen |
 | RQL-Q6 Optimisation | `backlog` | Bottlenecks closed or accepted |
@@ -475,7 +475,7 @@ Product project: `019fda36-f8f4-7f40-9a9b-a86cfae1466e`
 | RQL-Q0 Amendment package | `019fdac4-1408-7321-8edc-a09851c9e656` | A1–A15 complete; package ACCEPT recorded |
 | RQL-Q1 Practical corpus | `019fda4c-11fd-7102-bd55-10a347802144` | Q1.2 Commerce+Messaging `in_review`; claim Q1.3 next |
 | RQL-Q2 Capability closure | `019fda4c-1227-7c93-b7e6-292141ec7a78` | backlog; spawn gap packages after audit |
-| RQL-Q3 Semantic qualification | `019fda4c-5994-77e2-a2c9-aaa0c3097b29` | active (Q3.1 in_review) |
+| RQL-Q3 Semantic qualification | `019fda4c-5994-77e2-a2c9-aaa0c3097b29` | active (Q3.1–Q3.2 in_review) |
 | RQL-Q4 Harness | `019fda4c-59bf-7320-a0cb-35f92c50fc45` | backlog (scaffold allowed; no competitive claims pre-Q3) |
 | RQL-Q5 Baseline | `019fda4c-59e4-76c3-9f24-ce13fbdbbd4e` | backlog |
 | RQL-Q6 Optimisation | `019fda4c-a695-7ff1-8fbf-f4d407b0ba87` | backlog; concrete opts only from Q5 queue |
