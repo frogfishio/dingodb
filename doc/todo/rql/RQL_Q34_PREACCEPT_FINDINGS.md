@@ -1,6 +1,6 @@
 # Q3/Q4 pre-accept findings (block Q5+)
 
-Status: **board filled** (2026-08-08) · labor not started  
+Status: **board filled** (2026-08-08) · F1–F9 labor in_review  
 Feature: `019fdfaf-e590-7ea3-b39c-671648ecaca5`  
 Authority: principal review notes (same day); programme §6–§8  
 
@@ -26,7 +26,7 @@ updated; implementers claim **F1–F9 first** (priority titles).
 | F6 | P2 | Stop `\|\|true` metric completeness; explicit residual states | **labor in_review**: `MetricPresenceState`; competitive fails on residual |
 | F7 | P2 | Fix vacuous Q3 inter-page-write + token replay coverage | **labor in_review**: non-vacuous Available contract; token replay+cross-query |
 | F8 | P2 | Verification must not rewrite checked-in evidence nondeterministically | **labor in_review**: target/ default; RESIDIUUM_WRITE_SPEC_EVIDENCE publish; verify no-spec-churn |
-| F9 | P3 | Q3.4 rustfmt + restore `verify-rql-q3.sh` executable bit | page_concat test; script mode |
+| F9 | P3 | Q3.4 rustfmt + restore `verify-rql-q3.sh` executable bit | **labor in_review**: rustfmt page_concat; scripts 100755 |
 
 ## Verification (principal)
 

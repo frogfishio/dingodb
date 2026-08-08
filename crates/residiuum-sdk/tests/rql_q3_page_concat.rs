@@ -21,9 +21,7 @@ use residiuum_heap::{
     HeapAdministrativeState, HeapId, HeapSecuritySnapshot, HeapSlot, Rights, SecurityRevision,
     TrustedInstant, VerifiedCertificate,
 };
-use residiuum_sdk::{
-    Parameters, QueryPage, QueryRunOptions, ResidiuumDeployment,
-};
+use residiuum_sdk::{Parameters, QueryPage, QueryRunOptions, ResidiuumDeployment};
 use residiuum_store::{publish_staged_genesis, stage_heap_genesis, HeapMetaLayout};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
@@ -63,7 +61,14 @@ fn mint_cap_for(heap: HeapId, deployment: DeploymentId) -> residiuum_heap::HeapC
         expires_at: 4_000_000_000,
         issuer_master_key_id: [5u8; 32],
     };
-    mint_capability(slot, &cert, TrustedInstant { unix_s: 1_700_000_000 }).unwrap()
+    mint_capability(
+        slot,
+        &cert,
+        TrustedInstant {
+            unix_s: 1_700_000_000,
+        },
+    )
+    .unwrap()
 }
 
 fn uuid() -> [u8; 16] {
@@ -208,7 +213,11 @@ fn q34_law_page_concat_equals_unpaged_key_order() {
     let params = Parameters::default();
     let source = "from docs";
     let pages = multipage_rql(&mut col, source, &params, 3);
-    assert!(pages.len() >= 4, "expected multiple pages, got {}", pages.len());
+    assert!(
+        pages.len() >= 4,
+        "expected multiple pages, got {}",
+        pages.len()
+    );
     let unpaged = unpaged_rql(&mut col, source, &params);
     assert_concat_equals_unpaged(&pages, &unpaged, true);
     assert_eq!(page_rows(&unpaged).len(), 11);
@@ -219,7 +228,15 @@ fn q34_law_page_concat_equals_unpaged_field_order() {
     let (_dir, mut client) = open_client();
     let mut col = client.create_collection("orders").unwrap().collection;
     // Keys reverse of score order.
-    for (k, score) in [("z", 1), ("y", 2), ("x", 3), ("w", 4), ("v", 5), ("u", 6), ("t", 7)] {
+    for (k, score) in [
+        ("z", 1),
+        ("y", 2),
+        ("x", 3),
+        ("w", 4),
+        ("v", 5),
+        ("u", 6),
+        ("t", 7),
+    ] {
         col.put(k, &json!({"score": score, "name": k})).unwrap();
     }
     let params = Parameters::default();

@@ -24,7 +24,6 @@ pub fn write_spec_evidence_enabled() -> bool {
     }
 }
 
-
 /// Always write `body` under `target/rql-q3/{file_name}`.
 /// When [`write_spec_evidence_enabled`], also write
 /// `spec/rql/qualification/corpus-v1/{file_name}`.
