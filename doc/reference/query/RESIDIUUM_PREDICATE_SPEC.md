@@ -36,11 +36,18 @@ stored value. `Null` is a stored value.
 V1 literals are:
 
 ```ebnf
-literal       = "null" | "true" | "false" | integer | decimal | string ;
+literal       = "null" | "true" | "false" | integer | decimal | string
+              | array-literal ;
 integer       = [ "-" ], digit, { digit } ;
 decimal       = [ "-" ], digit, { digit }, ".", digit, { digit } ;
 string        = '"', { json-character | json-escape }, '"' ;
+array-literal = "[", [ literal, { ",", literal } ], "]" ;
 ```
+
+Array literals are finite sequences of nested literals (SDA sequence values).
+The empty array is spelled `[]`. Object/map literals are not V1 surface forms
+here; use path equality only when both sides are present products already in
+storage.
 
 Integers are signed arbitrary-precision mathematical integers subject to the
 host's declared byte bound. Decimals are signed base-10 values represented as
@@ -113,10 +120,16 @@ presence        = "present", "(", path, ")"
 null-test       = path, "is", [ "not" ], "null" ;
 
 string-test     = "starts_with", "(", path, ",", string, ")"
-                | "contains", "(", path, ",", literal, ")" ;
+                | "contains", "(", path, ",", literal, ")"
+                | path, "contains", literal ;
 
 operand         = path | literal ;
 ```
+
+`array-literal` and `literal-list` share bracket spelling. Context
+disambiguates: after `in` / `not in` the brackets form a membership list of
+alternatives; as an `operand` they form one sequence value for structural
+equality.
 
 Reserved words cannot be used as bare identifiers. They may be used through a
 bracket segment.
@@ -223,6 +236,24 @@ scalar sequence starts with `s`.
 - substring containment when both resolved `p` and `x` are strings;
 - element membership by SDA equality when `p` is a sequence or bag;
 - false for absence, Null, or unsupported types.
+
+Surface forms are equivalent and normalize to the same `Contains` AST:
+
+```text
+contains(tags, "vip")
+tags contains "vip"
+```
+
+Empty-array equality is ordinary structural equality (not a separate operator):
+
+```text
+tags = []     ⇔ resolve(tags) = Present(empty sequence)
+attachments != []  ⇔ both present and not equal under =SDA
+```
+
+Absent `tags` does **not** satisfy `tags = []` or `tags != []` (§6.2). Use
+`missing(tags)` when absence should match. Empty sequence is distinct from
+`Null` and from missing.
 
 No case folding, locale behavior, normalization, stemming, regular expression,
 or fuzzy behavior is implied.

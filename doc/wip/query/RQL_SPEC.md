@@ -178,9 +178,9 @@ Reserved words:
 
 ```text
 access after allow and as asc at available budget build bytes complete
-consistency current desc direct documents enrich exact exactly_one explain false from
+consistency contains current desc direct documents enrich exact exactly_one explain false from
 in incomplete limit many matching missing not null nulls optional
-or order page present project rank result_bytes sequential size survivors domain true using
+or order page present project rank result_bytes sequential size starts_with survivors domain true using
 where within expect first last
 ```
 
@@ -192,6 +192,11 @@ collection names, or output names.
 The following EBNF is normative. `predicate`, `path`, and `literal` are imported
 from `residiuum-predicate-v1`. Within RQL predicates, `operand` is extended with
 the parameter production below.
+
+Array predicates (Q2 `pkg_array_predicate_surface`): empty-array literals
+(`path = []` / `path != []`) and bag/string `contains` (function or infix
+`path contains literal`) follow [RESIDIUUM_PREDICATE_SPEC.md](../../reference/query/RESIDIUUM_PREDICATE_SPEC.md)
+§2 and §6.5.
 
 ```ebnf
 query             = [ "explain" ], from-clause, { pipeline-step },

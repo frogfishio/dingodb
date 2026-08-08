@@ -386,6 +386,42 @@ mod tests {
     }
 
     #[test]
+    fn empty_array_eq_and_ne() {
+        let path = Path::parse_dotted("tags").unwrap();
+        let eq = Predicate::Cmp {
+            cmp: CompareOp::Eq,
+            left: Operand::path(path.clone()),
+            right: Operand::literal(json!([])),
+        };
+        let ne = Predicate::Cmp {
+            cmp: CompareOp::Ne,
+            left: Operand::path(path),
+            right: Operand::literal(json!([])),
+        };
+        let params = BTreeMap::new();
+        eq_oracle(&eq, &json!({}), &params);
+        eq_oracle(&eq, &json!({"tags": null}), &params);
+        eq_oracle(&eq, &json!({"tags": []}), &params);
+        eq_oracle(&eq, &json!({"tags": ["a"]}), &params);
+        eq_oracle(&ne, &json!({}), &params);
+        eq_oracle(&ne, &json!({"tags": []}), &params);
+        eq_oracle(&ne, &json!({"tags": ["x"]}), &params);
+    }
+
+    #[test]
+    fn array_contains_element() {
+        let pred = Predicate::Contains {
+            path: Path::parse_dotted("tags").unwrap(),
+            needle: json!("vip"),
+        };
+        let params = BTreeMap::new();
+        eq_oracle(&pred, &json!({}), &params);
+        eq_oracle(&pred, &json!({"tags": []}), &params);
+        eq_oracle(&pred, &json!({"tags": ["vip"]}), &params);
+        eq_oracle(&pred, &json!({"tags": "vip-extra"}), &params);
+    }
+
+    #[test]
     fn present_missing_isnull() {
         let params = BTreeMap::new();
         let path = Path::parse_dotted("x").unwrap();

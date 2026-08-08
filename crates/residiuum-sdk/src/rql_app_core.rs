@@ -898,6 +898,13 @@ impl<'a> Parser<'a> {
             return Ok(Predicate::IsNull { path, negated: neg });
         }
 
+        // Infix bag/string contains: `tags contains "vip"` ≡ `contains(tags, "vip")`.
+        if self.eat_keyword("contains") {
+            self.skip_ws();
+            let needle = self.parse_literal_value()?;
+            return Ok(Predicate::Contains { path, needle });
+        }
+
         // `not in` / `in`
         let not_in = self.eat_keyword("not");
         self.skip_ws();
@@ -964,11 +971,15 @@ impl<'a> Parser<'a> {
         Ok(list)
     }
 
-    /// Parse a JSON-ish literal (string, number, bool, null) — not a path or param.
+    /// Parse a JSON-ish literal (string, number, bool, null, array) — not a path or param.
     fn parse_literal_value(&mut self) -> Result<JsonValue, Error> {
         self.skip_ws();
         if self.peek() == Some('"') {
             return Ok(JsonValue::String(self.parse_string()?));
+        }
+        if self.peek() == Some('[') {
+            // Array literal (including empty `[]`) — same bracket form as `in` lists.
+            return Ok(JsonValue::Array(self.parse_literal_list()?));
         }
         if self.eat_keyword("true") {
             return Ok(JsonValue::Bool(true));
@@ -1033,6 +1044,9 @@ impl<'a> Parser<'a> {
         }
         if self.peek() == Some('"') {
             return Ok(Operand::literal(JsonValue::String(self.parse_string()?)));
+        }
+        if self.peek() == Some('[') {
+            return Ok(Operand::literal(JsonValue::Array(self.parse_literal_list()?)));
         }
         if self.eat_keyword("true") {
             return Ok(Operand::literal(JsonValue::Bool(true)));
@@ -1236,6 +1250,58 @@ mod tests {
         }
         let _ = Path::parse_dotted("status").unwrap();
         let _ = Operand::path(Path::parse_dotted("x").unwrap());
+    }
+
+    #[test]
+    fn array_literal_eq_ne_and_infix_contains() {
+        let b = bindings();
+        let empty = compile_app_core(r#"from orders where tags = []"#, &b).unwrap();
+        match &empty.plan.where_pred {
+            Predicate::Cmp {
+                cmp: CompareOp::Eq,
+                right: Operand::Literal { value },
+                ..
+            } => assert_eq!(value, &JsonValue::Array(vec![])),
+            other => panic!("expected eq empty array, got {other:?}"),
+        }
+        let nonempty = compile_app_core(
+            r#"from orders where attachments != []"#,
+            &b,
+        )
+        .unwrap();
+        assert!(matches!(
+            &nonempty.plan.where_pred,
+            Predicate::Cmp {
+                cmp: CompareOp::Ne,
+                right: Operand::Literal {
+                    value: JsonValue::Array(items)
+                },
+                ..
+            } if items.is_empty()
+        ));
+        let infix = compile_app_core(r#"from orders where tags contains "vip""#, &b).unwrap();
+        match &infix.plan.where_pred {
+            Predicate::Contains { needle, .. } => {
+                assert_eq!(needle, &JsonValue::String("vip".into()));
+            }
+            other => panic!("expected Contains, got {other:?}"),
+        }
+        let fn_form = compile_app_core(r#"from orders where contains(tags, "vip")"#, &b).unwrap();
+        assert_eq!(
+            infix.plan.plan_hash_hex(),
+            fn_form.plan.plan_hash_hex(),
+            "infix and function contains must normalize to same plan"
+        );
+        let nested = compile_app_core(r#"from orders where tags = ["a", "b"]"#, &b).unwrap();
+        match &nested.plan.where_pred {
+            Predicate::Cmp {
+                right: Operand::Literal {
+                    value: JsonValue::Array(items),
+                },
+                ..
+            } => assert_eq!(items.len(), 2),
+            other => panic!("expected array lit cmp, got {other:?}"),
+        }
     }
 
     #[test]

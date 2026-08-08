@@ -361,22 +361,27 @@
       ],
       "case_id": "commerce.orders.array_tags_empty",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected identifier near `[]`",
-        "status": "error"
+        "base_source": "from orders where tags = []",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "commerce",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 4,
+        "status": "ok"
       },
       "expected_kind": "oracle_rule",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "predicate_missing_null_type_nested_array"
       ],
-      "gap_package": "pkg_array_predicate_surface",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "source",
       "source": "from orders where tags = []",
       "tier": "A"
@@ -1126,22 +1131,27 @@
       ],
       "case_id": "messaging.messages.has_attachments",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected identifier near `[]`",
-        "status": "error"
+        "base_source": "from messages where attachments != []",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "messaging",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 11,
+        "status": "ok"
       },
       "expected_kind": "oracle_rule",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "predicate_missing_null_type_nested_array"
       ],
-      "gap_package": "pkg_array_predicate_surface",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "source",
       "source": "from messages where attachments != []",
       "tier": "A"
@@ -1991,22 +2001,27 @@
       ],
       "case_id": "directory.entries.tags_empty",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected identifier near `[]`",
-        "status": "error"
+        "base_source": "from entries where tags = []",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "directory",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 6,
+        "status": "ok"
       },
       "expected_kind": "oracle_rule",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "predicate_missing_null_type_nested_array"
       ],
-      "gap_package": "pkg_array_predicate_surface",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "source",
       "source": "from entries where tags = []",
       "tier": "A"
@@ -2017,22 +2032,27 @@
       ],
       "case_id": "directory.entries.tags_contains_vip",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected comparison after path `tags`",
-        "status": "error"
+        "base_source": "from entries where tags contains \"vip\"",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "directory",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 4,
+        "status": "ok"
       },
       "expected_kind": "oracle_rule",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "predicate_missing_null_type_nested_array"
       ],
-      "gap_package": "pkg_array_predicate_surface",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "source",
       "source": "from entries where tags contains \"vip\"",
       "tier": "A"
@@ -2777,22 +2797,27 @@
       ],
       "case_id": "telemetry.events.tags_empty",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected identifier near `[]`",
-        "status": "error"
+        "base_source": "from events where tags = []",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "telemetry",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 13,
+        "status": "ok"
       },
       "expected_kind": "oracle_rule",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "predicate_missing_null_type_nested_array"
       ],
-      "gap_package": "pkg_array_predicate_surface",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "source",
       "source": "from events where tags = []",
       "tier": "A"
@@ -3691,22 +3716,27 @@
       ],
       "case_id": "project_management.tasks.blocked_by_empty",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected identifier near `[]`",
-        "status": "error"
+        "base_source": "from tasks where blocked_by = []",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "project_management",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 56,
+        "status": "ok"
       },
       "expected_kind": "oracle_rule",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "predicate_missing_null_type_nested_array"
       ],
-      "gap_package": "pkg_array_predicate_surface",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "source",
       "source": "from tasks where blocked_by = []",
       "tier": "A"
@@ -3717,22 +3747,27 @@
       ],
       "case_id": "project_management.projects.labels_empty",
       "compile": {
-        "error_code": "QueryInvalid",
-        "message": "invalid query: expected identifier near `[]`",
-        "status": "error"
+        "base_source": "from projects where labels = []",
+        "has_project": false,
+        "pipeline_len": 0,
+        "profile": "rql-full-v1",
+        "status": "ok"
       },
       "domain": "project_management",
       "execute": {
-        "reason": "compile_failed",
-        "status": "skipped"
+        "coverage_complete": true,
+        "path": "execute_rql_full",
+        "row_count": 4,
+        "status": "ok"
       },
       "expected_kind": "oracle_rule",
-      "failure_class": "syntax",
+      "failure_class": null,
       "family_tags": [
         "predicate_missing_null_type_nested_array"
       ],
-      "gap_package": "pkg_array_predicate_surface",
-      "product_expressible": false,
+      "gap_package": null,
+      "notes": "compile+execute ok; result correctness deferred to Q3",
+      "product_expressible": true,
       "rql_status": "source",
       "source": "from projects where labels = []",
       "tier": "A"
@@ -4508,22 +4543,9 @@
   ],
   "corpus_version": "rql-q1-corpus-v0.4.1",
   "format": "residiuum-rql-q2-1-capability-audit-v1",
-  "generated_unix_s": 1786153423,
-  "git_sha": "cdd41c21204cb7ee44e68c151cb29fa731d217c6",
+  "generated_unix_s": 1786153953,
+  "git_sha": "8f0533677a5aaeb329dc662d3d368164af481246",
   "packages": [
-    {
-      "blocked_case_count": 7,
-      "case_ids": [
-        "commerce.orders.array_tags_empty",
-        "messaging.messages.has_attachments",
-        "directory.entries.tags_empty",
-        "directory.entries.tags_contains_vip",
-        "telemetry.events.tags_empty",
-        "project_management.tasks.blocked_by_empty",
-        "project_management.projects.labels_empty"
-      ],
-      "package_id": "pkg_array_predicate_surface"
-    },
     {
       "blocked_case_count": 5,
       "case_ids": [
@@ -4567,23 +4589,22 @@
   ],
   "profile": "rql-gate1-practical-corpus-v1",
   "recommended_implementation_package_order": [
-    "pkg_array_predicate_surface",
     "pkg_budget_partial_coverage",
     "pkg_computed_conditional_project",
     "pkg_cursor_after_clause",
     "pkg_enrich_semantics"
   ],
   "summary": {
-    "compile_ok": 127,
-    "execute_ok": 122,
+    "compile_ok": 134,
+    "execute_ok": 129,
     "expected_refusal_ok": 2,
     "failure_class_counts": {
       "expected_refusal": 2,
       "semantic": 15,
-      "syntax": 8
+      "syntax": 1
     },
-    "gap_case_count": 23,
-    "product_expressible": 122,
+    "gap_case_count": 16,
+    "product_expressible": 129,
     "tier_a_cases": 147
   }
 }
