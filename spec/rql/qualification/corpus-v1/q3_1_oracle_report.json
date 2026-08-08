@@ -1,0 +1,1074 @@
+{
+  "authority": "RQL_QUERY_QUALIFICATION_PROGRAM.md §6.1",
+  "boundary": {
+    "fixture_kind": "logical_generator_seed",
+    "product_callable": false,
+    "uses_collection_client_rql": false,
+    "uses_compile_app_core_for_plan_structure": true,
+    "uses_execute_rql_full": false,
+    "uses_index_selection": false,
+    "uses_predicate_eval_total_profile": true,
+    "uses_qvm_run_vm": false
+  },
+  "cases": [
+    {
+      "case_id": "commerce.orders.eq_status_paid",
+      "coverage_complete": true,
+      "digest": "fnv1a64:5ebd0f6632b7c006:len:1732",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 8,
+      "source": "from orders where status = \"paid\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.key_get",
+      "coverage_complete": true,
+      "digest": "fnv1a64:19c82758de767c36:len:302",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 1,
+      "source": "from orders where _key = \"o-0007\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.range_amount",
+      "coverage_complete": true,
+      "digest": "fnv1a64:a37cf0c86d5dfb2e:len:2407",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 11,
+      "source": "from orders where amount >= 100 and amount < 500",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.compound_region_status",
+      "coverage_complete": true,
+      "digest": "fnv1a64:ab8809dc8a67dc48:len:497",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 2,
+      "source": "from orders where region = \"us\" and status = \"open\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.in_regions",
+      "coverage_complete": true,
+      "digest": "fnv1a64:4cb3a2414bd730c3:len:6673",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 32,
+      "source": "from orders where region in [\"us\", \"eu\"]",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.neq_cancelled",
+      "coverage_complete": true,
+      "digest": "fnv1a64:16bb4e1c05520cd5:len:5036",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 24,
+      "source": "from orders where status != \"cancelled\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.products.eq_category_widget",
+      "coverage_complete": true,
+      "digest": "fnv1a64:6b0ff333c3a1b9b9:len:1747",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 12,
+      "source": "from products where category = \"widget\" and active = true",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.inventory.range_qty",
+      "coverage_complete": true,
+      "digest": "fnv1a64:0572d9da0658fb16:len:4736",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 35,
+      "source": "from inventory where warehouse = \"w1\" and qty_on_hand >= 100",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.missing_deleted_at",
+      "coverage_complete": true,
+      "digest": "fnv1a64:3712006b3ff1ecc8:len:6073",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 29,
+      "source": "from orders where missing(deleted_at)",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.null_notes",
+      "coverage_complete": true,
+      "digest": "fnv1a64:b5796ab3e20a18ce:len:1536",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 7,
+      "source": "from orders where notes is null",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.present_customer_id",
+      "coverage_complete": true,
+      "digest": "fnv1a64:81643ed8c70e56f6:len:5799",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 27,
+      "source": "from orders where present(customer.id)",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.array_tags_empty",
+      "coverage_complete": true,
+      "digest": "fnv1a64:a67d94e3a03524be:len:906",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 4,
+      "source": "from orders where tags = []",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.array_tags_contains",
+      "coverage_complete": true,
+      "digest": "fnv1a64:fba0bc88f68113ee:len:5321",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 25,
+      "source": "from orders where contains(tags, \"sku\")",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.products.missing_attrs",
+      "coverage_complete": true,
+      "digest": "fnv1a64:d732417378f3d79a:len:799",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 6,
+      "source": "from products where missing(attrs)",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.project_id_status",
+      "coverage_complete": true,
+      "digest": "fnv1a64:403684483d821fd6:len:592",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 8,
+      "source": "from orders where status = \"paid\" project _key, status",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.project_nested_customer",
+      "coverage_complete": true,
+      "digest": "fnv1a64:c2f3cf96cef378b0:len:2118",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 32,
+      "source": "from orders project _key, customer.id",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.order_created_desc",
+      "coverage_complete": true,
+      "digest": "fnv1a64:60d32f00e1e374dc:len:6720",
+      "domain": "commerce",
+      "ordered": true,
+      "row_count": 32,
+      "source": "from orders order by created_at desc, _key asc nulls last",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.topk_recent_10",
+      "coverage_complete": true,
+      "digest": "fnv1a64:3f36d4bb4b358348:len:2172",
+      "domain": "commerce",
+      "ordered": true,
+      "row_count": 10,
+      "source": "from orders order by created_at desc, _key asc limit 10",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.page_first",
+      "coverage_complete": true,
+      "digest": "fnv1a64:1561d01ac3e182d9:len:1750",
+      "domain": "commerce",
+      "ordered": true,
+      "row_count": 8,
+      "source": "from orders order by created_at desc, _key asc page size 8",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.page_resume",
+      "domain": "commerce",
+      "reason": "invalid query: rql_feature_unavailable: after / continuation clause (APP-6)",
+      "source": "from orders order by created_at desc, _key asc page size 8 after $cursor",
+      "status": "oracle_unsupported"
+    },
+    {
+      "case_id": "commerce.products.order_price_asc",
+      "coverage_complete": true,
+      "digest": "fnv1a64:94f944936f6dc4f8:len:5259",
+      "domain": "commerce",
+      "ordered": true,
+      "row_count": 38,
+      "source": "from products where active = true order by price_cents asc, sku asc",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.budget_documents",
+      "coverage_complete": true,
+      "digest": "fnv1a64:d00ecc20ebcbdcad:len:6721",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 32,
+      "source": "from orders budget { documents: 10, bytes: 1048576, result_bytes: 65536 }",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.orders.coverage_incomplete",
+      "coverage_complete": true,
+      "digest": "fnv1a64:d00ecc20ebcbdcad:len:6721",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 32,
+      "source": "from orders coverage incomplete",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "commerce.customers.eq_tier_gold",
+      "coverage_complete": true,
+      "digest": "fnv1a64:82c67cf02765873d:len:632",
+      "domain": "commerce",
+      "ordered": false,
+      "row_count": 5,
+      "source": "from customers where tier = \"gold\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "messaging.messages.eq_conversation",
+      "coverage_complete": true,
+      "digest": "fnv1a64:18f63d4843c5bd4e:len:1024",
+      "domain": "messaging",
+      "ordered": false,
+      "row_count": 4,
+      "source": "from messages where conversation_id = \"cv-0003\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "messaging.messages.unread",
+      "coverage_complete": true,
+      "digest": "fnv1a64:3c03a52cd44688a1:len:12437",
+      "domain": "messaging",
+      "ordered": false,
+      "row_count": 64,
+      "source": "from messages where read_at is null or missing(read_at)",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "messaging.messages.null_body",
+      "coverage_complete": true,
+      "digest": "fnv1a64:04fb057da0d77bd3:len:2890",
+      "domain": "messaging",
+      "ordered": false,
+      "row_count": 14,
+      "source": "from messages where body is null",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "messaging.messages.has_attachments",
+      "coverage_complete": true,
+      "digest": "fnv1a64:82b8545172b33ee9:len:2848",
+      "domain": "messaging",
+      "ordered": false,
+      "row_count": 11,
+      "source": "from messages where attachments != []",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "messaging.messages.recent_topk",
+      "coverage_complete": true,
+      "digest": "fnv1a64:d21f7f68e17c5b3e:len:4207",
+      "domain": "messaging",
+      "ordered": true,
+      "row_count": 20,
+      "source": "from messages order by sent_at desc, _key asc limit 20",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "messaging.messages.conversation_history_page",
+      "coverage_complete": true,
+      "digest": "fnv1a64:1f43b8323e576d55:len:881",
+      "domain": "messaging",
+      "ordered": true,
+      "row_count": 4,
+      "source": "from messages where conversation_id = \"cv-0001\" order by sent_at asc, _key asc page size 16",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "messaging.messages.conversation_history_resume",
+      "domain": "messaging",
+      "reason": "invalid query: rql_feature_unavailable: after / continuation clause (APP-6)",
+      "source": "from messages where conversation_id = \"cv-0001\" order by sent_at asc, _key asc page size 16 after $cursor",
+      "status": "oracle_unsupported"
+    },
+    {
+      "case_id": "messaging.messages.project_snippet",
+      "coverage_complete": true,
+      "digest": "fnv1a64:654b3d9996305784:len:606",
+      "domain": "messaging",
+      "ordered": false,
+      "row_count": 4,
+      "source": "from messages where conversation_id = \"cv-0002\" project _key, sender_id, sent_at, body",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "messaging.conversations.eq_kind_direct",
+      "coverage_complete": true,
+      "digest": "fnv1a64:7475956c3bf0925e:len:1076",
+      "domain": "messaging",
+      "ordered": false,
+      "row_count": 5,
+      "source": "from conversations where kind = \"direct\" and archived = false",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "messaging.conversations.recent_activity_order",
+      "coverage_complete": true,
+      "digest": "fnv1a64:72a5f714ac655824:len:2013",
+      "domain": "messaging",
+      "ordered": true,
+      "row_count": 10,
+      "source": "from conversations order by last_message_at desc, _key asc limit 10",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "messaging.participants.eq_user",
+      "coverage_complete": true,
+      "digest": "fnv1a64:6cbfd42b5d35238b:len:1210",
+      "domain": "messaging",
+      "ordered": false,
+      "row_count": 6,
+      "source": "from participants where user_id = \"u-0002\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "messaging.participants.owners_only",
+      "coverage_complete": true,
+      "digest": "fnv1a64:5a6d7eddb71f2bc3:len:4465",
+      "domain": "messaging",
+      "ordered": false,
+      "row_count": 24,
+      "source": "from participants where role = \"owner\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "messaging.participants.muted",
+      "coverage_complete": true,
+      "digest": "fnv1a64:660e9f89010a0ee5:len:2291",
+      "domain": "messaging",
+      "ordered": false,
+      "row_count": 12,
+      "source": "from participants where muted = true",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "messaging.messages.budget_cancel_surface",
+      "coverage_complete": true,
+      "digest": "fnv1a64:43f1aa7b2d3b13ee:len:13226",
+      "domain": "messaging",
+      "ordered": false,
+      "row_count": 64,
+      "source": "from messages budget { documents: 100000, bytes: 1048576, result_bytes: 4096 }",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "messaging.messages.consistency_available",
+      "coverage_complete": true,
+      "digest": "fnv1a64:43f1aa7b2d3b13ee:len:13226",
+      "domain": "messaging",
+      "ordered": false,
+      "row_count": 64,
+      "source": "from messages consistency available",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "messaging.messages.sender_param",
+      "coverage_complete": true,
+      "digest": "fnv1a64:e487bb2805d40542:len:1669",
+      "domain": "messaging",
+      "ordered": false,
+      "row_count": 8,
+      "source": "from messages where sender_id = $sender",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "messaging.conversations.project_title_kind",
+      "coverage_complete": true,
+      "digest": "fnv1a64:b96019dee78e843d:len:1923",
+      "domain": "messaging",
+      "ordered": false,
+      "row_count": 21,
+      "source": "from conversations where archived = false project _key, title, kind",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.eq_kind_person",
+      "coverage_complete": true,
+      "digest": "fnv1a64:443027f8ad29815b:len:5121",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 20,
+      "source": "from entries where kind = \"person\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.key_get",
+      "coverage_complete": true,
+      "digest": "fnv1a64:674c5e062d0a37f8:len:381",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 1,
+      "source": "from entries where _key = \"e-0007\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.eq_category",
+      "coverage_complete": true,
+      "digest": "fnv1a64:be1ed23a7ffa52ab:len:1489",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 5,
+      "source": "from entries where category_id = \"cat-0002\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.compound_category_location",
+      "coverage_complete": true,
+      "digest": "fnv1a64:b960baf46f40840e:len:121",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 0,
+      "source": "from entries where category_id = \"cat-0001\" and location_id = \"loc-0003\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.range_discovered",
+      "coverage_complete": true,
+      "digest": "fnv1a64:7100bbe809e1753d:len:6811",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 26,
+      "source": "from entries where discovered_at > \"2024-03-01T00:00:00Z+300m\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.active_only",
+      "coverage_complete": true,
+      "digest": "fnv1a64:ac572bdd02410da2:len:8654",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 33,
+      "source": "from entries where active = true",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.missing_location",
+      "coverage_complete": true,
+      "digest": "fnv1a64:62a8b206532309d1:len:2012",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 8,
+      "source": "from entries where missing(location_id)",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.null_email",
+      "coverage_complete": true,
+      "digest": "fnv1a64:3858ae65adb547ae:len:2260",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 9,
+      "source": "from entries where email is null",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.missing_email",
+      "coverage_complete": true,
+      "digest": "fnv1a64:5ea4fb653953f99c:len:1010",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 4,
+      "source": "from entries where missing(email)",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.missing_attrs",
+      "coverage_complete": true,
+      "digest": "fnv1a64:bd88e1a050bfa823:len:1176",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 5,
+      "source": "from entries where missing(attrs)",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.tags_empty",
+      "coverage_complete": true,
+      "digest": "fnv1a64:900913698672cfa0:len:1561",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 6,
+      "source": "from entries where tags = []",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.tags_contains_vip",
+      "coverage_complete": true,
+      "digest": "fnv1a64:0ad957f8ffdd3eb6:len:1198",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 4,
+      "source": "from entries where tags contains \"vip\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.project_name_kind",
+      "coverage_complete": true,
+      "digest": "fnv1a64:bb1a5baa96445cd4:len:2594",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 33,
+      "source": "from entries where active = true project _key, name, kind",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.project_nested_attrs_region",
+      "coverage_complete": true,
+      "digest": "fnv1a64:5b2b0a377107321d:len:2348",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 35,
+      "source": "from entries where not missing(attrs) project _key, attrs.region",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.order_name_asc",
+      "coverage_complete": true,
+      "digest": "fnv1a64:88347f536d906524:len:10371",
+      "domain": "directory",
+      "ordered": true,
+      "row_count": 40,
+      "source": "from entries order by name asc, _key asc",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.topk_recent_discovered",
+      "coverage_complete": true,
+      "digest": "fnv1a64:3d56c8ef075470b1:len:2699",
+      "domain": "directory",
+      "ordered": true,
+      "row_count": 10,
+      "source": "from entries order by discovered_at desc, _key asc limit 10",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.page_first",
+      "coverage_complete": true,
+      "digest": "fnv1a64:bc0525f751e3b1b2:len:2096",
+      "domain": "directory",
+      "ordered": true,
+      "row_count": 8,
+      "source": "from entries order by name asc, _key asc page size 8",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.entries.page_resume",
+      "domain": "directory",
+      "reason": "invalid query: rql_feature_unavailable: after / continuation clause (APP-6)",
+      "source": "from entries order by name asc, _key asc page size 8 after $cursor",
+      "status": "oracle_unsupported"
+    },
+    {
+      "case_id": "directory.entries.budget_documents",
+      "coverage_complete": true,
+      "digest": "fnv1a64:428f9befb07d39d7:len:10372",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 40,
+      "source": "from entries budget { documents: 12, bytes: 1048576, result_bytes: 65536 }",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.locations.eq_region_us",
+      "coverage_complete": true,
+      "digest": "fnv1a64:88142337110d5b44:len:567",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 4,
+      "source": "from locations where region = \"us\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.categories.eq_parent_people",
+      "coverage_complete": true,
+      "digest": "fnv1a64:f156f43ea35529b5:len:468",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 3,
+      "source": "from categories where parent = \"people\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.devices.eq_site_plant_a",
+      "coverage_complete": true,
+      "digest": "fnv1a64:149bcb176cfec365:len:1568",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 8,
+      "source": "from devices where site = \"plant-a\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.devices.eq_status_online",
+      "coverage_complete": true,
+      "digest": "fnv1a64:149bcb176cfec365:len:1568",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 8,
+      "source": "from devices where status = \"online\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.devices.compound_type_site",
+      "coverage_complete": true,
+      "digest": "fnv1a64:b960baf46f40840e:len:121",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 0,
+      "source": "from devices where type = \"sensor\" and site = \"plant-b\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.devices.key_get",
+      "coverage_complete": true,
+      "digest": "fnv1a64:0b71516e36a4d207:len:300",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 1,
+      "source": "from devices where _key = \"d-0003\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.events.eq_device",
+      "coverage_complete": true,
+      "digest": "fnv1a64:5f6596424a361067:len:1355",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 6,
+      "source": "from events where device_id = \"d-0005\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.events.range_ts",
+      "coverage_complete": true,
+      "digest": "fnv1a64:b960baf46f40840e:len:121",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 0,
+      "source": "from events where ts > \"2024-08-01T00:00:00Z+60m\" and ts <= \"2024-08-01T00:00:00Z+120m\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.events.severity_in",
+      "coverage_complete": true,
+      "digest": "fnv1a64:65f37c50e91fdb45:len:13214",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 64,
+      "source": "from events where severity in [\"error\", \"critical\"]",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.events.null_payload",
+      "coverage_complete": true,
+      "digest": "fnv1a64:c911e11576acd310:len:4199",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 22,
+      "source": "from events where payload is null",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.events.missing_payload",
+      "coverage_complete": true,
+      "digest": "fnv1a64:8aa48c89fbdb22d4:len:1813",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 10,
+      "source": "from events where missing(payload)",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.events.wrong_type_value",
+      "coverage_complete": true,
+      "digest": "fnv1a64:c4501424a2a0d0a3:len:3061",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 15,
+      "source": "from events where value = \"NaN\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.events.tags_empty",
+      "coverage_complete": true,
+      "digest": "fnv1a64:64199b4395fe88aa:len:2447",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 13,
+      "source": "from events where tags = []",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.devices.missing_retired_at",
+      "coverage_complete": true,
+      "digest": "fnv1a64:40ca90e714954a15:len:3689",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 20,
+      "source": "from devices where missing(retired_at)",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.devices.null_retired_at",
+      "coverage_complete": true,
+      "digest": "fnv1a64:e9908e1b66612f69:len:900",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 4,
+      "source": "from devices where retired_at is null",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.events.project_device_severity_ts",
+      "coverage_complete": true,
+      "digest": "fnv1a64:4e96f7fb10c7c031:len:3966",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 32,
+      "source": "from events where severity = \"critical\" project _key, device_id, severity, ts",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.events.recent_topk",
+      "coverage_complete": true,
+      "digest": "fnv1a64:6a516e060fb0cdcb:len:3113",
+      "domain": "telemetry",
+      "ordered": true,
+      "row_count": 15,
+      "source": "from events order by ts desc, _key asc limit 15",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.events.device_history_page",
+      "coverage_complete": true,
+      "digest": "fnv1a64:032147a6c60a688f:len:1349",
+      "domain": "telemetry",
+      "ordered": true,
+      "row_count": 6,
+      "source": "from events where device_id = \"d-0001\" order by ts desc, _key asc page size 8",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.events.device_history_resume",
+      "domain": "telemetry",
+      "reason": "invalid query: rql_feature_unavailable: after / continuation clause (APP-6)",
+      "source": "from events where device_id = \"d-0001\" order by ts desc, _key asc page size 8 after $cursor",
+      "status": "oracle_unsupported"
+    },
+    {
+      "case_id": "telemetry.events.budget_result_bytes",
+      "coverage_complete": true,
+      "digest": "fnv1a64:83199de2f1f5dd5a:len:12845",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 64,
+      "source": "from events budget { documents: 100000, bytes: 1048576, result_bytes: 4096 }",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.events.coverage_incomplete",
+      "coverage_complete": true,
+      "digest": "fnv1a64:83199de2f1f5dd5a:len:12845",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 64,
+      "source": "from events coverage incomplete",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.events.consistency_available",
+      "coverage_complete": true,
+      "digest": "fnv1a64:83199de2f1f5dd5a:len:12845",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 64,
+      "source": "from events consistency available",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.projects.eq_status_active",
+      "coverage_complete": true,
+      "digest": "fnv1a64:f2094737a17788e1:len:1124",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 5,
+      "source": "from projects where status = \"active\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.projects.eq_owner",
+      "coverage_complete": true,
+      "digest": "fnv1a64:ffad66e7dffec864:len:724",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 3,
+      "source": "from projects where owner_id = \"u-0002\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.projects.compound_owner_status",
+      "coverage_complete": true,
+      "digest": "fnv1a64:b960baf46f40840e:len:121",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 0,
+      "source": "from projects where owner_id = \"u-0001\" and status = \"active\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.projects.range_priority",
+      "coverage_complete": true,
+      "digest": "fnv1a64:c4c1dacfa5567b6e:len:2570",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 12,
+      "source": "from projects where priority >= 3",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.tasks.eq_status_doing",
+      "coverage_complete": true,
+      "digest": "fnv1a64:401ea70cc32a41b7:len:4957",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 20,
+      "source": "from tasks where status = \"doing\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.tasks.eq_project",
+      "coverage_complete": true,
+      "digest": "fnv1a64:e043ad587237cc1a:len:1073",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 4,
+      "source": "from tasks where project_id = \"prj-0004\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.tasks.eq_assignee",
+      "coverage_complete": true,
+      "digest": "fnv1a64:4e34640f1682e47a:len:2545",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 10,
+      "source": "from tasks where assignee_id = \"u-0003\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.projects.null_description",
+      "coverage_complete": true,
+      "digest": "fnv1a64:f2094737a17788e1:len:1124",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 5,
+      "source": "from projects where description is null",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.projects.missing_description",
+      "coverage_complete": true,
+      "digest": "fnv1a64:5b54e8bab2b1b458:len:490",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 2,
+      "source": "from projects where missing(description)",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.tasks.null_due_at",
+      "coverage_complete": true,
+      "digest": "fnv1a64:580b299558fc4365:len:3337",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 14,
+      "source": "from tasks where due_at is null",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.tasks.missing_due_at",
+      "coverage_complete": true,
+      "digest": "fnv1a64:f845739c58f5d614:len:980",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 4,
+      "source": "from tasks where missing(due_at)",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.tasks.blocked_by_empty",
+      "coverage_complete": true,
+      "digest": "fnv1a64:1a5be208d7682670:len:13714",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 56,
+      "source": "from tasks where blocked_by = []",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.projects.labels_empty",
+      "coverage_complete": true,
+      "digest": "fnv1a64:47c71848bfe3f971:len:897",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 4,
+      "source": "from projects where labels = []",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.projects.project_title_status",
+      "coverage_complete": true,
+      "digest": "fnv1a64:bbeb0ee85407a6fa:len:1398",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 15,
+      "source": "from projects where status != \"archived\" project _key, title, status",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.tasks.project_snippet",
+      "coverage_complete": true,
+      "digest": "fnv1a64:ecf3e2117e0665ea:len:535",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 4,
+      "source": "from tasks where project_id = \"prj-0000\" project _key, title, status, assignee_id",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.revisions.order_committed_desc",
+      "coverage_complete": true,
+      "digest": "fnv1a64:b063becb3f73626c:len:8855",
+      "domain": "project_management",
+      "ordered": true,
+      "row_count": 48,
+      "source": "from revisions order by committed_at desc, _key asc",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.revisions.topk_recent_for_project",
+      "coverage_complete": true,
+      "digest": "fnv1a64:8e13fc442e10c027:len:664",
+      "domain": "project_management",
+      "ordered": true,
+      "row_count": 3,
+      "source": "from revisions where project_id = \"prj-0002\" order by committed_at desc, _key asc limit 5",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.tasks.page_first_by_updated",
+      "coverage_complete": true,
+      "digest": "fnv1a64:b7706805b4bec43a:len:2512",
+      "domain": "project_management",
+      "ordered": true,
+      "row_count": 10,
+      "source": "from tasks order by updated_at desc, _key asc page size 10",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.tasks.page_resume_by_updated",
+      "domain": "project_management",
+      "reason": "invalid query: rql_feature_unavailable: after / continuation clause (APP-6)",
+      "source": "from tasks order by updated_at desc, _key asc page size 10 after $cursor",
+      "status": "oracle_unsupported"
+    },
+    {
+      "case_id": "project_management.memberships.eq_role_owner",
+      "coverage_complete": true,
+      "digest": "fnv1a64:7e78c651f7e61a57:len:3421",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 20,
+      "source": "from memberships where role = \"owner\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.memberships.eq_user",
+      "coverage_complete": true,
+      "digest": "fnv1a64:77ef803da3586f66:len:1443",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 8,
+      "source": "from memberships where user_id = \"u-0001\"",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "project_management.tasks.budget_documents",
+      "coverage_complete": true,
+      "digest": "fnv1a64:48037ed38a7f0c9e:len:15490",
+      "domain": "project_management",
+      "ordered": false,
+      "row_count": 64,
+      "source": "from tasks budget { documents: 20, bytes: 1048576, result_bytes: 65536 }",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "directory.locations.project_city_region",
+      "coverage_complete": true,
+      "digest": "fnv1a64:4286d1111fbe31f3:len:485",
+      "domain": "directory",
+      "ordered": false,
+      "row_count": 4,
+      "source": "from locations where region = \"eu\" project _key, city, region, country",
+      "status": "oracle_ok"
+    },
+    {
+      "case_id": "telemetry.events.damage_coverage_incomplete",
+      "coverage_complete": true,
+      "digest": "fnv1a64:ac4f65ae19ade7a0:len:12876",
+      "domain": "telemetry",
+      "ordered": false,
+      "row_count": 64,
+      "source": "from events coverage incomplete",
+      "status": "oracle_ok"
+    }
+  ],
+  "corpus_version": "rql-q1-corpus-v0.4.1",
+  "format": "residiuum-rql-q3-1-oracle-report-v1",
+  "oracle_profile": "residiuum-rql-q3-semantic-oracle-v1",
+  "summary": {
+    "digest_mismatch": 0,
+    "oracle_compile_fail": 0,
+    "oracle_eval_fail": 0,
+    "oracle_fixture_fail": 0,
+    "oracle_ok": 101,
+    "oracle_unsupported": 5,
+    "skipped_no_source": 1,
+    "skipped_non_oracle_rule_tier_a": 40,
+    "tier_a_oracle_rule_source": 106
+  }
+}
