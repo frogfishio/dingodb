@@ -1,0 +1,24 @@
+{
+  "authority": "doc/todo/rql/RQL_QUERY_QUALIFICATION_PROGRAM.md §6.3",
+  "format": "residiuum-rql-q3-4-page-concat-report-v1",
+  "human": "doc/todo/rql/RQL_Q3_4_PAGE_CONCAT.md",
+  "non_claims": [
+    "not_gate1",
+    "not_package_accept",
+    "source_after_cursor_still_residual"
+  ],
+  "package": "RQL-Q3",
+  "summary": {
+    "false_absence_defects": 0,
+    "law_count": 4,
+    "laws": [
+      "page_concat_key_order",
+      "page_concat_field_order",
+      "page_concat_filtered",
+      "single_page_equals_unpaged"
+    ],
+    "product_path": "CollectionClient::rql + QueryRunOptions.after",
+    "source_after_cursor_residual": true
+  },
+  "task": "Q3.4"
+}

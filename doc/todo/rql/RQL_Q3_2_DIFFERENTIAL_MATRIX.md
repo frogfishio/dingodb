@@ -53,8 +53,8 @@ change — it restores key-path semantics on the product path.
 | `indexed(Q) = forced_scan(Q)` | `q32_law_force_scan_equals_index_on_eq_predicate` |
 | complete coverage ⇒ zero holes | `q32_law_complete_coverage_implies_zero_holes` |
 
-Page-concat under `after $cursor` remains APP-6 residual (same five corpus
-cases as Q3.1 unsupported).
+Page-concat via product `QueryRunOptions.after`: see [RQL_Q3_4_PAGE_CONCAT.md](./RQL_Q3_4_PAGE_CONCAT.md).
+Source-level `after $cursor` remains residual (same five corpus cases as Q3.1 unsupported).
 
 ## 4. Evidence (latest labor)
 

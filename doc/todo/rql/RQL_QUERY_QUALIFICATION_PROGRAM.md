@@ -455,8 +455,8 @@ does Atomics become the active critical-path programme.
 | RQL-Q0 Target freeze | **`accept`** (2026-08-07; SHA e1f5c670…) | Tier and comparator profile accepted |
 | RQL-Q1 Practical corpus | `active` (Q1.2 Commerce+Messaging bulk; Q1.3–Q1.4 open) | Immutable corpus accepted |
 | RQL-Q2 Capability closure | `backlog` | Tier A 100%; one QVM runtime |
-| RQL-Q3 Semantic qualification | Q3.1–Q3.3 `in_review` | principal package accept residual |
-| RQL-Q4 Harness | Q4.1–Q4.3 `in_review` (scaffold) | principal design accept; drivers residual |
+| RQL-Q3 Semantic qualification | Q3.1–Q3.4 `in_review` | principal package accept; source `after $cursor` residual |
+| RQL-Q4 Harness | Q4.1–Q4.3 `in_review` (scaffold) | **pre-accept F1–F9 todo** (block Q5+); principal accept after P1 |
 | RQL-Q5 Baseline | `backlog` | Baseline accepted; gates frozen |
 | RQL-Q6 Optimisation | `backlog` | Bottlenecks closed or accepted |
 | RQL-Q7 Final qualification | `backlog` | Gate 1 pass/fail |
