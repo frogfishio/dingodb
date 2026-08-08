@@ -389,6 +389,18 @@ pub fn concurrency_matrix(base: &MeasuredCellPlan, oversub_factor: u32) -> Vec<M
     out
 }
 
+/// Literal matched by indexed-eq plans for a selectivity class.
+/// Must match [`crate::generator`] `sel_bucket` emission (F3).
+pub fn sel_bucket_literal(sel: SelectivityClass) -> &'static str {
+    match sel {
+        SelectivityClass::Point => "POINT",
+        SelectivityClass::S0_01
+        | SelectivityClass::S1
+        | SelectivityClass::S10
+        | SelectivityClass::Broad => "HIT",
+    }
+}
+
 /// Selectivity matrix for indexed-eq cell (point / 0.01% / 1% / 10% / broad).
 pub fn selectivity_matrix(seed: u64) -> Vec<MeasuredCellPlan> {
     SelectivityClass::ALL
@@ -398,8 +410,10 @@ pub fn selectivity_matrix(seed: u64) -> Vec<MeasuredCellPlan> {
             let mut p = MeasuredCellPlan::smoke_for(MandatoryCell::IndexedEqMultiSelectivity, seed);
             p.dataset.selectivity = *sel;
             p.dataset.seed = seed.wrapping_add(100 + i as u64);
+            let lit = sel_bucket_literal(*sel);
+            p.rql_source = format!(r#"from docs where sel_bucket = "{lit}""#);
             p.plan_id = format!("{}_{}", MandatoryCell::IndexedEqMultiSelectivity.id(), sel.as_str());
-            p.notes = format!("Indexed eq selectivity={}", sel.as_str());
+            p.notes = format!("Indexed eq selectivity={} predicate={lit}", sel.as_str());
             p
         })
         .collect()
@@ -505,6 +519,33 @@ mod tests {
         assert!(plans.iter().any(|p| p.plan_id.contains("many")));
         assert!(plans.iter().any(|p| p.plan_id.contains("rw_70_30")));
         assert!(plans.iter().any(|p| p.concurrency == 8));
+    }
+
+    #[test]
+    fn point_selectivity_plan_matches_generator_literal() {
+        use crate::engine::{EngineAdapter, LogicalHarnessEngine};
+        use crate::generator::generate_dataset;
+        use crate::shared_work::SharedLogicalWork;
+
+        let matrix = selectivity_matrix(9);
+        let point = matrix
+            .iter()
+            .find(|p| p.dataset.selectivity == SelectivityClass::Point)
+            .expect("point plan");
+        assert!(
+            point.rql_source.contains(r#"sel_bucket = "POINT""#),
+            "plan query must use POINT: {}",
+            point.rql_source
+        );
+        assert!(!point.rql_source.contains(r#""HIT""#));
+
+        let ds = generate_dataset(&point.dataset);
+        let work = SharedLogicalWork::from_dataset(ds);
+        let mut eng = LogicalHarnessEngine::new();
+        eng.load_shared_work(&work).unwrap();
+        let out = eng.execute_plan(point).unwrap();
+        let r = out.result.expect("result");
+        assert_eq!(r.row_count, 1, "point selectivity must return exactly one row");
     }
 
     #[test]

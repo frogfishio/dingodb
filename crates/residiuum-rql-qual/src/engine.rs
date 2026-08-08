@@ -147,13 +147,15 @@ impl LogicalHarnessEngine {
                 }
             }
             MandatoryCell::IndexedEqMultiSelectivity => {
-                // Match plan predicate: HIT only (Point plans must set query POINT — F3).
+                // Predicate must match generator emission for plan.dataset.selectivity (F3).
+                let want = crate::cell_plan::sel_bucket_literal(plan.dataset.selectivity);
                 for (k, v) in docs {
                     examined += 1;
-                    if v.get("sel_bucket").and_then(|x| x.as_str()) == Some("HIT") {
+                    if v.get("sel_bucket").and_then(|x| x.as_str()) == Some(want) {
                         rows.push(row_from_doc(k, v));
                     }
                 }
+                detail = format!("sel_bucket={want}");
             }
             MandatoryCell::MixedReadWrite => {
                 // §7.2 cell 12: interleave reads of HIT docs with logical writes.

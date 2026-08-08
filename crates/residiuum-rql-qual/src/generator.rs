@@ -185,6 +185,15 @@ fn base_doc(
     Value::Object(m)
 }
 
+/// Target hit count for 0.01% selectivity: round(n * 0.0001) clamped to [1, n].
+///
+/// F4: earlier modulo+`i < period` logic yielded only ~1 hit at large n (~0.0001%).
+pub fn s0_01_target_hits(n: u64) -> u64 {
+    let n = n.max(1);
+    let t = ((n as f64) * 0.0001).round() as u64;
+    t.clamp(1, n)
+}
+
 fn selectivity_bucket(
     i: u64,
     n: u64,
@@ -193,6 +202,7 @@ fn selectivity_bucket(
 ) -> String {
     match sel {
         SelectivityClass::Point => {
+            // Exactly one document; literal "POINT" (not HIT) — plans must match (F3).
             if i == 0 {
                 "POINT".into()
             } else {
@@ -200,9 +210,9 @@ fn selectivity_bucket(
             }
         }
         SelectivityClass::S0_01 => {
-            let period = (n as f64 * 0.0001).max(1.0) as u64;
-            // Match roughly 0.01% — for smoke n=64 this is ~1 doc.
-            if i % (n / period.max(1)).max(1) == 0 && i < period.max(1) {
+            // Exactly s0_01_target_hits(n) documents labeled HIT (first i in 0..target).
+            let target = s0_01_target_hits(n);
+            if i < target {
                 "HIT".into()
             } else {
                 format!("m-{}", rng.next_u32() % 10_000)
@@ -323,7 +333,7 @@ pub fn expected_hit_keys(ds: &LogicalDataset) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dataset::DatasetSpec;
+    use crate::dataset::{DatasetSpec, SelectivityClass};
 
     #[test]
     fn deterministic_same_seed() {
@@ -361,5 +371,64 @@ mod tests {
                 _ => {}
             }
         }
+    }
+
+    fn count_hits_materialised(n: u64, sel: SelectivityClass) -> u64 {
+        let mut spec = DatasetSpec::smoke_default(1);
+        spec.doc_count = n;
+        spec.selectivity = sel;
+        // Tiny payload so 10k materialisation stays cheap.
+        spec.payload = crate::dataset::PayloadClass::Approx1KiB;
+        let ds = generate_dataset(&spec);
+        ds.collections["docs"]
+            .values()
+            .filter(|d| d.get("sel_bucket").and_then(|x| x.as_str()) == Some("HIT"))
+            .count() as u64
+    }
+
+    /// Count HIT labels without building full JSON/payloads (campaign-scale n).
+    fn count_s0_01_hits_bucket_loop(n: u64) -> u64 {
+        let mut rng = SplitMix64::new(1);
+        let mut hits = 0u64;
+        for i in 0..n {
+            if selectivity_bucket(i, n, SelectivityClass::S0_01, &mut rng) == "HIT" {
+                hits += 1;
+            }
+        }
+        hits
+    }
+
+    #[test]
+    fn s0_01_hit_count_smoke_10k_1m() {
+        assert_eq!(s0_01_target_hits(64), 1);
+        assert_eq!(s0_01_target_hits(10_000), 1);
+        assert_eq!(s0_01_target_hits(1_000_000), 100);
+        // Materialise smoke + 10k only.
+        for n in [64u64, 10_000] {
+            let hits = count_hits_materialised(n, SelectivityClass::S0_01);
+            let target = s0_01_target_hits(n);
+            assert_eq!(hits, target, "n={n}: expected {target} HIT, got {hits}");
+        }
+        // Campaign scale without materialising 1e6×1KiB docs.
+        let hits_1m = count_s0_01_hits_bucket_loop(1_000_000);
+        assert_eq!(hits_1m, 100, "1e6 docs must yield 100 HIT for 0.01%");
+    }
+
+    #[test]
+    fn point_emits_exactly_one_point_literal() {
+        let mut spec = DatasetSpec::smoke_default(3);
+        spec.selectivity = SelectivityClass::Point;
+        spec.doc_count = 64;
+        let ds = generate_dataset(&spec);
+        let points: Vec<_> = ds.collections["docs"]
+            .values()
+            .filter(|d| d.get("sel_bucket").and_then(|x| x.as_str()) == Some("POINT"))
+            .collect();
+        assert_eq!(points.len(), 1);
+        let hits = ds.collections["docs"]
+            .values()
+            .filter(|d| d.get("sel_bucket").and_then(|x| x.as_str()) == Some("HIT"))
+            .count();
+        assert_eq!(hits, 0, "Point class must not emit HIT");
     }
 }

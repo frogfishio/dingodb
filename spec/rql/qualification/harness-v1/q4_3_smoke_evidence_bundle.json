@@ -4,14 +4,14 @@
   "env": {
     "format": "residiuum-rql-qual-env-fingerprint-v1",
     "harness_profile": "residiuum-rql-qual-harness-v1",
-    "git_sha": "567f472a566785e6465b3151e699a84709566aa7",
+    "git_sha": "d3514ba3dbd496d480421999a81fc326625a6693",
     "dirty": true,
     "residiuum_version": "0.2.2",
     "rustc": "rustc 1.92.0 (ded5c06cf 2025-12-08)",
     "os": "macos",
     "arch": "aarch64",
     "hostname_class": "controlled_host_unspecified",
-    "recorded_unix_s": 1786164976,
+    "recorded_unix_s": 1786165507,
     "mongo_pin": "8.2.12",
     "cbl_pin": "4.1.0",
     "cbl_full_sync": true,
@@ -52,12 +52,12 @@
           "row_count": 1
         },
         "metrics": {
-          "queries_per_s": 28368.794326241135,
+          "queries_per_s": 139528.39402818473,
           "latency": {
-            "p50": 35250,
-            "p95": 35250,
-            "p99": 35250,
-            "max": 35250,
+            "p50": 7167,
+            "p95": 7167,
+            "p99": 7167,
+            "max": 7167,
             "samples": 1
           },
           "resource": {
@@ -100,12 +100,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 28368.794326241135,
+        "queries_per_s": 139528.39402818473,
         "latency": {
-          "p50": 35250,
-          "p95": 35250,
-          "p99": 35250,
-          "max": 35250,
+          "p50": 7167,
+          "p95": 7167,
+          "p99": 7167,
+          "max": 7167,
           "samples": 1
         },
         "resource": {
@@ -157,12 +157,12 @@
           "row_count": 7
         },
         "metrics": {
-          "queries_per_s": 13422.818791946309,
+          "queries_per_s": 28880.86642599278,
           "latency": {
-            "p50": 74500,
-            "p95": 74500,
-            "p99": 74500,
-            "max": 74500,
+            "p50": 34625,
+            "p95": 34625,
+            "p99": 34625,
+            "max": 34625,
             "samples": 1
           },
           "resource": {
@@ -190,7 +190,7 @@
           "validity_ok": true
         },
         "refuse_code": null,
-        "detail": "logical_harness plan=cell_indexed_eq_multi_sel_smoke_c1 examined=64 ",
+        "detail": "logical_harness plan=cell_indexed_eq_multi_sel_smoke_c1 examined=64 sel_bucket=HIT",
         "shared_work_hash": "70da77022cd2fdba5f601d7b86e22f1ff7cf52b327f34715b15ad3fe293cb89d"
       },
       "side_b": {
@@ -205,12 +205,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 13422.818791946309,
+        "queries_per_s": 28880.86642599278,
         "latency": {
-          "p50": 74500,
-          "p95": 74500,
-          "p99": 74500,
-          "max": 74500,
+          "p50": 34625,
+          "p95": 34625,
+          "p99": 34625,
+          "max": 34625,
           "samples": 1
         },
         "resource": {
@@ -262,12 +262,12 @@
           "row_count": 8
         },
         "metrics": {
-          "queries_per_s": 3727.865796831314,
+          "queries_per_s": 34482.75862068965,
           "latency": {
-            "p50": 268250,
-            "p95": 268250,
-            "p99": 268250,
-            "max": 268250,
+            "p50": 29000,
+            "p95": 29000,
+            "p99": 29000,
+            "max": 29000,
             "samples": 1
           },
           "resource": {
@@ -310,12 +310,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 3727.865796831314,
+        "queries_per_s": 34482.75862068965,
         "latency": {
-          "p50": 268250,
-          "p95": 268250,
-          "p99": 268250,
-          "max": 268250,
+          "p50": 29000,
+          "p95": 29000,
+          "p99": 29000,
+          "max": 29000,
           "samples": 1
         },
         "resource": {
@@ -367,12 +367,12 @@
           "row_count": 11
         },
         "metrics": {
-          "queries_per_s": 1253.7880070161978,
+          "queries_per_s": 14150.87664680827,
           "latency": {
-            "p50": 797583,
-            "p95": 797583,
-            "p99": 797583,
-            "max": 797583,
+            "p50": 70667,
+            "p95": 70667,
+            "p99": 70667,
+            "max": 70667,
             "samples": 1
           },
           "resource": {
@@ -415,12 +415,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 1253.7880070161978,
+        "queries_per_s": 14150.87664680827,
         "latency": {
-          "p50": 797583,
-          "p95": 797583,
-          "p99": 797583,
-          "max": 797583,
+          "p50": 70667,
+          "p95": 70667,
+          "p99": 70667,
+          "max": 70667,
           "samples": 1
         },
         "resource": {
@@ -472,12 +472,12 @@
           "row_count": 64
         },
         "metrics": {
-          "queries_per_s": 4743.068006109072,
+          "queries_per_s": 20443.20876604792,
           "latency": {
-            "p50": 210834,
-            "p95": 210834,
-            "p99": 210834,
-            "max": 210834,
+            "p50": 48916,
+            "p95": 48916,
+            "p99": 48916,
+            "max": 48916,
             "samples": 1
           },
           "resource": {
@@ -520,12 +520,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 4743.068006109072,
+        "queries_per_s": 20443.20876604792,
         "latency": {
-          "p50": 210834,
-          "p95": 210834,
-          "p99": 210834,
-          "max": 210834,
+          "p50": 48916,
+          "p95": 48916,
+          "p99": 48916,
+          "max": 48916,
           "samples": 1
         },
         "resource": {
@@ -577,12 +577,12 @@
           "row_count": 10
         },
         "metrics": {
-          "queries_per_s": 897.7998516834645,
+          "queries_per_s": 6212.762256226741,
           "latency": {
-            "p50": 1113834,
-            "p95": 1113834,
-            "p99": 1113834,
-            "max": 1113834,
+            "p50": 160959,
+            "p95": 160959,
+            "p99": 160959,
+            "max": 160959,
             "samples": 1
           },
           "resource": {
@@ -625,12 +625,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 897.7998516834645,
+        "queries_per_s": 6212.762256226741,
         "latency": {
-          "p50": 1113834,
-          "p95": 1113834,
-          "p99": 1113834,
-          "max": 1113834,
+          "p50": 160959,
+          "p95": 160959,
+          "p99": 160959,
+          "max": 160959,
           "samples": 1
         },
         "resource": {
@@ -682,12 +682,12 @@
           "row_count": 64
         },
         "metrics": {
-          "queries_per_s": 3625.3820246308455,
+          "queries_per_s": 10909.170248510898,
           "latency": {
-            "p50": 275833,
-            "p95": 275833,
-            "p99": 275833,
-            "max": 275833,
+            "p50": 91666,
+            "p95": 91666,
+            "p99": 91666,
+            "max": 91666,
             "samples": 1
           },
           "resource": {
@@ -730,12 +730,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 3625.3820246308455,
+        "queries_per_s": 10909.170248510898,
         "latency": {
-          "p50": 275833,
-          "p95": 275833,
-          "p99": 275833,
-          "max": 275833,
+          "p50": 91666,
+          "p95": 91666,
+          "p99": 91666,
+          "max": 91666,
           "samples": 1
         },
         "resource": {
@@ -787,12 +787,12 @@
           "row_count": 64
         },
         "metrics": {
-          "queries_per_s": 305.6156260047114,
+          "queries_per_s": 2337.81414377557,
           "latency": {
-            "p50": 3272084,
-            "p95": 3272084,
-            "p99": 3272084,
-            "max": 3272084,
+            "p50": 427750,
+            "p95": 427750,
+            "p99": 427750,
+            "max": 427750,
             "samples": 1
           },
           "resource": {
@@ -835,12 +835,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 305.6156260047114,
+        "queries_per_s": 2337.81414377557,
         "latency": {
-          "p50": 3272084,
-          "p95": 3272084,
-          "p99": 3272084,
-          "max": 3272084,
+          "p50": 427750,
+          "p95": 427750,
+          "p99": 427750,
+          "max": 427750,
           "samples": 1
         },
         "resource": {
@@ -892,12 +892,12 @@
           "row_count": 2
         },
         "metrics": {
-          "queries_per_s": 7858.546168958743,
+          "queries_per_s": 34042.55319148936,
           "latency": {
-            "p50": 127250,
-            "p95": 127250,
-            "p99": 127250,
-            "max": 127250,
+            "p50": 29375,
+            "p95": 29375,
+            "p99": 29375,
+            "max": 29375,
             "samples": 1
           },
           "resource": {
@@ -940,12 +940,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 7858.546168958743,
+        "queries_per_s": 34042.55319148936,
         "latency": {
-          "p50": 127250,
-          "p95": 127250,
-          "p99": 127250,
-          "max": 127250,
+          "p50": 29375,
+          "p95": 29375,
+          "p99": 29375,
+          "max": 29375,
           "samples": 1
         },
         "resource": {
@@ -997,12 +997,12 @@
           "row_count": 5
         },
         "metrics": {
-          "queries_per_s": 7077.591637117722,
+          "queries_per_s": 22222.222222222223,
           "latency": {
-            "p50": 141291,
-            "p95": 141291,
-            "p99": 141291,
-            "max": 141291,
+            "p50": 45000,
+            "p95": 45000,
+            "p99": 45000,
+            "max": 45000,
             "samples": 1
           },
           "resource": {
@@ -1045,12 +1045,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 7077.591637117722,
+        "queries_per_s": 22222.222222222223,
         "latency": {
-          "p50": 141291,
-          "p95": 141291,
-          "p99": 141291,
-          "max": 141291,
+          "p50": 45000,
+          "p95": 45000,
+          "p99": 45000,
+          "max": 45000,
           "samples": 1
         },
         "resource": {
@@ -1102,12 +1102,12 @@
           "row_count": 64
         },
         "metrics": {
-          "queries_per_s": 5048.388806712338,
+          "queries_per_s": 15009.3808630394,
           "latency": {
-            "p50": 198083,
-            "p95": 198083,
-            "p99": 198083,
-            "max": 198083,
+            "p50": 66625,
+            "p95": 66625,
+            "p99": 66625,
+            "max": 66625,
             "samples": 1
           },
           "resource": {
@@ -1150,12 +1150,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 5048.388806712338,
+        "queries_per_s": 15009.3808630394,
         "latency": {
-          "p50": 198083,
-          "p95": 198083,
-          "p99": 198083,
-          "max": 198083,
+          "p50": 66625,
+          "p95": 66625,
+          "p99": 66625,
+          "max": 66625,
           "samples": 1
         },
         "resource": {
@@ -1207,12 +1207,12 @@
           "row_count": 7
         },
         "metrics": {
-          "queries_per_s": 147.92444256153064,
+          "queries_per_s": 615.9213197469303,
           "latency": {
-            "p50": 6760208,
-            "p95": 6760208,
-            "p99": 6760208,
-            "max": 6760208,
+            "p50": 1623584,
+            "p95": 1623584,
+            "p99": 1623584,
+            "max": 1623584,
             "samples": 1
           },
           "resource": {
@@ -1255,12 +1255,12 @@
       "equivalent": null,
       "equivalence_detail": "one or both sides missing canonical result",
       "metrics_a": {
-        "queries_per_s": 147.92444256153064,
+        "queries_per_s": 615.9213197469303,
         "latency": {
-          "p50": 6760208,
-          "p95": 6760208,
-          "p99": 6760208,
-          "max": 6760208,
+          "p50": 1623584,
+          "p95": 1623584,
+          "p99": 1623584,
+          "max": 1623584,
           "samples": 1
         },
         "resource": {
@@ -1291,5 +1291,5 @@
       "scaffold_only": true
     }
   ],
-  "content_hash": "b8263efb0242eab3804677ba0968692fff158023a3934332dc874ca9c4321385"
+  "content_hash": "fa07e047dfb6d13c6b7502e4ca32707d9d5bb8e2941b35ea461a73b4512fc6e3"
 }
