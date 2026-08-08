@@ -1,0 +1,39 @@
+{
+  "authority": "doc/todo/rql/RQL_QUERY_QUALIFICATION_PROGRAM.md §6.4",
+  "dimensions": [
+    "sparse_heterogeneous",
+    "absent_null_wrong_type",
+    "array_empty_contains",
+    "order_ties_key_break",
+    "partial_stale_index_detection",
+    "mutated_qvm_refuse",
+    "mutated_continuation_refuse",
+    "reopen_equality",
+    "inter_page_write_available",
+    "holey_complete_fail_closed",
+    "holey_incomplete_hole_evidence",
+    "budget_cancel_deadline_fail_closed",
+    "budget_soft_stop_incomplete_allowed",
+    "seeded_property_sparse_scan_index",
+    "enrich_exactly_one_violation"
+  ],
+  "format": "residiuum-rql-q3-3-adversarial-report-v1",
+  "non_claims": [
+    "not_gate1",
+    "not_package_accept",
+    "not_q4_cross_engine",
+    "decision0_still_open"
+  ],
+  "one_command": "bash scripts/verify-rql-q3.sh",
+  "package": "RQL-Q3",
+  "profile": "residiuum-rql-q3-adversarial-v1",
+  "summary": {
+    "dimensions_covered": 15,
+    "false_absence_defects": 0,
+    "false_completeness_defects": 0,
+    "force_scan_index_smoke_equal": true,
+    "property_seeds": 24,
+    "unresolved_divergence": 0
+  },
+  "task": "Q3.3"
+}

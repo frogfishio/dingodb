@@ -70,7 +70,7 @@ cases as Q3.1 unsupported).
 ## 5. Non-claims
 
 - Not Gate-1; not RQL-Q3 package accept.
-- Not Q3.3 adversarial/damage/one-command union (next).
+- Q3.3 adversarial/damage/one-command: see [RQL_Q3_3_ADVERSARIAL_SUITE.md](./RQL_Q3_3_ADVERSARIAL_SUITE.md) (`bash scripts/verify-rql-q3.sh`).
 - Mongo/CBL comparator deferred to Q4 harness.
 - Decision 0 / RQL-C1 still open.
 
