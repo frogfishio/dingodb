@@ -55,3 +55,10 @@ Checked-in `spec/` snapshots: `scripts/publish-rql-q3-evidence.sh` /
 - Not competitive baseline (Q5); not Atomics unlock.
 - Decision 0 / RQL-C1 still open.
 - Q5.1–Q7.2 remain on `todo` with dependency HOLDs — do not claim as implementer yet.
+
+## Wave 2 (principal)
+
+Mechanical F1–F9 labor is `in_review`. A second principal review found **Q4 §7.2
+faithfulness** gaps that still block competitive proving — board feature
+`019fe054-1091-7c43-8db0-25394545d377`, pack
+[RQL_Q4_FAITHFULNESS_FINDINGS.md](./RQL_Q4_FAITHFULNESS_FINDINGS.md) (F10–F17).
