@@ -10,7 +10,10 @@
 use crate::error::StoreError;
 use crate::layout::{list_residiuum_files, segment_id_from_filename, StorePaths};
 use crate::seal_pipeline::list_pending_paths;
-use residiuum_format::{decode_descriptor_body, scan_forward, FrameKind, SafetyLimits};
+use residiuum_format::{
+    decode_descriptor_body, scan_forward, verify_frame_at, FrameKind, SafetyLimits,
+    FRAME_PREFIX_LEN, FRAME_SUFFIX_LEN,
+};
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{self, Read, Write};
@@ -46,6 +49,10 @@ pub struct MediaInventory {
     pub by_id: BTreeMap<[u8; 16], Vec<AuthoritativeOwner>>,
     /// Non-empty media with no recoverable descriptor (Tolerate policy only).
     pub unidentified: Vec<AuthoritativeOwner>,
+    /// Bytes read while verifying bounded frame-0 segment descriptors.
+    pub descriptor_probe_bytes: u64,
+    /// Bytes read by full-media fallback scans (salvage/tolerant policy only).
+    pub fallback_scan_bytes: u64,
 }
 
 impl MediaInventory {
@@ -96,6 +103,86 @@ fn decode_segment_id_from_bytes(
     Ok(foreign)
 }
 
+/// Read and verify frame 0 only. Valid segment writers always place the
+/// authenticated segment descriptor first, so ordinary fail-closed inventory
+/// need not read the remaining segment body.
+fn decode_segment_id_from_frame_zero(
+    path: &Path,
+    store_id: [u8; 16],
+    limits: SafetyLimits,
+    accept_foreign_store: bool,
+) -> Result<(Option<[u8; 16]>, u64), StoreError> {
+    let mut file = fs::File::open(path)?;
+    let file_len = file.metadata()?.len();
+    if file_len == 0 {
+        return Ok((None, 0));
+    }
+
+    let prefix_len = (FRAME_PREFIX_LEN as u64).min(file_len) as usize;
+    let mut prefix = vec![0u8; prefix_len];
+    file.read_exact(&mut prefix)?;
+    let mut bytes_read = prefix_len as u64;
+    if prefix.len() < FRAME_PREFIX_LEN {
+        return Ok((None, bytes_read));
+    }
+
+    let envelope_len = u32::from_le_bytes(prefix[12..16].try_into().expect("prefix length"));
+    let body_len = u64::from_le_bytes(prefix[16..24].try_into().expect("prefix length"));
+    if !limits.accepts_lengths(envelope_len, body_len) {
+        return Ok((None, bytes_read));
+    }
+    let Some(frame_len) = (FRAME_PREFIX_LEN as u64)
+        .checked_add(u64::from(envelope_len))
+        .and_then(|n| n.checked_add(body_len))
+        .and_then(|n| n.checked_add(FRAME_SUFFIX_LEN as u64))
+    else {
+        return Ok((None, bytes_read));
+    };
+    if frame_len > file_len || frame_len > limits.max_frame_len {
+        return Ok((None, bytes_read));
+    }
+
+    let mut frame = vec![0u8; frame_len as usize];
+    frame[..FRAME_PREFIX_LEN].copy_from_slice(&prefix);
+    file.read_exact(&mut frame[FRAME_PREFIX_LEN..])?;
+    bytes_read = frame_len;
+    let Ok((header, _envelope, body, _hash, _verified_len)) = verify_frame_at(&frame, limits)
+    else {
+        return Ok((None, bytes_read));
+    };
+    if header.known_kind() != Some(FrameKind::SegmentDescriptor) {
+        return Ok((None, bytes_read));
+    }
+    let Some((ids, _, _)) = decode_descriptor_body(body) else {
+        return Ok((None, bytes_read));
+    };
+    if ids.store_id == store_id || accept_foreign_store {
+        return Ok((Some(ids.segment_id), bytes_read));
+    }
+    Ok((None, bytes_read))
+}
+
+fn decode_segment_id_from_file(
+    path: &Path,
+    store_id: [u8; 16],
+    limits: SafetyLimits,
+    policy: InventoryPolicy,
+) -> Result<(Option<[u8; 16]>, u64, u64), StoreError> {
+    let accept_foreign = matches!(policy, InventoryPolicy::TolerateUnidentified);
+    let (first, probe_bytes) =
+        decode_segment_id_from_frame_zero(path, store_id, limits, accept_foreign)?;
+    if first.is_some() || matches!(policy, InventoryPolicy::FailClosed) {
+        return Ok((first, probe_bytes, 0));
+    }
+
+    // Explicit salvage/reassign mode retains the historical ability to find a
+    // recoverable descriptor after damaged leading bytes. Normal writable open
+    // never pays this full-media cost.
+    let bytes = fs::read(path)?;
+    let found = decode_segment_id_from_bytes(&bytes, store_id, limits, true)?;
+    Ok((found, probe_bytes, bytes.len() as u64))
+}
+
 fn validate_filename_id(path: &Path, descriptor_id: [u8; 16]) -> Result<(), StoreError> {
     if let Some(name_id) = segment_id_from_filename(path) {
         if name_id != descriptor_id {
@@ -115,10 +202,13 @@ fn inventory_residiuum_file(
     role: &'static str,
     policy: InventoryPolicy,
 ) -> Result<(), StoreError> {
-    let bytes = fs::read(&path)?;
-    let accept_foreign = matches!(policy, InventoryPolicy::TolerateUnidentified);
-    let Some(id) = decode_segment_id_from_bytes(&bytes, store_id, limits, accept_foreign)? else {
-        if bytes.is_empty() {
+    let file_len = fs::metadata(&path)?.len();
+    let (id, probe_bytes, fallback_bytes) =
+        decode_segment_id_from_file(&path, store_id, limits, policy)?;
+    inv.descriptor_probe_bytes = inv.descriptor_probe_bytes.saturating_add(probe_bytes);
+    inv.fallback_scan_bytes = inv.fallback_scan_bytes.saturating_add(fallback_bytes);
+    let Some(id) = id else {
+        if file_len == 0 {
             return Ok(());
         }
         match policy {
@@ -128,8 +218,7 @@ fn inventory_residiuum_file(
                 ));
             }
             InventoryPolicy::TolerateUnidentified => {
-                inv.unidentified
-                    .push(AuthoritativeOwner { path, role });
+                inv.unidentified.push(AuthoritativeOwner { path, role });
                 return Ok(());
             }
         }
@@ -255,11 +344,19 @@ pub fn inventory_authoritative_media(
     limits: SafetyLimits,
     policy: InventoryPolicy,
 ) -> Result<MediaInventory, StoreError> {
-    if matches!(policy, InventoryPolicy::FailClosed) {
-        heal_identical_publish_aliases(paths, store_id, writer_shards, limits)?;
-    }
-    let inv =
+    let mut inv =
         build_authoritative_inventory_with_policy(paths, store_id, writer_shards, limits, policy)?;
+    if matches!(policy, InventoryPolicy::FailClosed) && heal_publish_aliases_from_inventory(&inv)? {
+        // Directory entries changed. Rebuild once so collision evidence and
+        // open metrics describe the post-heal authoritative set.
+        inv = build_authoritative_inventory_with_policy(
+            paths,
+            store_id,
+            writer_shards,
+            limits,
+            policy,
+        )?;
+    }
     if let Some((segment_id, collision_paths)) = inv.first_collision() {
         return Err(StoreError::SegmentIdCollision {
             segment_id,
@@ -308,14 +405,22 @@ pub fn heal_identical_publish_aliases(
     limits: SafetyLimits,
 ) -> Result<(), StoreError> {
     let inv = build_authoritative_inventory(paths, store_id, writer_shards, limits)?;
-    for (_id, owners) in inv.by_id {
+    let _ = heal_publish_aliases_from_inventory(&inv)?;
+    Ok(())
+}
+
+/// Remove only proven same-inode duplicate names. Returns true when directory
+/// entries changed and the caller must rebuild its inventory.
+fn heal_publish_aliases_from_inventory(inv: &MediaInventory) -> Result<bool, StoreError> {
+    let mut changed = false;
+    for owners in inv.by_id.values() {
         if owners.len() <= 1 {
             continue;
         }
         let mut by_inode: BTreeMap<(u64, u64), Vec<AuthoritativeOwner>> = BTreeMap::new();
         for o in owners {
             if let Ok(key) = file_inode_key(&o.path) {
-                by_inode.entry(key).or_default().push(o);
+                by_inode.entry(key).or_default().push(o.clone());
             }
         }
         for (_key, mut group) in by_inode {
@@ -324,11 +429,15 @@ pub fn heal_identical_publish_aliases(
             }
             group.sort_by_key(|o| role_rank(o.role));
             for extra in group.iter().skip(1) {
-                let _ = fs::remove_file(&extra.path);
+                match fs::remove_file(&extra.path) {
+                    Ok(()) => changed = true,
+                    Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+                    Err(e) => return Err(StoreError::Io(e)),
+                }
             }
         }
     }
-    Ok(())
+    Ok(changed)
 }
 
 fn files_byte_identical(a: &Path, b: &Path) -> Result<bool, StoreError> {
@@ -540,11 +649,7 @@ fn publish_via_staging_copy(
     Ok(())
 }
 
-fn publish_via_hard_link(
-    src: &Path,
-    dest: &Path,
-    segment_id: [u8; 16],
-) -> Result<(), StoreError> {
+fn publish_via_hard_link(src: &Path, dest: &Path, segment_id: [u8; 16]) -> Result<(), StoreError> {
     match fs::hard_link(src, dest) {
         Ok(()) => {
             crate::failpoint::hit("media.publish.after_link")?;
@@ -587,11 +692,7 @@ fn publish_via_hard_link(
 /// 5. Cross-device (`EXDEV`): unique temp in dest dir → copy+verify →
 ///    `sync_all` → no-replace publish → dir sync → unlink source. Never
 ///    writes a partial final pathname.
-pub fn rename_exclusive(
-    src: &Path,
-    dest: &Path,
-    segment_id: [u8; 16],
-) -> Result<(), StoreError> {
+pub fn rename_exclusive(src: &Path, dest: &Path, segment_id: [u8; 16]) -> Result<(), StoreError> {
     if dest.exists() {
         if files_byte_identical(src, dest)? {
             crate::failpoint::hit("media.publish.before_source_unlink")?;
@@ -681,14 +782,15 @@ pub fn active_descriptor_id(
     store_id: [u8; 16],
     limits: SafetyLimits,
 ) -> Result<Option<[u8; 16]>, StoreError> {
-    let bytes = fs::read(path)?;
-    decode_segment_id_from_bytes(&bytes, store_id, limits, false)
+    decode_segment_id_from_file(path, store_id, limits, InventoryPolicy::FailClosed)
+        .map(|(id, _, _)| id)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::failpoint::{self, Action};
+    use residiuum_format::{ActiveSegment, SegmentId, START_MAGIC};
     use std::panic::{catch_unwind, AssertUnwindSafe};
     use std::sync::{Mutex, OnceLock};
     use tempfile::tempdir;
@@ -698,6 +800,98 @@ mod tests {
         LOCK.get_or_init(|| Mutex::new(()))
             .lock()
             .unwrap_or_else(|p| p.into_inner())
+    }
+
+    #[test]
+    fn fail_closed_descriptor_probe_does_not_read_segment_tail() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("large.residiuum");
+        let store_id = [0x11; 16];
+        let segment_id = [0x22; 16];
+        let segment = ActiveSegment::create(
+            SegmentId::new(store_id, segment_id),
+            SafetyLimits::default(),
+            7,
+        )
+        .unwrap();
+        let descriptor_len = segment.as_bytes().len() as u64;
+        let mut bytes = segment.as_bytes().to_vec();
+        bytes.resize(bytes.len() + 4 * 1024 * 1024, 0x5a);
+        fs::write(&path, &bytes).unwrap();
+
+        let (found, probe_bytes, fallback_bytes) = decode_segment_id_from_file(
+            &path,
+            store_id,
+            SafetyLimits::default(),
+            InventoryPolicy::FailClosed,
+        )
+        .unwrap();
+        assert_eq!(found, Some(segment_id));
+        assert_eq!(probe_bytes, descriptor_len);
+        assert_eq!(fallback_bytes, 0);
+        assert!(probe_bytes < fs::metadata(path).unwrap().len());
+    }
+
+    #[test]
+    fn fail_closed_descriptor_probe_rejects_truncated_and_oversized_prefixes() {
+        let dir = tempdir().unwrap();
+        let truncated = dir.path().join("truncated.residiuum");
+        fs::write(&truncated, START_MAGIC).unwrap();
+        let (found, probe_bytes, fallback_bytes) = decode_segment_id_from_file(
+            &truncated,
+            [1; 16],
+            SafetyLimits::default(),
+            InventoryPolicy::FailClosed,
+        )
+        .unwrap();
+        assert_eq!(found, None);
+        assert_eq!(probe_bytes, START_MAGIC.len() as u64);
+        assert_eq!(fallback_bytes, 0);
+
+        let oversized = dir.path().join("oversized.residiuum");
+        let mut prefix = [0u8; FRAME_PREFIX_LEN];
+        prefix[..START_MAGIC.len()].copy_from_slice(START_MAGIC);
+        prefix[12..16]
+            .copy_from_slice(&(SafetyLimits::default().max_envelope_len + 1).to_le_bytes());
+        fs::write(&oversized, prefix).unwrap();
+        let (found, probe_bytes, fallback_bytes) = decode_segment_id_from_file(
+            &oversized,
+            [1; 16],
+            SafetyLimits::default(),
+            InventoryPolicy::FailClosed,
+        )
+        .unwrap();
+        assert_eq!(found, None);
+        assert_eq!(probe_bytes, FRAME_PREFIX_LEN as u64);
+        assert_eq!(fallback_bytes, 0);
+    }
+
+    #[test]
+    fn tolerant_inventory_retains_full_scan_salvage_fallback() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("salvage.residiuum");
+        let store_id = [0x33; 16];
+        let segment_id = [0x44; 16];
+        let segment = ActiveSegment::create(
+            SegmentId::new(store_id, segment_id),
+            SafetyLimits::default(),
+            9,
+        )
+        .unwrap();
+        let mut bytes = b"damaged-leading-bytes".to_vec();
+        bytes.extend_from_slice(segment.as_bytes());
+        fs::write(&path, &bytes).unwrap();
+
+        let (found, probe_bytes, fallback_bytes) = decode_segment_id_from_file(
+            &path,
+            store_id,
+            SafetyLimits::default(),
+            InventoryPolicy::TolerateUnidentified,
+        )
+        .unwrap();
+        assert_eq!(found, Some(segment_id));
+        assert_eq!(probe_bytes, FRAME_PREFIX_LEN as u64);
+        assert_eq!(fallback_bytes, bytes.len() as u64);
     }
 
     #[test]

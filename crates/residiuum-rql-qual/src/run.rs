@@ -274,14 +274,19 @@ mod tests {
     #[test]
     fn section_7_2_expanded_executes_variants() {
         let results = run_section_7_2_expanded(7).expect("expanded");
-        // 12 smoke + 3 enrich + 2 rw + 5 concurrency = 22
+        // F11: full inventory (smoke + variants + all-cell concurrency).
         assert!(
-            results.len() >= 22,
-            "expected ≥22 plans, got {}",
+            results.len() >= 80,
+            "expected ≥80 plans after F11, got {}",
             results.len()
         );
         let mut saw_deep = false;
         let mut saw_writes = false;
+        let mut saw_nested_only = false;
+        let mut saw_array_only = false;
+        let mut saw_covered = false;
+        let mut saw_non_covered = false;
+        let mut saw_group_high = false;
         for r in &results {
             assert!(r.side_a.result.is_some(), "{}", r.plan_id);
             // F10: achieved concurrency must match requested (real workers, not metadata).
@@ -302,15 +307,34 @@ mod tests {
                 saw_deep = true;
             }
             if d.contains("writes=") {
-                // detail format: writes=N with N>0
                 if d.contains("writes=0") {
                     panic!("mixed R/W produced zero writes: {d}");
                 }
                 saw_writes = true;
             }
+            if d.contains("nested_array_focus=nested_only") {
+                saw_nested_only = true;
+            }
+            if d.contains("nested_array_focus=array_only") {
+                saw_array_only = true;
+            }
+            if d.contains("projection_cover=covered") {
+                saw_covered = true;
+            }
+            if d.contains("projection_cover=non_covered") {
+                saw_non_covered = true;
+            }
+            if d.contains("group_card=card_high") {
+                saw_group_high = true;
+            }
         }
         assert!(saw_deep, "expected deep cursor detail");
         assert!(saw_writes, "expected mixed R/W writes");
+        assert!(saw_nested_only, "expected nested-only predicate execution");
+        assert!(saw_array_only, "expected array-only predicate execution");
+        assert!(saw_covered, "expected covered projection execution");
+        assert!(saw_non_covered, "expected non-covered projection execution");
+        assert!(saw_group_high, "expected high-cardinality group execution");
         assert!(
             results.iter().any(|r| r.plan_id.contains("agg_stats")),
             "expected agg plan"
@@ -323,17 +347,17 @@ mod tests {
             results.iter().any(|r| r.plan_id.contains("_c8")),
             "expected concurrency 8 plan executed"
         );
-        // F10: multi-worker plans must report achieved == requested (not stuck at 1).
+        // F10/F11: multi-worker plans across cells, not key-get only.
         let multi: Vec<_> = results
             .iter()
             .filter(|r| r.requested_concurrency > 1)
             .collect();
         assert!(
-            multi.len() >= 4,
-            "expected concurrency matrix slots >1, got {}",
+            multi.len() >= 40,
+            "expected broad concurrency matrix (>1), got {}",
             multi.len()
         );
-        for r in multi {
+        for r in &multi {
             assert_eq!(
                 r.achieved_concurrency, r.requested_concurrency,
                 "F10 real concurrency failed for {}",
@@ -354,6 +378,73 @@ mod tests {
                     .unwrap_or("")
                     .contains("conditional high_band")),
             "expected conditional computed"
+        );
+    }
+
+    #[test]
+    fn f11_variant_plans_execute_and_differ() {
+        use crate::cell_plan::{
+            group_cardinality_variants, nested_array_predicate_variants, projection_cover_variants,
+        };
+        use crate::engine::{EngineAdapter, LogicalHarnessEngine};
+
+        // Nested vs array: both Ready, different shapes/focus in detail.
+        for plan in nested_array_predicate_variants(9) {
+            let r = run_one_embedded_pair(&plan).expect("nested/array pair");
+            assert!(r.side_a.result.is_some(), "{}", plan.plan_id);
+            let d = r.side_a.detail.as_deref().unwrap_or("");
+            if plan.plan_id.contains("nested_only") {
+                assert!(d.contains("nested_only"), "{d}");
+            } else {
+                assert!(d.contains("array_only"), "{d}");
+            }
+        }
+
+        // Covered vs non-covered: cover label + non-empty filter results.
+        for plan in projection_cover_variants(9) {
+            let r = run_one_embedded_pair(&plan).expect("project pair");
+            let d = r.side_a.detail.as_deref().unwrap_or("");
+            assert!(
+                d.contains(&format!(
+                    "projection_cover={}",
+                    plan.project_cover.unwrap().as_str()
+                )),
+                "plan={} detail={d}",
+                plan.plan_id
+            );
+            assert!(
+                r.side_a.result.as_ref().unwrap().row_count > 0,
+                "status filter should hit st-0000"
+            );
+        }
+
+        // Low vs high group: high must have more distinct groups than low.
+        let groups = group_cardinality_variants(9);
+        let mut eng = LogicalHarnessEngine::new();
+        let mut counts = Vec::new();
+        for plan in &groups {
+            let ds = generate_dataset(&plan.dataset);
+            let work = SharedLogicalWork::from_dataset(ds);
+            eng.load_shared_work(&work).unwrap();
+            let out = eng.execute_plan(plan).unwrap();
+            counts.push((
+                plan.dataset.cardinality,
+                out.result.as_ref().unwrap().row_count,
+            ));
+        }
+        let low = counts
+            .iter()
+            .find(|(c, _)| *c == crate::dataset::CardinalityClass::Low)
+            .unwrap()
+            .1;
+        let high = counts
+            .iter()
+            .find(|(c, _)| *c == crate::dataset::CardinalityClass::High)
+            .unwrap()
+            .1;
+        assert!(
+            high > low,
+            "high card groups ({high}) must exceed low ({low})"
         );
     }
 

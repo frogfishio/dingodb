@@ -61,6 +61,16 @@ impl ResidiuumDeployment {
     pub fn root(&self) -> &Path {
         &self.data_root
     }
+
+    /// Physical-store open timings and bounded inventory I/O counters.
+    pub fn open_metrics(&self) -> Result<residiuum_store::StoreOpenMetrics, Error> {
+        Ok(self.host.open_metrics()?)
+    }
+
+    /// Structured startup disposition, recovery actions, counts, and timings.
+    pub fn open_report(&self) -> Result<residiuum_store::StoreOpenReport, Error> {
+        Ok(self.host.open_report()?)
+    }
 }
 
 /// Heap handle bound to exactly one [`HeapCap`].
@@ -379,6 +389,49 @@ impl HeapCollection {
 
     fn put_raw_body(&self, key: &str, body: &[u8]) -> Result<WriteReceipt, Error> {
         self.put_raw_body_if(key, body, residiuum_store::WriteCondition::Unconditional)
+    }
+
+    pub(crate) fn put_raw_body_with_operation(
+        &self,
+        key: &str,
+        body: &[u8],
+        condition: residiuum_store::WriteCondition,
+        operation_id: [u8; 16],
+        content_hash: [u8; 32],
+    ) -> Result<(WriteReceipt, bool), Error> {
+        validate_key(key)?;
+        let (receipt, deduplicated) = self.store.put_collection_with_operation(
+            self.id.as_bytes(),
+            key.as_bytes(),
+            body,
+            condition,
+            operation_id,
+            content_hash,
+        )?;
+        Ok((
+            WriteReceipt::from_store(key.to_string(), receipt),
+            deduplicated,
+        ))
+    }
+
+    pub(crate) fn delete_with_operation(
+        &self,
+        key: &str,
+        operation_id: [u8; 16],
+        content_hash: [u8; 32],
+    ) -> Result<(DeleteReceipt, bool), Error> {
+        validate_key(key)?;
+        let (receipt, deduplicated) = self.store.delete_collection_with_operation(
+            self.id.as_bytes(),
+            key.as_bytes(),
+            residiuum_store::WriteCondition::Present,
+            operation_id,
+            content_hash,
+        )?;
+        Ok((
+            DeleteReceipt::from_store(key.to_string(), true, receipt),
+            deduplicated,
+        ))
     }
 
     /// Conditional put of a raw body under Key Atomic store CAS (APB-2).

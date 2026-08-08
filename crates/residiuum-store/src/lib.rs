@@ -315,8 +315,9 @@ pub use segment_growth::{
 };
 pub use incremental_seal::ContentHashState;
 pub use store::{
-    subject_writer_shard, IncompleteReason, IndexBuildPage, LiveIncomplete, LiveLogicalScan,
-    RotationStageTotals, SalvageCopyReport, SalvageReport, SealStageBreakdown, WriteReceipt,
+    subject_writer_shard, IncompleteReason, IndexBuildPage, IndexCacheDecision,
+    IndexOpenDisposition, LiveIncomplete, LiveLogicalScan, RotationStageTotals, SalvageCopyReport,
+    SalvageReport, SealStageBreakdown, StoreOpenMetrics, StoreOpenReport, WriteReceipt,
     MAX_WRITER_SHARDS,
 };
 /// Legacy unscoped store API. Prefer [`StoreHost`] / [`HeapStore`] on the

@@ -427,6 +427,41 @@ impl HeapStore {
         self.put_if(&subject, value, condition)
     }
 
+    /// Idempotent conditional collection put under one physical-store lock.
+    pub fn put_collection_with_operation(
+        &self,
+        collection_id: &[u8; 16],
+        key: &[u8],
+        value: &[u8],
+        condition: crate::WriteCondition,
+        operation_id: [u8; 16],
+        content_hash: [u8; 32],
+    ) -> Result<(WriteReceipt, bool), StoreError> {
+        self.gate()?;
+        self.require_right(Rights::WRITE)?;
+        let subject = encode_subject_v2(
+            self.cap.heap_id().as_bytes(),
+            SubjectObjectKind::Collection,
+            collection_id,
+            key,
+        )
+        .map_err(|e| StoreError::HeapAdmit(format!("subject v2 encode: {e}")))?;
+        let result = self
+            .physical
+            .lock()
+            .map_err(|_| StoreError::CorruptMeta("store lock poisoned"))?
+            .put_subject_bytes_with_operation(
+                &subject,
+                value,
+                DurabilityMode::Durable,
+                condition,
+                operation_id,
+                content_hash,
+            )?;
+        self.mark_indexes_stale(collection_id)?;
+        Ok(result)
+    }
+
     /// Get a collection-scoped SubjectV2 value.
     pub fn get_collection(
         &self,
@@ -467,6 +502,39 @@ impl HeapStore {
         )
         .map_err(|e| StoreError::HeapAdmit(format!("subject v2 encode: {e}")))?;
         self.delete_if(&subject, condition)
+    }
+
+    /// Idempotent conditional collection delete under one physical-store lock.
+    pub fn delete_collection_with_operation(
+        &self,
+        collection_id: &[u8; 16],
+        key: &[u8],
+        condition: crate::WriteCondition,
+        operation_id: [u8; 16],
+        content_hash: [u8; 32],
+    ) -> Result<(WriteReceipt, bool), StoreError> {
+        self.gate()?;
+        self.require_right(Rights::WRITE)?;
+        let subject = encode_subject_v2(
+            self.cap.heap_id().as_bytes(),
+            SubjectObjectKind::Collection,
+            collection_id,
+            key,
+        )
+        .map_err(|e| StoreError::HeapAdmit(format!("subject v2 encode: {e}")))?;
+        let result = self
+            .physical
+            .lock()
+            .map_err(|_| StoreError::CorruptMeta("store lock poisoned"))?
+            .delete_subject_bytes_with_operation(
+                &subject,
+                DurabilityMode::Durable,
+                condition,
+                operation_id,
+                content_hash,
+            )?;
+        self.mark_indexes_stale(collection_id)?;
+        Ok(result)
     }
 
     /// Mark usable secondary indexes for a collection as stale after a write.

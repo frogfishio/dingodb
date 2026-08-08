@@ -1,0 +1,58 @@
+{
+  "format": "residiuum-async-driver-current-runtime-inventory-v1",
+  "recorded_against": "DRV-0",
+  "product_ready": false,
+  "current_paths": [
+    {
+      "path": "crates/residiuum-sdk/src/app_v1.rs",
+      "component": "remote application facade",
+      "synchronization": "Arc<Mutex<RemoteHeap>>",
+      "blocking": true,
+      "in_flight_per_session": 1,
+      "head_of_line_blocking": true,
+      "allowed_only_as_legacy": true
+    },
+    {
+      "path": "crates/residiuum-sdk/src/remote_heap.rs",
+      "component": "qualified remote heap",
+      "synchronization": "exclusive mutable stream owner",
+      "blocking": true,
+      "in_flight_per_session": 1,
+      "head_of_line_blocking": true,
+      "allowed_only_as_legacy": true
+    },
+    {
+      "path": "crates/residiuum-sdk/src/heap.rs",
+      "component": "embedded synchronous heap",
+      "synchronization": "caller-managed synchronous access",
+      "blocking": true,
+      "bounded_scheduler": false,
+      "allowed_only_as_legacy": true
+    }
+  ],
+  "forbidden_new_driver_shortcuts": [
+    "Arc<Mutex<RemoteHeap>>",
+    "runtime-per-call",
+    "unbounded spawn_blocking",
+    "application-owned database semaphore",
+    "second RQL executor",
+    "retry by parsing error text"
+  ],
+  "incident_relevance": {
+    "symptom": "session missing after application-managed concurrent session lifecycle",
+    "classification": "external Gremlin split durable/runtime aggregate lifecycle",
+    "driver_responsibility": "not the owner of Gremlin SessionControl creation or dialogue projection consistency",
+    "driver_benefit": "bounded dispatch and close semantics reduce application coordination, but cannot repair a missing domain aggregate",
+    "not_claimed_fixed_by_drv0": true
+  },
+  "open_residuals": [
+    "public Client/Collection/Query compile fixtures",
+    "complete error and receipt shape migration",
+    "operation identity on every mutation",
+    "bounded asynchronous remote pool",
+    "bounded embedded scheduler",
+    "streamed RQL cursor",
+    "deadline cancellation retry state machine",
+    "server concurrent read execution"
+  ]
+}

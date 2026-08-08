@@ -1,0 +1,38 @@
+{
+  "format": "residiuum-async-driver-implementation-status-v1",
+  "status": "embedded_candidate_remote_and_query_pending",
+  "public_module": "residiuum_sdk::driver",
+  "claims": {
+    "clone_send_sync_handles": true,
+    "heap_bound_client": true,
+    "bounded_embedded_scheduler": true,
+    "typed_overload": true,
+    "queued_cancellation": true,
+    "deadline_checked_before_kernel_entry": true,
+    "shared_close": true,
+    "mutation_identity": true,
+    "canonical_request_conflict": true,
+    "receipt_replay": true,
+    "structured_open_report": true,
+    "remote_pool": false,
+    "streamed_rql": false,
+    "cancel_after_dispatch": false,
+    "operation_outcome_lookup": false,
+    "embedded_remote_parity": false
+  },
+  "evidence": [
+    "crates/residiuum-sdk/src/driver.rs",
+    "crates/residiuum-sdk/tests/driver_embedded.rs",
+    "crates/residiuum-store/src/store.rs",
+    "scripts/verify-driver-drv0.sh"
+  ],
+  "residuals": [
+    "bounded remote non-blocking connection pool",
+    "streamed RQL and cursor backpressure through canonical QVM",
+    "deadline timer wake while queued plus cooperative cancellation and deadline after dispatch",
+    "authoritative mutation outcome reconstruction across the append-to-dedup crash window",
+    "receipt-stable optional delete when the key is already absent",
+    "bulk, history, item metadata, raw collection, and prepared query surfaces",
+    "embedded/server parity and adversarial qualification"
+  ]
+}

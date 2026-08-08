@@ -1,0 +1,1366 @@
+//! Bounded embedded application driver (DRV-1 / DRV-5 foundation).
+//!
+//! The synchronous storage kernel remains authoritative. This module owns the
+//! async boundary: bounded admission, dedicated workers, cloneable handles,
+//! request identity, cancellation-before-dispatch, deadlines, telemetry, and
+//! orderly shared shutdown. It intentionally contains no second query engine.
+
+use crate::heap::{Heap, HeapCollection, ResidiuumDeployment};
+use crate::{
+    DeleteReceipt as SdkDeleteReceipt, Error as SdkError, WriteReceipt as SdkWriteReceipt,
+};
+use residiuum_client::{OperationId, RequestId, RetryDisposition, TerminalOutcome};
+use residiuum_heap::{CollectionId, HeapCap, HeapId};
+use serde::{de::DeserializeOwned, Serialize};
+use std::fmt;
+use std::future::Future;
+use std::marker::PhantomData;
+use std::path::PathBuf;
+use std::pin::Pin;
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+use std::sync::{mpsc, Arc, Mutex};
+use std::task::{Context, Poll, Waker};
+use std::thread::{self, JoinHandle};
+use std::time::{Duration, Instant};
+
+/// Embedded driver defaults from `ASYNC_DRIVER_SPINE_SPEC.md` §9.
+#[derive(Debug, Clone)]
+pub struct EmbeddedOptions {
+    /// Existing Residiuum deployment root.
+    pub path: PathBuf,
+    /// Validated capability binding the client to exactly one Heap.
+    pub capability: HeapCap,
+    /// Dedicated synchronous-kernel workers.
+    pub workers: usize,
+    /// Hard bound on queued operations, in addition to running workers.
+    pub queue_capacity: usize,
+}
+
+impl EmbeddedOptions {
+    /// Options with product defaults: min(4, available parallelism), queue 1024.
+    pub fn new(path: impl Into<PathBuf>, capability: HeapCap) -> Self {
+        let workers = thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1)
+            .min(4)
+            .max(1);
+        Self {
+            path: path.into(),
+            capability,
+            workers,
+            queue_capacity: 1024,
+        }
+    }
+
+    /// Override the worker bound. Zero is rejected by [`Client::open_embedded`].
+    pub fn workers(mut self, workers: usize) -> Self {
+        self.workers = workers;
+        self
+    }
+
+    /// Override the queue bound. Zero is rejected by [`Client::open_embedded`].
+    pub fn queue_capacity(mut self, queue_capacity: usize) -> Self {
+        self.queue_capacity = queue_capacity;
+        self
+    }
+}
+
+/// Per-operation identity and deadline overrides.
+#[derive(Debug, Clone, Default)]
+pub struct OperationContext {
+    /// Stable request identity. Minted when absent.
+    pub request_id: Option<RequestId>,
+    /// Stable mutation identity. Minted before mutation admission when absent.
+    pub operation_id: Option<OperationId>,
+    /// One monotonic end-to-end deadline.
+    pub deadline: Option<Instant>,
+}
+
+impl OperationContext {
+    /// Set a deadline relative to now.
+    pub fn timeout(mut self, duration: Duration) -> Self {
+        self.deadline = Instant::now().checked_add(duration);
+        self
+    }
+}
+
+/// Options for an idempotent smart-client put.
+#[derive(Debug, Clone, Default)]
+pub struct PutOptions {
+    /// Request identity and deadline.
+    pub context: OperationContext,
+}
+
+/// Options for create-if-absent.
+#[derive(Debug, Clone, Default)]
+pub struct CreateOptions {
+    /// Request identity, mutation identity, and deadline.
+    pub context: OperationContext,
+}
+
+/// Options for version-conditional replacement.
+#[derive(Debug, Clone)]
+pub struct ReplaceOptions {
+    /// Establishing event id that must still be live.
+    pub if_version: [u8; 16],
+    /// Request identity, mutation identity, and deadline.
+    pub context: OperationContext,
+}
+
+/// Options for a conditional delete.
+#[derive(Debug, Clone)]
+pub struct DeleteOptions {
+    /// Optional establishing event id that must still be live.
+    pub if_version: Option<[u8; 16]>,
+    /// Require the key to be present. The embedded v1 driver refuses `false`
+    /// until absence outcomes are included in the persisted dedup record.
+    pub if_present: bool,
+    /// Request identity, mutation identity, and deadline.
+    pub context: OperationContext,
+}
+
+impl Default for DeleteOptions {
+    fn default() -> Self {
+        Self {
+            if_version: None,
+            if_present: true,
+            context: OperationContext::default(),
+        }
+    }
+}
+
+/// Options for idempotent collection creation.
+#[derive(Debug, Clone, Default)]
+pub struct CreateCollectionOptions {
+    /// Request identity, mutation identity, and deadline.
+    pub context: OperationContext,
+}
+
+/// Capabilities of this driver handle.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Capabilities {
+    /// Operations execute through the bounded embedded scheduler.
+    pub embedded: bool,
+    /// Mutation outcomes are persisted and replayable by operation identity.
+    pub mutation_identity: bool,
+    /// Query streaming is available.
+    pub query_streaming: bool,
+    /// Remote transport pooling is available.
+    pub remote_pooling: bool,
+}
+
+/// Stable smart-driver error code. Applications never parse messages.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ErrorCode {
+    /// Driver options or application input were invalid.
+    Validation,
+    /// Bounded admission queue was full.
+    Overloaded,
+    /// Shared client was already closed.
+    Closed,
+    /// Deadline expired before a result was available.
+    DeadlineExceeded,
+    /// Work was cancelled before reaching a kernel worker.
+    CancelledBeforeDispatch,
+    /// Operation identity was reused with different canonical content.
+    OperationIdentityConflict,
+    /// Capability or authentication refused the operation.
+    PermissionDenied,
+    /// Requested entity was absent.
+    NotFound,
+    /// Optimistic condition failed.
+    Conflict,
+    /// Stored data or protocol evidence was damaged.
+    DataDamaged,
+    /// Underlying storage or I/O failed.
+    Unavailable,
+    /// Unexpected internal failure.
+    Internal,
+}
+
+/// Stable high-level error class.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ErrorClass {
+    /// Caller can correct the request.
+    Request,
+    /// Driver refused work before dispatch.
+    Admission,
+    /// Deadline or cancellation ended waiting.
+    Cancellation,
+    /// Storage/capability service failure.
+    Service,
+    /// Internal invariant failure.
+    Internal,
+}
+
+/// Structured smart-driver error with request identity and retry decision.
+#[derive(Debug)]
+pub struct Error {
+    /// Stable code.
+    pub code: ErrorCode,
+    /// Broad handling class.
+    pub class: ErrorClass,
+    /// Operator-readable detail; not a decision interface.
+    pub message: String,
+    /// Logical request identity.
+    pub request_id: Option<RequestId>,
+    /// Mutation identity when applicable.
+    pub operation_id: Option<OperationId>,
+    /// Machine-actionable retry decision.
+    pub retry: RetryDisposition,
+    /// Terminal class recorded by the driver.
+    pub terminal: TerminalOutcome,
+    source: Option<SdkError>,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.source
+            .as_ref()
+            .map(|source| source as &(dyn std::error::Error + 'static))
+    }
+}
+
+impl Error {
+    fn local(code: ErrorCode, class: ErrorClass, message: impl Into<String>) -> Self {
+        Self {
+            code,
+            class,
+            message: message.into(),
+            request_id: None,
+            operation_id: None,
+            retry: RetryDisposition::Never,
+            terminal: TerminalOutcome::Refused,
+            source: None,
+        }
+    }
+
+    fn for_request(
+        code: ErrorCode,
+        class: ErrorClass,
+        message: impl Into<String>,
+        request_id: RequestId,
+        operation_id: Option<OperationId>,
+        terminal: TerminalOutcome,
+        retry: RetryDisposition,
+    ) -> Self {
+        Self {
+            code,
+            class,
+            message: message.into(),
+            request_id: Some(request_id),
+            operation_id,
+            retry,
+            terminal,
+            source: None,
+        }
+    }
+
+    fn from_sdk(
+        source: SdkError,
+        request_id: RequestId,
+        operation_id: Option<OperationId>,
+    ) -> Self {
+        let (code, class, retry) = match &source {
+            SdkError::Store(residiuum_store::StoreError::OperationIdentityConflict) => (
+                ErrorCode::OperationIdentityConflict,
+                ErrorClass::Request,
+                RetryDisposition::Never,
+            ),
+            _ => match source.code() {
+                crate::ErrorCode::ValidationFailed | crate::ErrorCode::QueryInvalid => (
+                    ErrorCode::Validation,
+                    ErrorClass::Request,
+                    RetryDisposition::Never,
+                ),
+                crate::ErrorCode::PermissionDenied | crate::ErrorCode::AuthenticationFailed => (
+                    ErrorCode::PermissionDenied,
+                    ErrorClass::Service,
+                    RetryDisposition::Never,
+                ),
+                crate::ErrorCode::NotFound => (
+                    ErrorCode::NotFound,
+                    ErrorClass::Request,
+                    RetryDisposition::Never,
+                ),
+                crate::ErrorCode::AlreadyExists
+                | crate::ErrorCode::VersionConflict
+                | crate::ErrorCode::ConsistencyViolation => (
+                    ErrorCode::Conflict,
+                    ErrorClass::Request,
+                    RetryDisposition::Never,
+                ),
+                crate::ErrorCode::DataDamaged
+                | crate::ErrorCode::PayloadPartial
+                | crate::ErrorCode::CoverageIncomplete => (
+                    ErrorCode::DataDamaged,
+                    ErrorClass::Service,
+                    RetryDisposition::Never,
+                ),
+                crate::ErrorCode::DeadlineExceeded => (
+                    ErrorCode::DeadlineExceeded,
+                    ErrorClass::Cancellation,
+                    RetryDisposition::Never,
+                ),
+                crate::ErrorCode::Io
+                | crate::ErrorCode::PartitionUnavailable
+                | crate::ErrorCode::WriterLockHeld => (
+                    ErrorCode::Unavailable,
+                    ErrorClass::Service,
+                    if operation_id.is_some() {
+                        RetryDisposition::OutcomeLookupRequired
+                    } else {
+                        RetryDisposition::SafeSameRequest
+                    },
+                ),
+                _ => (
+                    ErrorCode::Internal,
+                    ErrorClass::Internal,
+                    RetryDisposition::Never,
+                ),
+            },
+        };
+        let message = source.to_string();
+        Self {
+            code,
+            class,
+            message,
+            request_id: Some(request_id),
+            operation_id,
+            retry,
+            terminal: TerminalOutcome::Refused,
+            source: Some(source),
+        }
+    }
+}
+
+/// Complete smart-client write receipt.
+#[derive(Debug, Clone)]
+pub struct WriteReceipt {
+    /// Request identity.
+    pub request_id: RequestId,
+    /// Stable mutation identity.
+    pub operation_id: OperationId,
+    /// Bound Heap.
+    pub heap_id: HeapId,
+    /// Bound collection.
+    pub collection_id: CollectionId,
+    /// True when the original stored outcome was returned.
+    pub deduplicated: bool,
+    /// Existing SDK/store receipt fields.
+    pub storage: SdkWriteReceipt,
+}
+
+/// Complete smart-client delete receipt.
+#[derive(Debug, Clone)]
+pub struct DeleteReceipt {
+    /// Request identity.
+    pub request_id: RequestId,
+    /// Stable mutation identity.
+    pub operation_id: OperationId,
+    /// Bound Heap.
+    pub heap_id: HeapId,
+    /// Bound collection.
+    pub collection_id: CollectionId,
+    /// True when the original stored outcome was returned.
+    pub deduplicated: bool,
+    /// Existing SDK/store receipt fields.
+    pub storage: SdkDeleteReceipt,
+}
+
+/// Redacted bounded scheduler state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ClientInspection {
+    /// Dedicated worker bound.
+    pub workers: usize,
+    /// Admission queue bound.
+    pub queue_capacity: usize,
+    /// Currently queued jobs.
+    pub queued: usize,
+    /// Currently executing jobs.
+    pub running: usize,
+    /// Completed jobs.
+    pub completed: u64,
+    /// Admission refusals.
+    pub refused: u64,
+    /// Jobs cancelled before dispatch.
+    pub cancelled_before_dispatch: u64,
+    /// Whether shared shutdown began.
+    pub closed: bool,
+}
+
+/// Async-first Heap-bound embedded client.
+#[derive(Clone)]
+pub struct Client {
+    heap: Arc<Heap>,
+    scheduler: Arc<Scheduler>,
+    open_report: crate::StoreOpenReport,
+    capabilities: Capabilities,
+}
+
+impl Client {
+    /// Open an embedded deployment off the caller's async executor thread.
+    pub async fn open_embedded(options: EmbeddedOptions) -> Result<Self, Error> {
+        if options.workers == 0 || options.queue_capacity == 0 {
+            return Err(Error::local(
+                ErrorCode::Validation,
+                ErrorClass::Request,
+                "embedded workers and queue capacity must be non-zero",
+            ));
+        }
+        let workers = options.workers;
+        let queue_capacity = options.queue_capacity;
+        let opened = run_open(move || {
+            let deployment = ResidiuumDeployment::open(&options.path)?;
+            let report = deployment.open_report()?;
+            let heap = deployment.open_heap(options.capability);
+            Ok((heap, report))
+        })
+        .await?;
+        Ok(Self {
+            heap: Arc::new(opened.0),
+            scheduler: Arc::new(Scheduler::new(workers, queue_capacity)?),
+            open_report: opened.1,
+            capabilities: Capabilities {
+                embedded: true,
+                mutation_identity: true,
+                query_streaming: false,
+                remote_pooling: false,
+            },
+        })
+    }
+
+    /// Bound Heap identity.
+    pub fn heap_id(&self) -> HeapId {
+        self.heap.id()
+    }
+
+    /// Negotiated/implemented behavior for this handle.
+    pub fn capabilities(&self) -> &Capabilities {
+        &self.capabilities
+    }
+
+    /// Structured report from the physical store open.
+    pub fn open_report(&self) -> crate::StoreOpenReport {
+        self.open_report
+    }
+
+    /// Open a typed collection handle without blocking the caller executor.
+    pub async fn open_collection<T>(&self, name: &str) -> Result<Collection<T>, Error>
+    where
+        T: Serialize + DeserializeOwned + Send + Sync + 'static,
+    {
+        let name = name.to_string();
+        let heap = Arc::clone(&self.heap);
+        let request_id = mint_request_id()?;
+        let inner = self
+            .scheduler
+            .dispatch(request_id, None, None, move || heap.collection(&name))
+            .await?;
+        Ok(Collection {
+            client: self.clone(),
+            inner,
+            marker: PhantomData,
+        })
+    }
+
+    /// Create a collection idempotently and return its typed handle.
+    pub async fn create_collection<T>(
+        &self,
+        name: &str,
+        options: CreateCollectionOptions,
+    ) -> Result<Collection<T>, Error>
+    where
+        T: Serialize + DeserializeOwned + Send + Sync + 'static,
+    {
+        let name = name.to_string();
+        let request_id = resolve_request_id(options.context.request_id)?;
+        let operation_id = resolve_operation_id(options.context.operation_id)?;
+        let deadline = options.context.deadline;
+        let heap = Arc::clone(&self.heap);
+        let created = self
+            .scheduler
+            .dispatch(request_id, Some(operation_id), deadline, move || {
+                heap.create_collection_with(&name, Some(operation_id.0))
+                    .map(|created| created.collection)
+            })
+            .await?;
+        Ok(Collection {
+            client: self.clone(),
+            inner: created,
+            marker: PhantomData,
+        })
+    }
+
+    /// List active collections in canonical name order.
+    pub async fn list_collections(&self) -> Result<Vec<crate::CollectionInfo>, Error> {
+        let request_id = mint_request_id()?;
+        let heap = Arc::clone(&self.heap);
+        self.scheduler
+            .dispatch(request_id, None, None, move || {
+                heap.list_collections().map(|items| {
+                    items
+                        .into_iter()
+                        .map(|item| crate::CollectionInfo {
+                            heap_id: item.heap_id,
+                            collection_id: item.collection_id,
+                            name: item.name,
+                            descriptor_hash: item.descriptor_hash,
+                        })
+                        .collect()
+                })
+            })
+            .await
+    }
+
+    /// Redacted bounded scheduler state; performs no store scan.
+    pub fn inspect(&self) -> ClientInspection {
+        self.scheduler.inspect()
+    }
+
+    /// Close the shared scheduler. All clones observe the same closed state.
+    pub async fn close(&self) -> Result<(), Error> {
+        self.scheduler.close().await
+    }
+}
+
+/// Cloneable typed collection handle. Ordinary operations use `&self`.
+pub struct Collection<T = serde_json::Value> {
+    client: Client,
+    inner: HeapCollection,
+    marker: PhantomData<fn() -> T>,
+}
+
+impl<T> Clone for Collection<T> {
+    fn clone(&self) -> Self {
+        Self {
+            client: self.client.clone(),
+            inner: self.inner.clone(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T> Collection<T>
+where
+    T: Serialize + DeserializeOwned + Send + Sync + 'static,
+{
+    /// Owning Heap.
+    pub fn heap_id(&self) -> HeapId {
+        self.inner.heap_id()
+    }
+
+    /// Immutable collection identity.
+    pub fn id(&self) -> CollectionId {
+        self.inner.id()
+    }
+
+    /// Name observed when this handle was opened.
+    pub fn name(&self) -> &str {
+        self.inner.name()
+    }
+
+    /// Idempotent durable put with a freshly minted operation identity.
+    pub async fn put(&self, key: impl Into<String>, value: &T) -> Result<WriteReceipt, Error> {
+        self.put_with(key, value, PutOptions::default()).await
+    }
+
+    /// Idempotent durable put with explicit request context.
+    pub async fn put_with(
+        &self,
+        key: impl Into<String>,
+        value: &T,
+        options: PutOptions,
+    ) -> Result<WriteReceipt, Error> {
+        let key = key.into();
+        let json = serde_json::to_value(value)
+            .map_err(|e| Error::local(ErrorCode::Validation, ErrorClass::Request, e.to_string()))?;
+        let body = crate::value::encode_json(&json)
+            .map_err(|e| Error::local(ErrorCode::Validation, ErrorClass::Request, e.to_string()))?;
+        let request_id = resolve_request_id(options.context.request_id)?;
+        let operation_id = resolve_operation_id(options.context.operation_id)?;
+        let deadline = options.context.deadline;
+        let content_hash =
+            canonical_mutation_hash(b"put-v1", self.heap_id(), self.id(), key.as_bytes(), &body);
+        let collection = self.inner.clone();
+        let heap_id = self.heap_id();
+        let collection_id = self.id();
+        self.client
+            .scheduler
+            .dispatch(request_id, Some(operation_id), deadline, move || {
+                let (storage, deduplicated) = collection.put_raw_body_with_operation(
+                    &key,
+                    &body,
+                    residiuum_store::WriteCondition::Unconditional,
+                    operation_id.0,
+                    content_hash,
+                )?;
+                Ok(WriteReceipt {
+                    request_id,
+                    operation_id,
+                    heap_id,
+                    collection_id,
+                    deduplicated,
+                    storage,
+                })
+            })
+            .await
+    }
+
+    /// Insert only when the key is absent.
+    pub async fn create(
+        &self,
+        key: impl Into<String>,
+        value: &T,
+        options: CreateOptions,
+    ) -> Result<WriteReceipt, Error> {
+        self.write_conditionally(
+            key.into(),
+            value,
+            options.context,
+            residiuum_store::WriteCondition::Absent,
+            b"create-absent-v1",
+        )
+        .await
+    }
+
+    /// Replace only when the supplied establishing version is still live.
+    pub async fn replace(
+        &self,
+        key: impl Into<String>,
+        value: &T,
+        options: ReplaceOptions,
+    ) -> Result<WriteReceipt, Error> {
+        self.write_conditionally(
+            key.into(),
+            value,
+            options.context,
+            residiuum_store::WriteCondition::LiveEventId(options.if_version),
+            b"replace-version-v1",
+        )
+        .await
+    }
+
+    async fn write_conditionally(
+        &self,
+        key: String,
+        value: &T,
+        context: OperationContext,
+        condition: residiuum_store::WriteCondition,
+        operation_domain: &'static [u8],
+    ) -> Result<WriteReceipt, Error> {
+        let json = serde_json::to_value(value)
+            .map_err(|e| Error::local(ErrorCode::Validation, ErrorClass::Request, e.to_string()))?;
+        let body = crate::value::encode_json(&json)
+            .map_err(|e| Error::local(ErrorCode::Validation, ErrorClass::Request, e.to_string()))?;
+        let request_id = resolve_request_id(context.request_id)?;
+        let operation_id = resolve_operation_id(context.operation_id)?;
+        let deadline = context.deadline;
+        let condition_bytes = write_condition_bytes(condition);
+        let content_hash = canonical_mutation_hash(
+            operation_domain,
+            self.heap_id(),
+            self.id(),
+            key.as_bytes(),
+            &[body.as_slice(), condition_bytes.as_slice()].concat(),
+        );
+        let collection = self.inner.clone();
+        let heap_id = self.heap_id();
+        let collection_id = self.id();
+        self.client
+            .scheduler
+            .dispatch(request_id, Some(operation_id), deadline, move || {
+                let (storage, deduplicated) = collection.put_raw_body_with_operation(
+                    &key,
+                    &body,
+                    condition,
+                    operation_id.0,
+                    content_hash,
+                )?;
+                Ok(WriteReceipt {
+                    request_id,
+                    operation_id,
+                    heap_id,
+                    collection_id,
+                    deduplicated,
+                    storage,
+                })
+            })
+            .await
+    }
+
+    /// Read and decode one typed value.
+    pub async fn get(&self, key: impl Into<String>) -> Result<Option<T>, Error> {
+        let key = key.into();
+        let collection = self.inner.clone();
+        let request_id = mint_request_id()?;
+        self.client
+            .scheduler
+            .dispatch(request_id, None, None, move || {
+                match collection.get(&key)? {
+                    None => Ok(None),
+                    Some(value) => Ok(Some(serde_json::from_value(value)?)),
+                }
+            })
+            .await
+    }
+
+    /// Delete a present key idempotently. Absence is a typed conflict.
+    pub async fn delete(
+        &self,
+        key: impl Into<String>,
+        options: DeleteOptions,
+    ) -> Result<DeleteReceipt, Error> {
+        if !options.if_present {
+            return Err(Error::local(
+                ErrorCode::Validation,
+                ErrorClass::Request,
+                "embedded v1 requires delete if_present=true for replay-stable receipts",
+            ));
+        }
+        let key = key.into();
+        let request_id = resolve_request_id(options.context.request_id)?;
+        let operation_id = resolve_operation_id(options.context.operation_id)?;
+        let deadline = options.context.deadline;
+        let condition = options
+            .if_version
+            .map(residiuum_store::WriteCondition::LiveEventId)
+            .unwrap_or(residiuum_store::WriteCondition::Present);
+        let condition_bytes = write_condition_bytes(condition);
+        let content_hash = canonical_mutation_hash(
+            b"delete-present-v1",
+            self.heap_id(),
+            self.id(),
+            key.as_bytes(),
+            &condition_bytes,
+        );
+        let collection = self.inner.clone();
+        let heap_id = self.heap_id();
+        let collection_id = self.id();
+        self.client
+            .scheduler
+            .dispatch(request_id, Some(operation_id), deadline, move || {
+                let (storage, deduplicated) =
+                    collection.delete_with_operation(&key, operation_id.0, content_hash)?;
+                Ok(DeleteReceipt {
+                    request_id,
+                    operation_id,
+                    heap_id,
+                    collection_id,
+                    deduplicated,
+                    storage,
+                })
+            })
+            .await
+    }
+}
+
+fn write_condition_bytes(condition: residiuum_store::WriteCondition) -> Vec<u8> {
+    match condition {
+        residiuum_store::WriteCondition::Unconditional => b"unconditional".to_vec(),
+        residiuum_store::WriteCondition::Absent => b"absent".to_vec(),
+        residiuum_store::WriteCondition::Present => b"present".to_vec(),
+        residiuum_store::WriteCondition::LiveEventId(version) => {
+            let mut bytes = b"live-event-id:".to_vec();
+            bytes.extend_from_slice(&version);
+            bytes
+        }
+    }
+}
+
+fn canonical_mutation_hash(
+    operation: &[u8],
+    heap_id: HeapId,
+    collection_id: CollectionId,
+    key: &[u8],
+    payload: &[u8],
+) -> [u8; 32] {
+    let mut hash = blake3::Hasher::new();
+    let heap_bytes = heap_id.as_bytes();
+    let collection_bytes = collection_id.as_bytes();
+    for field in [
+        operation,
+        heap_bytes.as_slice(),
+        collection_bytes.as_slice(),
+        key,
+        payload,
+        b"durable".as_slice(),
+    ] {
+        hash.update(&(field.len() as u64).to_le_bytes());
+        hash.update(field);
+    }
+    *hash.finalize().as_bytes()
+}
+
+fn mint_id() -> Result<[u8; 16], Error> {
+    let mut id = [0u8; 16];
+    getrandom::fill(&mut id).map_err(|e| {
+        Error::local(
+            ErrorCode::Internal,
+            ErrorClass::Internal,
+            format!("secure identity generation failed: {e}"),
+        )
+    })?;
+    if id == [0u8; 16] {
+        id[15] = 1;
+    }
+    Ok(id)
+}
+
+fn mint_request_id() -> Result<RequestId, Error> {
+    mint_id().map(RequestId)
+}
+
+fn mint_operation_id() -> Result<OperationId, Error> {
+    mint_id().map(OperationId)
+}
+
+fn resolve_request_id(request_id: Option<RequestId>) -> Result<RequestId, Error> {
+    match request_id {
+        Some(RequestId(id)) if id == [0; 16] => Err(Error::local(
+            ErrorCode::Validation,
+            ErrorClass::Request,
+            "request_id must be non-zero",
+        )),
+        Some(request_id) => Ok(request_id),
+        None => mint_request_id(),
+    }
+}
+
+fn resolve_operation_id(operation_id: Option<OperationId>) -> Result<OperationId, Error> {
+    match operation_id {
+        Some(OperationId(id)) if id == [0; 16] => Err(Error::local(
+            ErrorCode::Validation,
+            ErrorClass::Request,
+            "operation_id must be non-zero",
+        )),
+        Some(operation_id) => Ok(operation_id),
+        None => mint_operation_id(),
+    }
+}
+
+type Task = Box<dyn FnOnce() + Send + 'static>;
+
+enum Message {
+    Run(Task),
+    Shutdown,
+}
+
+#[derive(Default)]
+struct Counters {
+    queued: AtomicUsize,
+    running: AtomicUsize,
+    completed: AtomicU64,
+    refused: AtomicU64,
+    cancelled_before_dispatch: AtomicU64,
+}
+
+struct Scheduler {
+    sender: Mutex<Option<mpsc::SyncSender<Message>>>,
+    workers: Mutex<Vec<JoinHandle<()>>>,
+    counters: Arc<Counters>,
+    worker_count: usize,
+    queue_capacity: usize,
+    closed: AtomicBool,
+}
+
+impl Scheduler {
+    fn new(worker_count: usize, queue_capacity: usize) -> Result<Self, Error> {
+        let (sender, receiver) = mpsc::sync_channel(queue_capacity);
+        let receiver = Arc::new(Mutex::new(receiver));
+        let counters = Arc::new(Counters::default());
+        let mut workers = Vec::with_capacity(worker_count);
+        for index in 0..worker_count {
+            let receiver = Arc::clone(&receiver);
+            let handle = thread::Builder::new()
+                .name(format!("residiuum-driver-{index}"))
+                .spawn(move || loop {
+                    let message = match receiver.lock() {
+                        Ok(guard) => guard.recv(),
+                        Err(_) => return,
+                    };
+                    match message {
+                        Ok(Message::Run(task)) => task(),
+                        Ok(Message::Shutdown) | Err(_) => return,
+                    }
+                })
+                .map_err(|e| {
+                    Error::local(ErrorCode::Unavailable, ErrorClass::Service, e.to_string())
+                })?;
+            workers.push(handle);
+        }
+        Ok(Self {
+            sender: Mutex::new(Some(sender)),
+            workers: Mutex::new(workers),
+            counters,
+            worker_count,
+            queue_capacity,
+            closed: AtomicBool::new(false),
+        })
+    }
+
+    fn dispatch<T, F>(
+        &self,
+        request_id: RequestId,
+        operation_id: Option<OperationId>,
+        deadline: Option<Instant>,
+        operation: F,
+    ) -> ResponseFuture<T>
+    where
+        T: Send + 'static,
+        F: FnOnce() -> Result<T, SdkError> + Send + 'static,
+    {
+        let (future, responder) = response_pair();
+        if deadline.map(|at| Instant::now() >= at).unwrap_or(false) {
+            responder.complete(Err(Error::for_request(
+                ErrorCode::DeadlineExceeded,
+                ErrorClass::Cancellation,
+                "deadline exceeded before admission",
+                request_id,
+                operation_id,
+                TerminalOutcome::DeadlineExceeded,
+                RetryDisposition::Never,
+            )));
+            return future;
+        }
+        let cancelled = Arc::clone(&future.cancelled);
+        let counters = Arc::clone(&self.counters);
+        let task = Box::new(move || {
+            counters.queued.fetch_sub(1, Ordering::AcqRel);
+            if cancelled.load(Ordering::Acquire) {
+                counters
+                    .cancelled_before_dispatch
+                    .fetch_add(1, Ordering::Relaxed);
+                responder.complete(Err(Error::for_request(
+                    ErrorCode::CancelledBeforeDispatch,
+                    ErrorClass::Cancellation,
+                    "request cancelled before dispatch",
+                    request_id,
+                    operation_id,
+                    TerminalOutcome::CancelledBeforeDispatch,
+                    RetryDisposition::Never,
+                )));
+                return;
+            }
+            if deadline.map(|at| Instant::now() >= at).unwrap_or(false) {
+                responder.complete(Err(Error::for_request(
+                    ErrorCode::DeadlineExceeded,
+                    ErrorClass::Cancellation,
+                    "deadline exceeded before dispatch",
+                    request_id,
+                    operation_id,
+                    TerminalOutcome::DeadlineExceeded,
+                    RetryDisposition::Never,
+                )));
+                return;
+            }
+            counters.running.fetch_add(1, Ordering::AcqRel);
+            let result = operation().map_err(|e| Error::from_sdk(e, request_id, operation_id));
+            counters.running.fetch_sub(1, Ordering::AcqRel);
+            counters.completed.fetch_add(1, Ordering::Relaxed);
+            responder.complete(result);
+        });
+
+        let guard = match self.sender.lock() {
+            Ok(guard) => guard,
+            Err(_) => {
+                responder_error(
+                    &future,
+                    Error::for_request(
+                        ErrorCode::Internal,
+                        ErrorClass::Internal,
+                        "driver sender lock poisoned",
+                        request_id,
+                        operation_id,
+                        TerminalOutcome::Refused,
+                        RetryDisposition::Never,
+                    ),
+                );
+                return future;
+            }
+        };
+        if self.closed.load(Ordering::Acquire) {
+            responder_error(
+                &future,
+                Error::for_request(
+                    ErrorCode::Closed,
+                    ErrorClass::Admission,
+                    "client is closed",
+                    request_id,
+                    operation_id,
+                    TerminalOutcome::Refused,
+                    RetryDisposition::Never,
+                ),
+            );
+            return future;
+        }
+        if !reserve_bounded(&self.counters.queued, self.queue_capacity) {
+            self.counters.refused.fetch_add(1, Ordering::Relaxed);
+            responder_error(
+                &future,
+                Error::for_request(
+                    ErrorCode::Overloaded,
+                    ErrorClass::Admission,
+                    "embedded driver queue is full",
+                    request_id,
+                    operation_id,
+                    TerminalOutcome::Refused,
+                    RetryDisposition::After(Duration::from_millis(1)),
+                ),
+            );
+            return future;
+        }
+        match guard
+            .as_ref()
+            .expect("open sender")
+            .try_send(Message::Run(task))
+        {
+            Ok(()) => {}
+            Err(mpsc::TrySendError::Full(_)) => {
+                self.counters.queued.fetch_sub(1, Ordering::AcqRel);
+                self.counters.refused.fetch_add(1, Ordering::Relaxed);
+                responder_error(
+                    &future,
+                    Error::for_request(
+                        ErrorCode::Overloaded,
+                        ErrorClass::Admission,
+                        "embedded driver queue is full",
+                        request_id,
+                        operation_id,
+                        TerminalOutcome::Refused,
+                        RetryDisposition::After(Duration::from_millis(1)),
+                    ),
+                );
+            }
+            Err(mpsc::TrySendError::Disconnected(_)) => {
+                self.counters.queued.fetch_sub(1, Ordering::AcqRel);
+                responder_error(
+                    &future,
+                    Error::for_request(
+                        ErrorCode::Closed,
+                        ErrorClass::Admission,
+                        "embedded driver workers are closed",
+                        request_id,
+                        operation_id,
+                        TerminalOutcome::Refused,
+                        RetryDisposition::Never,
+                    ),
+                );
+            }
+        }
+        future
+    }
+
+    fn inspect(&self) -> ClientInspection {
+        ClientInspection {
+            workers: self.worker_count,
+            queue_capacity: self.queue_capacity,
+            queued: self.counters.queued.load(Ordering::Acquire),
+            running: self.counters.running.load(Ordering::Acquire),
+            completed: self.counters.completed.load(Ordering::Relaxed),
+            refused: self.counters.refused.load(Ordering::Relaxed),
+            cancelled_before_dispatch: self
+                .counters
+                .cancelled_before_dispatch
+                .load(Ordering::Relaxed),
+            closed: self.closed.load(Ordering::Acquire),
+        }
+    }
+
+    async fn close(&self) -> Result<(), Error> {
+        if self.closed.swap(true, Ordering::AcqRel) {
+            return Ok(());
+        }
+        let sender = self.sender.lock().ok().and_then(|mut sender| sender.take());
+        let handles = self
+            .workers
+            .lock()
+            .map(|mut workers| std::mem::take(&mut *workers))
+            .unwrap_or_default();
+        let worker_count = self.worker_count;
+        run_join(move || {
+            if let Some(sender) = sender {
+                for _ in 0..worker_count {
+                    let _ = sender.send(Message::Shutdown);
+                }
+            }
+            for handle in handles {
+                let _ = handle.join();
+            }
+        })
+        .await
+    }
+}
+
+fn reserve_bounded(counter: &AtomicUsize, bound: usize) -> bool {
+    let mut observed = counter.load(Ordering::Acquire);
+    loop {
+        if observed >= bound {
+            return false;
+        }
+        match counter.compare_exchange_weak(
+            observed,
+            observed + 1,
+            Ordering::AcqRel,
+            Ordering::Acquire,
+        ) {
+            Ok(_) => return true,
+            Err(actual) => observed = actual,
+        }
+    }
+}
+
+impl Drop for Scheduler {
+    fn drop(&mut self) {
+        self.closed.store(true, Ordering::Release);
+        let sender = self.sender.get_mut().ok().and_then(Option::take);
+        drop(sender);
+        if let Ok(workers) = self.workers.get_mut() {
+            for worker in workers.drain(..) {
+                let _ = worker.join();
+            }
+        }
+    }
+}
+
+struct ResponseState<T> {
+    result: Option<Result<T, Error>>,
+    waker: Option<Waker>,
+}
+
+struct ResponseShared<T> {
+    state: Mutex<ResponseState<T>>,
+}
+
+struct Responder<T> {
+    shared: Arc<ResponseShared<T>>,
+}
+
+impl<T> Responder<T> {
+    fn complete(self, result: Result<T, Error>) {
+        if let Ok(mut state) = self.shared.state.lock() {
+            state.result = Some(result);
+            if let Some(waker) = state.waker.take() {
+                waker.wake();
+            }
+        }
+    }
+}
+
+struct ResponseFuture<T> {
+    shared: Arc<ResponseShared<T>>,
+    cancelled: Arc<AtomicBool>,
+    completed: bool,
+}
+
+impl<T> Future for ResponseFuture<T> {
+    type Output = Result<T, Error>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let result = {
+            let mut state = self.shared.state.lock().expect("response lock");
+            if let Some(result) = state.result.take() {
+                Some(result)
+            } else {
+                state.waker = Some(cx.waker().clone());
+                None
+            }
+        };
+        if let Some(result) = result {
+            self.completed = true;
+            Poll::Ready(result)
+        } else {
+            Poll::Pending
+        }
+    }
+}
+
+impl<T> Drop for ResponseFuture<T> {
+    fn drop(&mut self) {
+        if !self.completed {
+            self.cancelled.store(true, Ordering::Release);
+        }
+    }
+}
+
+fn response_pair<T>() -> (ResponseFuture<T>, Responder<T>) {
+    let shared = Arc::new(ResponseShared {
+        state: Mutex::new(ResponseState {
+            result: None,
+            waker: None,
+        }),
+    });
+    (
+        ResponseFuture {
+            shared: Arc::clone(&shared),
+            cancelled: Arc::new(AtomicBool::new(false)),
+            completed: false,
+        },
+        Responder { shared },
+    )
+}
+
+fn responder_error<T>(future: &ResponseFuture<T>, error: Error) {
+    if let Ok(mut state) = future.shared.state.lock() {
+        state.result = Some(Err(error));
+        if let Some(waker) = state.waker.take() {
+            waker.wake();
+        }
+    }
+}
+
+fn run_open<F>(operation: F) -> ResponseFuture<(Heap, crate::StoreOpenReport)>
+where
+    F: FnOnce() -> Result<(Heap, crate::StoreOpenReport), SdkError> + Send + 'static,
+{
+    let (future, responder) = response_pair();
+    let request_id = mint_request_id().unwrap_or(RequestId([0; 16]));
+    let shared = Arc::clone(&responder.shared);
+    match thread::Builder::new()
+        .name("residiuum-driver-open".into())
+        .spawn(move || {
+            responder.complete(operation().map_err(|e| Error::from_sdk(e, request_id, None)));
+        }) {
+        Ok(_) => {}
+        Err(e) => Responder { shared }.complete(Err(Error::for_request(
+            ErrorCode::Unavailable,
+            ErrorClass::Service,
+            e.to_string(),
+            request_id,
+            None,
+            TerminalOutcome::Refused,
+            RetryDisposition::SafeSameRequest,
+        ))),
+    }
+    future
+}
+
+fn run_join<F>(operation: F) -> ResponseFuture<()>
+where
+    F: FnOnce() + Send + 'static,
+{
+    let (future, responder) = response_pair();
+    match thread::Builder::new()
+        .name("residiuum-driver-close".into())
+        .spawn(move || {
+            operation();
+            responder.complete(Ok(()));
+        }) {
+        Ok(_) => {}
+        Err(e) => responder_error(
+            &future,
+            Error::local(ErrorCode::Unavailable, ErrorClass::Service, e.to_string()),
+        ),
+    }
+    future
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_send_sync<T: Send + Sync>() {}
+
+    #[test]
+    fn public_handles_are_clone_send_sync() {
+        assert_send_sync::<Client>();
+        assert_send_sync::<Collection<serde_json::Value>>();
+        fn assert_clone<T: Clone>() {}
+        assert_clone::<Client>();
+        assert_clone::<Collection<serde_json::Value>>();
+    }
+
+    #[test]
+    fn scheduler_refuses_beyond_hard_bound() {
+        let scheduler = Scheduler::new(1, 1).unwrap();
+        let gate = Arc::new((Mutex::new(false), std::sync::Condvar::new()));
+        let first_gate = Arc::clone(&gate);
+        let first = scheduler.dispatch(RequestId([1; 16]), None, None, move || {
+            let (lock, cv) = &*first_gate;
+            let mut open = lock.lock().unwrap();
+            while !*open {
+                open = cv.wait(open).unwrap();
+            }
+            Ok(())
+        });
+        while scheduler.inspect().running == 0 {
+            thread::yield_now();
+        }
+        let _queued = scheduler.dispatch(RequestId([2; 16]), None, None, || Ok(()));
+        let refused = scheduler.dispatch(RequestId([3; 16]), None, None, || Ok(()));
+        let state = refused.shared.state.lock().unwrap();
+        assert!(matches!(
+            state
+                .result
+                .as_ref()
+                .map(|r| r.as_ref().err().map(|e| e.code)),
+            Some(Some(ErrorCode::Overloaded))
+        ));
+        drop(state);
+        let (lock, cv) = &*gate;
+        *lock.lock().unwrap() = true;
+        cv.notify_all();
+        drop(first);
+    }
+
+    #[test]
+    fn queued_drop_cancels_before_dispatch_and_deadline_refuses_execution() {
+        let scheduler = Scheduler::new(1, 2).unwrap();
+        let gate = Arc::new((Mutex::new(false), std::sync::Condvar::new()));
+        let first_gate = Arc::clone(&gate);
+        let blocker = scheduler.dispatch(RequestId([1; 16]), None, None, move || {
+            let (lock, cv) = &*first_gate;
+            let mut open = lock.lock().unwrap();
+            while !*open {
+                open = cv.wait(open).unwrap();
+            }
+            Ok(())
+        });
+        while scheduler.inspect().running == 0 {
+            thread::yield_now();
+        }
+
+        let cancelled_ran = Arc::new(AtomicBool::new(false));
+        let cancelled_marker = Arc::clone(&cancelled_ran);
+        let cancelled = scheduler.dispatch(RequestId([2; 16]), None, None, move || {
+            cancelled_marker.store(true, Ordering::Release);
+            Ok(())
+        });
+        drop(cancelled);
+
+        let deadline_ran = Arc::new(AtomicBool::new(false));
+        let deadline_marker = Arc::clone(&deadline_ran);
+        let deadline =
+            scheduler.dispatch(RequestId([3; 16]), None, Some(Instant::now()), move || {
+                deadline_marker.store(true, Ordering::Release);
+                Ok(())
+            });
+        assert!(scheduler.inspect().queued <= 2);
+
+        let (lock, cv) = &*gate;
+        *lock.lock().unwrap() = true;
+        cv.notify_all();
+        while scheduler.inspect().queued != 0 {
+            thread::yield_now();
+        }
+        assert_eq!(scheduler.inspect().cancelled_before_dispatch, 1);
+        assert!(!cancelled_ran.load(Ordering::Acquire));
+        assert!(!deadline_ran.load(Ordering::Acquire));
+        let state = deadline.shared.state.lock().unwrap();
+        assert!(matches!(
+            state
+                .result
+                .as_ref()
+                .map(|result| result.as_ref().err().map(|e| e.code)),
+            Some(Some(ErrorCode::DeadlineExceeded))
+        ));
+        drop(state);
+        drop(blocker);
+    }
+}

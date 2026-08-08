@@ -286,6 +286,10 @@ pub enum StoreError {
     CoverageIncomplete(String),
 
     /// Client operation id reused with different content (DEF-010).
+    #[error("operation identity reused with different canonical request")]
+    OperationIdentityConflict,
+
+    /// General store consistency invariant failed.
     #[error("consistency violation: {0}")]
     ConsistencyViolation(String),
 

@@ -6,6 +6,7 @@ use crate::adaptive_write::{
 };
 use crate::error::StoreError;
 use crate::kernel::PhysicalStore;
+use crate::store::{StoreOpenMetrics, StoreOpenReport};
 use residiuum_heap::HeapCap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -143,6 +144,22 @@ impl StoreHost {
     /// Shared physical store handle (for process-local host reuse).
     pub fn physical(&self) -> Arc<Mutex<PhysicalStore>> {
         Arc::clone(&self.physical)
+    }
+
+    /// Phase timings and inventory I/O from the physical store open.
+    pub fn open_metrics(&self) -> Result<StoreOpenMetrics, StoreError> {
+        self.physical
+            .lock()
+            .map(|store| store.open_metrics())
+            .map_err(|_| StoreError::CorruptMeta("store lock poisoned"))
+    }
+
+    /// Structured startup disposition, recovery actions, counts, and timings.
+    pub fn open_report(&self) -> Result<StoreOpenReport, StoreError> {
+        self.physical
+            .lock()
+            .map(|store| store.open_report())
+            .map_err(|_| StoreError::CorruptMeta("store lock poisoned"))
     }
 
     /// Adaptive-write handle if attached via `*_with_adaptive_write`.

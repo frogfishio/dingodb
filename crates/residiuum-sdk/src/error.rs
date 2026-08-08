@@ -314,7 +314,9 @@ fn map_store(e: &StoreError) -> ErrorCode {
         StoreError::MediaUnsupported(_) => ErrorCode::FormatUnsupported,
         StoreError::WriterLockHeld(_) => ErrorCode::WriterLockHeld,
         StoreError::CoverageIncomplete(_) => ErrorCode::CoverageIncomplete,
-        StoreError::ConsistencyViolation(_) => ErrorCode::ConsistencyViolation,
+        StoreError::ConsistencyViolation(_) | StoreError::OperationIdentityConflict => {
+            ErrorCode::ConsistencyViolation
+        }
         // Failpoints are test-only injection; surface as I/O class failures.
         StoreError::Failpoint(_) => ErrorCode::Io,
         // OS CSPRNG unavailable (DEF-025); rare host configuration failure.

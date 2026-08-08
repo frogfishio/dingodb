@@ -305,8 +305,43 @@ impl LogicalHarnessEngine {
                 );
             }
             MandatoryCell::CoveredNonCoveredProject => {
+                // F11: confirm covered vs non-covered against declared indexes.
+                let project_fields = ["status", "region"];
+                let index_fields: std::collections::BTreeSet<&str> = plan
+                    .indexes
+                    .iter()
+                    .flat_map(|i| i.fields.iter().map(|f| f.as_str()))
+                    .collect();
+                let cover_label = match plan.project_cover {
+                    Some(crate::cell_plan::ProjectCoverKind::Covered) => {
+                        for f in project_fields {
+                            if !index_fields.contains(f) {
+                                return Err(AdapterError::Execute(format!(
+                                    "project_cover=covered but index lacks field {f}; indexes={index_fields:?}"
+                                )));
+                            }
+                        }
+                        "covered"
+                    }
+                    Some(crate::cell_plan::ProjectCoverKind::NonCovered) => {
+                        let missing = project_fields
+                            .iter()
+                            .any(|f| !index_fields.contains(f));
+                        if !missing {
+                            return Err(AdapterError::Execute(format!(
+                                "project_cover=non_covered but index covers all projected fields; indexes={index_fields:?}"
+                            )));
+                        }
+                        "non_covered"
+                    }
+                    None => "unspecified",
+                };
                 for (k, v) in docs {
                     examined += 1;
+                    // Smoke/variants filter status = "st-0000".
+                    if v.get("status").and_then(|x| x.as_str()) != Some("st-0000") {
+                        continue;
+                    }
                     if let Value::Object(m) = v {
                         let mut out = serde_json::Map::new();
                         if let Some(s) = m.get("status") {
@@ -321,6 +356,11 @@ impl LogicalHarnessEngine {
                         });
                     }
                 }
+                detail = format!(
+                    "projection_cover={cover_label} index_fields={:?} project_fields={:?}",
+                    index_fields.iter().copied().collect::<Vec<_>>(),
+                    project_fields
+                );
             }
             MandatoryCell::ConditionalComputed => {
                 // high_band := amount if amount >= 100 else null (computed conditional).
@@ -348,6 +388,15 @@ impl LogicalHarnessEngine {
                 detail = "conditional high_band computed".into();
             }
             MandatoryCell::NestedAndArrayPreds => {
+                use crate::cell_plan::NestedArrayFocus;
+                use crate::dataset::DocShape;
+                let focus = plan.nested_array_focus.or_else(|| {
+                    match plan.dataset.shape {
+                        DocShape::DeeplyNested => Some(NestedArrayFocus::NestedOnly),
+                        DocShape::ArrayHeavy => Some(NestedArrayFocus::ArrayOnly),
+                        _ => None,
+                    }
+                });
                 for (k, v) in docs {
                     examined += 1;
                     let nested_ok = v
@@ -359,10 +408,20 @@ impl LogicalHarnessEngine {
                         .and_then(|t| t.as_array())
                         .map(|a| a.iter().any(|x| x.as_str() == Some("t0-0")))
                         .unwrap_or(false);
-                    if nested_ok || tags_hit {
+                    let hit = match focus {
+                        Some(NestedArrayFocus::NestedOnly) => nested_ok,
+                        Some(NestedArrayFocus::ArrayOnly) => tags_hit,
+                        None => nested_ok || tags_hit,
+                    };
+                    if hit {
                         rows.push(row_from_doc(k, v));
                     }
                 }
+                detail = format!(
+                    "nested_array_focus={} shape={}",
+                    focus.map(|f| f.as_str()).unwrap_or("combined"),
+                    plan.dataset.shape.as_str()
+                );
             }
             MandatoryCell::GroupLowHighCard => {
                 use std::collections::BTreeMap;
@@ -376,12 +435,18 @@ impl LogicalHarnessEngine {
                         .to_string();
                     *groups.entry(g).or_default() += 1;
                 }
+                let n_groups = groups.len();
                 for (g, cnt) in groups {
                     rows.push(ResultRow {
                         key: g.clone(),
                         value: serde_json::json!({"status": g, "count": cnt}),
                     });
                 }
+                detail = format!(
+                    "group_card={} distinct_groups={}",
+                    plan.dataset.cardinality.as_str(),
+                    n_groups
+                );
             }
             MandatoryCell::AggCountSumMinMaxAvg => {
                 use std::collections::BTreeMap;

@@ -65,6 +65,46 @@ impl EnrichExpect {
     }
 }
 
+/// Covered vs non-covered projection (§7.2 cell 5 / F11).
+///
+/// Covered: every projected field is present in at least one declared index.
+/// Non-covered: at least one projected field is absent from all indexes (must
+/// fetch base docs after index filter).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProjectCoverKind {
+    Covered,
+    NonCovered,
+}
+
+impl ProjectCoverKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Covered => "covered",
+            Self::NonCovered => "non_covered",
+        }
+    }
+}
+
+/// Nested-field vs array-predicate focus (§7.2 cell 4 / F11).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NestedArrayFocus {
+    /// DeeplyNested shape; predicate on nested.l1.l2.l3.flag only.
+    NestedOnly,
+    /// ArrayHeavy shape; predicate on contains(tags, …) only.
+    ArrayOnly,
+}
+
+impl NestedArrayFocus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::NestedOnly => "nested_only",
+            Self::ArrayOnly => "array_only",
+        }
+    }
+}
+
 /// One runnable measured-cell plan (not yet a competitive result).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MeasuredCellPlan {
@@ -84,6 +124,12 @@ pub struct MeasuredCellPlan {
     pub require_deep_cursor: bool,
     pub rw_mix: Option<ReadWriteMix>,
     pub enrich_expect: Option<EnrichExpect>,
+    /// Covered / non-covered projection declaration (cell 5 variants).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_cover: Option<ProjectCoverKind>,
+    /// Nested-only vs array-only predicate focus (cell 4 variants).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nested_array_focus: Option<NestedArrayFocus>,
     pub server_lane_ineligible: bool,
     pub notes: String,
 }
@@ -103,6 +149,12 @@ impl MeasuredCellPlan {
             MandatoryCell::EnrichCardinalities => Some(EnrichExpect::Optional),
             _ => None,
         };
+        // Smoke defaults: nested-only (DeeplyNested); covered projection; low group.
+        let (project_cover, nested_array_focus) = match cell {
+            MandatoryCell::CoveredNonCoveredProject => (Some(ProjectCoverKind::Covered), None),
+            MandatoryCell::NestedAndArrayPreds => (None, Some(NestedArrayFocus::NestedOnly)),
+            _ => (None, None),
+        };
         Self {
             cell,
             plan_id: format!("{}_smoke_c1", cell.id()),
@@ -117,19 +169,28 @@ impl MeasuredCellPlan {
             require_deep_cursor,
             rw_mix,
             enrich_expect,
+            project_cover,
+            nested_array_focus,
             server_lane_ineligible: cell.server_lane_ineligible_by_default(),
             notes,
         }
     }
 
     /// Expand concurrency matrix for a base plan (1,2,4,8 + optional oversub).
+    ///
+    /// Preserves a variant stem in `plan_id` when present (everything before a
+    /// trailing `_cN` / `_smoke_c1` is kept as context via `cell.id()` + optional
+    /// variant label encoded already in `plan_id` when builders set it).
     pub fn with_concurrency(mut self, c: u32, oversubscribed: bool) -> Self {
         self.concurrency = c;
         self.oversubscribed = oversubscribed;
+        // Prefer extending the current plan_id stem so variant plans stay unique
+        // (e.g. cell_group_card_card_high_c4). Strip trailing concurrency suffixes.
+        let stem = strip_concurrency_suffix(&self.plan_id);
         self.plan_id = if oversubscribed {
-            format!("{}_c{c}_oversub", self.cell.id())
+            format!("{stem}_c{c}_oversub")
         } else {
-            format!("{}_c{c}", self.cell.id())
+            format!("{stem}_c{c}")
         };
         self
     }
@@ -201,23 +262,25 @@ fn cell_defaults(
             "Range + compound equality/range.".into(),
         ),
         MandatoryCell::NestedAndArrayPreds => (
-            r#"from docs where present(nested.l1.l2.l3.flag) or contains(tags, "t0-0")"#.into(),
+            // Smoke default: nested-only on DeeplyNested (F11). Array-only via variants.
+            r#"from docs where nested.l1.l2.l3.flag = true"#.into(),
             vec![],
             false,
             None,
             None,
-            DocShape::ArrayHeavy,
+            DocShape::DeeplyNested,
             SelectivityClass::Broad,
             CardinalityClass::Medium,
-            "Nested path and/or array contains (shape may be DeeplyNested or ArrayHeavy)."
+            "Nested-only smoke (DeeplyNested). Array-only via nested_array_predicate_variants()."
                 .into(),
         ),
         MandatoryCell::CoveredNonCoveredProject => (
+            // Smoke default: covered — index includes status + region (all projected fields).
             r#"from docs where status = "st-0000" project status, region"#.into(),
             vec![IndexPlan {
-                name: "by_status".into(),
-                fields: vec!["status".into()],
-                required: false,
+                name: "by_status_region".into(),
+                fields: vec!["status".into(), "region".into()],
+                required: true,
             }],
             false,
             None,
@@ -225,7 +288,8 @@ fn cell_defaults(
             DocShape::Flat,
             SelectivityClass::S10,
             CardinalityClass::Low,
-            "Projection covered vs non-covered (adapter records plan).".into(),
+            "Covered projection smoke (index covers status,region). Non-covered via projection_cover_variants()."
+                .into(),
         ),
         MandatoryCell::DeterministicTopK => (
             r#"from docs order by score desc, _key asc limit 10"#.into(),
@@ -326,15 +390,129 @@ pub fn smoke_portfolio(seed: u64) -> Vec<MeasuredCellPlan> {
         .collect()
 }
 
-/// §7.2 expanded smoke: base 12 + enrich cardinality variants + R/W 70/30
-/// + concurrency matrix on key-get (executed by runner).
+/// §7.2 expanded portfolio (F11): base 12 smoke + genuine variants + concurrency
+/// expansion across **all** mandatory cells (not key-get-only metadata).
+///
+/// Inventory (approx):
+/// - 12 smoke @ c1
+/// - nested-only + array-only predicate plans
+/// - covered + non-covered projection plans
+/// - low + high group cardinality plans
+/// - enrich optional/exactly_one/many
+/// - R/W 90/10 + 70/30
+/// - concurrency 1/2/4/8 + oversub per mandatory cell (from smoke bases)
 pub fn section_7_2_expanded_portfolio(seed: u64) -> Vec<MeasuredCellPlan> {
     let mut out = smoke_portfolio(seed);
+    out.extend(nested_array_predicate_variants(seed));
+    out.extend(projection_cover_variants(seed));
+    out.extend(group_cardinality_variants(seed));
     out.extend(enrich_variants(seed));
     out.extend(rw_mix_variants(seed));
-    let key = MeasuredCellPlan::smoke_for(MandatoryCell::KeyGet, seed);
-    out.extend(concurrency_matrix(&key, 2));
+    // Full concurrency matrix for every mandatory cell (programme §7.2).
+    for cell in MandatoryCell::ALL {
+        let base = MeasuredCellPlan::smoke_for(*cell, seed);
+        out.extend(concurrency_matrix(&base, 2));
+    }
     out
+}
+
+/// Strip trailing `_cN`, `_smoke_c1`, `_cN_oversub` so concurrency rewrites compose.
+fn strip_concurrency_suffix(plan_id: &str) -> String {
+    // _c{digits}_oversub
+    if let Some(i) = plan_id.rfind("_c") {
+        let rest = &plan_id[i + 2..];
+        if rest.ends_with("_oversub") {
+            let num = &rest[..rest.len() - "_oversub".len()];
+            if !num.is_empty() && num.chars().all(|ch| ch.is_ascii_digit()) {
+                return plan_id[..i].to_string();
+            }
+        } else if !rest.is_empty() && rest.chars().all(|ch| ch.is_ascii_digit()) {
+            return plan_id[..i].to_string();
+        }
+    }
+    // _smoke_c1
+    if let Some(stem) = plan_id.strip_suffix("_smoke_c1") {
+        return stem.to_string();
+    }
+    plan_id.to_string()
+}
+
+/// Separate nested-field vs array-predicate plans (F11 / §7.2 cell 4).
+///
+/// Smoke uses nested-only; this adds an explicit array-only plan and a second
+/// nested-only labeled variant so inventory is not a single ArrayHeavy OR-query.
+pub fn nested_array_predicate_variants(seed: u64) -> Vec<MeasuredCellPlan> {
+    let mut nested = MeasuredCellPlan::smoke_for(MandatoryCell::NestedAndArrayPreds, seed);
+    nested.nested_array_focus = Some(NestedArrayFocus::NestedOnly);
+    nested.dataset.shape = DocShape::DeeplyNested;
+    nested.rql_source = r#"from docs where nested.l1.l2.l3.flag = true"#.into();
+    nested.plan_id = format!("{}_nested_only", MandatoryCell::NestedAndArrayPreds.id());
+    nested.notes = "DeeplyNested shape; nested.l1.l2.l3.flag only (no array OR).".into();
+
+    let mut array = MeasuredCellPlan::smoke_for(MandatoryCell::NestedAndArrayPreds, seed);
+    array.nested_array_focus = Some(NestedArrayFocus::ArrayOnly);
+    array.dataset.shape = DocShape::ArrayHeavy;
+    array.rql_source = r#"from docs where contains(tags, "t0-0")"#.into();
+    array.plan_id = format!("{}_array_only", MandatoryCell::NestedAndArrayPreds.id());
+    array.notes = "ArrayHeavy shape; contains(tags, t0-0) only (no nested path).".into();
+
+    vec![nested, array]
+}
+
+/// Covered vs non-covered projection with confirmed index/project sets (F11 / §7.2 cell 5).
+pub fn projection_cover_variants(seed: u64) -> Vec<MeasuredCellPlan> {
+    let mut covered = MeasuredCellPlan::smoke_for(MandatoryCell::CoveredNonCoveredProject, seed);
+    covered.project_cover = Some(ProjectCoverKind::Covered);
+    covered.indexes = vec![IndexPlan {
+        name: "by_status_region".into(),
+        fields: vec!["status".into(), "region".into()],
+        required: true,
+    }];
+    covered.rql_source = r#"from docs where status = "st-0000" project status, region"#.into();
+    covered.plan_id = format!(
+        "{}_{}",
+        MandatoryCell::CoveredNonCoveredProject.id(),
+        ProjectCoverKind::Covered.as_str()
+    );
+    covered.notes =
+        "Covered: index {status,region} includes every projected field.".into();
+
+    let mut non = MeasuredCellPlan::smoke_for(MandatoryCell::CoveredNonCoveredProject, seed);
+    non.project_cover = Some(ProjectCoverKind::NonCovered);
+    non.indexes = vec![IndexPlan {
+        name: "by_status".into(),
+        fields: vec!["status".into()],
+        required: true,
+    }];
+    non.rql_source = r#"from docs where status = "st-0000" project status, region"#.into();
+    non.plan_id = format!(
+        "{}_{}",
+        MandatoryCell::CoveredNonCoveredProject.id(),
+        ProjectCoverKind::NonCovered.as_str()
+    );
+    non.notes =
+        "Non-covered: index {status} does not include projected region — base fetch required."
+            .into();
+
+    vec![covered, non]
+}
+
+/// Low- and high-cardinality grouping plans (F11 / §7.2 cell 9).
+pub fn group_cardinality_variants(seed: u64) -> Vec<MeasuredCellPlan> {
+    [CardinalityClass::Low, CardinalityClass::High]
+        .into_iter()
+        .map(|card| {
+            let mut p = MeasuredCellPlan::smoke_for(MandatoryCell::GroupLowHighCard, seed);
+            p.dataset.cardinality = card;
+            p.plan_id = format!(
+                "{}_{}",
+                MandatoryCell::GroupLowHighCard.id(),
+                card.as_str()
+            );
+            p.notes = format!("Group by status; cardinality={}", card.as_str());
+            p
+        })
+        .collect()
 }
 
 /// Enrich optional / exactly_one / many plan variants.
@@ -442,6 +620,23 @@ pub fn q4_2_report_json() -> serde_json::Value {
     let conc = concurrency_matrix(&smoke[0], 2);
     let sel = selectivity_matrix(0x04_42);
     let life = lifecycle_matrix(0x04_42);
+    let nested_v = nested_array_predicate_variants(0x04_42);
+    let proj_v = projection_cover_variants(0x04_42);
+    let group_v = group_cardinality_variants(0x04_42);
+    let cells_with_c8: Vec<String> = expanded
+        .iter()
+        .filter(|p| p.concurrency == 8)
+        .map(|p| p.cell.id().to_string())
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect();
+    let mut variant_plan_ids: Vec<String> = nested_v
+        .iter()
+        .chain(proj_v.iter())
+        .chain(group_v.iter())
+        .map(|p| p.plan_id.clone())
+        .collect();
+    variant_plan_ids.sort();
     serde_json::json!({
         "format": "residiuum-rql-q4-2-dataset-cells-report-v1",
         "harness_profile": crate::HARNESS_PROFILE,
@@ -452,16 +647,23 @@ pub fn q4_2_report_json() -> serde_json::Value {
             "concurrency_matrix_len": conc.len(),
             "selectivity_matrix_len": sel.len(),
             "lifecycle_matrix_len": life.len(),
+            "nested_array_variants": nested_v.len(),
+            "projection_cover_variants": proj_v.len(),
+            "group_cardinality_variants": group_v.len(),
             "concurrency_levels": CONCURRENCY_LEVELS,
             "oversubscribed_slot": OVERSUBSCRIBED_SLOT,
+            "concurrency_c8_cells": cells_with_c8,
+            "concurrency_expanded_all_cells": (cells_with_c8.len() == MandatoryCell::ALL.len()),
             "cold_reopen_claims_device_cold": false,
             "default_cold_method_reopen": ColdMethod::StoreReopen.as_str(),
             "f2_real_cells": true,
+            "f11_plan_variants": true,
         },
         "payload_classes": PayloadClass::PRIMARY.iter().map(|p| p.as_str()).collect::<Vec<_>>(),
         "shapes": DocShape::ALL.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
         "distributions": DistributionKind::ALL.iter().map(|d| d.as_str()).collect::<Vec<_>>(),
         "smoke_plan_ids": smoke.iter().map(|p| p.plan_id.clone()).collect::<Vec<_>>(),
+        "variant_plan_ids": variant_plan_ids,
         "non_claims": [
             "not_gate1",
             "not_competitive",
@@ -513,11 +715,77 @@ mod tests {
     #[test]
     fn section_7_2_expanded_includes_variants() {
         let plans = section_7_2_expanded_portfolio(1);
-        assert!(plans.len() >= 22);
+        // 12 smoke + 2 nested/array + 2 project + 2 group + 3 enrich + 2 rw
+        // + 12 cells × 5 concurrency = 12+2+2+2+3+2+60 = 83
+        assert!(
+            plans.len() >= 80,
+            "expected full F11 inventory ≥80, got {}",
+            plans.len()
+        );
         assert!(plans.iter().any(|p| p.plan_id.contains("exactly_one")));
         assert!(plans.iter().any(|p| p.plan_id.contains("many")));
         assert!(plans.iter().any(|p| p.plan_id.contains("rw_70_30")));
+        assert!(plans.iter().any(|p| p.plan_id.contains("nested_only")));
+        assert!(plans.iter().any(|p| p.plan_id.contains("array_only")));
+        assert!(plans.iter().any(|p| p.plan_id.contains("non_covered")));
+        assert!(plans.iter().any(|p| p.plan_id.contains("card_high")));
         assert!(plans.iter().any(|p| p.concurrency == 8));
+        // Concurrency expansion is not key-get-only.
+        let c8_cells: std::collections::BTreeSet<&str> = plans
+            .iter()
+            .filter(|p| p.concurrency == 8)
+            .map(|p| p.cell.id())
+            .collect();
+        assert_eq!(
+            c8_cells.len(),
+            MandatoryCell::ALL.len(),
+            "every mandatory cell must have a c8 plan"
+        );
+    }
+
+    #[test]
+    fn nested_array_variants_honest_shapes() {
+        let v = nested_array_predicate_variants(3);
+        assert_eq!(v.len(), 2);
+        let nested = v.iter().find(|p| p.plan_id.contains("nested_only")).unwrap();
+        assert_eq!(nested.dataset.shape, DocShape::DeeplyNested);
+        assert_eq!(nested.nested_array_focus, Some(NestedArrayFocus::NestedOnly));
+        assert!(!nested.rql_source.contains("tags"));
+        let array = v.iter().find(|p| p.plan_id.contains("array_only")).unwrap();
+        assert_eq!(array.dataset.shape, DocShape::ArrayHeavy);
+        assert_eq!(array.nested_array_focus, Some(NestedArrayFocus::ArrayOnly));
+        assert!(!array.rql_source.contains("nested"));
+    }
+
+    #[test]
+    fn projection_cover_variants_confirm_indexes() {
+        let v = projection_cover_variants(3);
+        let cov = v.iter().find(|p| p.project_cover == Some(ProjectCoverKind::Covered)).unwrap();
+        let idx: std::collections::BTreeSet<_> = cov
+            .indexes
+            .iter()
+            .flat_map(|i| i.fields.iter().cloned())
+            .collect();
+        assert!(idx.contains("status") && idx.contains("region"));
+        let non = v
+            .iter()
+            .find(|p| p.project_cover == Some(ProjectCoverKind::NonCovered))
+            .unwrap();
+        let idx: std::collections::BTreeSet<_> = non
+            .indexes
+            .iter()
+            .flat_map(|i| i.fields.iter().cloned())
+            .collect();
+        assert!(idx.contains("status"));
+        assert!(!idx.contains("region"), "non-covered must omit region from index");
+    }
+
+    #[test]
+    fn group_cardinality_variants_low_high() {
+        let v = group_cardinality_variants(5);
+        assert_eq!(v.len(), 2);
+        assert!(v.iter().any(|p| p.dataset.cardinality == CardinalityClass::Low));
+        assert!(v.iter().any(|p| p.dataset.cardinality == CardinalityClass::High));
     }
 
     #[test]

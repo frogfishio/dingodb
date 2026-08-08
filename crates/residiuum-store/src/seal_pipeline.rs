@@ -30,7 +30,7 @@ use crate::incremental_seal::{
     meta_publish_plan, ContentHashState, IncrementalSealState, SealPublishPlan,
 };
 use crate::index::PrimaryIndex;
-use crate::index_cache::{write_primary_index_frontier, IndexFrontier};
+use crate::index_cache::{write_primary_index_frontier, ChunkLocatorMap, IndexFrontier};
 use crate::layout::{list_residiuum_files, segment_id_from_filename, StorePaths};
 use residiuum_format::{
     decode_descriptor_body, scan_forward, ActiveSegment, FrameKind, SafetyLimits, SegmentId,
@@ -80,7 +80,8 @@ pub struct EnrichmentStageTiming {
 impl EnrichmentStageTiming {
     /// Hydra construct + persist.
     pub fn hydra_ns(self) -> u64 {
-        self.hydra_construct_ns.saturating_add(self.hydra_persist_ns)
+        self.hydra_construct_ns
+            .saturating_add(self.hydra_persist_ns)
     }
 
     /// Chimera construct + persist.
@@ -204,6 +205,7 @@ pub const DEFAULT_MAX_PENDING_SEALS: usize = 16;
 pub const ENRICHMENT_MIN_GAP: Duration = Duration::from_millis(50);
 
 /// Job submitted to the lifecycle worker.
+#[allow(private_interfaces)]
 pub enum LifecycleJob {
     /// Finalize a rotated active segment sitting under `active/pending/`.
     FinalizeSeal {
@@ -292,6 +294,8 @@ pub enum LifecycleJob {
         frontier: IndexFrontier,
         /// Durable index snapshot (locator-first).
         index: PrimaryIndex,
+        /// Verified payload-chunk locators covered by the frontier.
+        chunk_locators: ChunkLocatorMap,
     },
     /// Persist derived tier placement + segment catalog (best-effort; coalesce).
     ///
@@ -714,8 +718,16 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                 store_id,
                 frontier,
                 index,
+                chunk_locators,
             } => {
-                let ok = write_primary_index_frontier(&cache_path, store_id, &frontier, &index).is_ok();
+                let ok = write_primary_index_frontier(
+                    &cache_path,
+                    store_id,
+                    &frontier,
+                    &index,
+                    &chunk_locators,
+                )
+                .is_ok();
                 let _ = result_tx.send(LifecycleResult::CheckpointDone { ok });
             }
             LifecycleJob::DerivedCatalogCheckpoint {
@@ -724,10 +736,8 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                 placement,
                 segment_catalog,
             } => {
-                let place_path =
-                    crate::tier::tier_placement_path(&paths.catalogs_dir());
-                let cat_path =
-                    crate::segment_catalog::segment_catalog_path(&paths.catalogs_dir());
+                let place_path = crate::tier::tier_placement_path(&paths.catalogs_dir());
+                let cat_path = crate::segment_catalog::segment_catalog_path(&paths.catalogs_dir());
                 let ok = crate::tier::write_placement(&place_path, store_id, &placement)
                     .and_then(|_| crate::tier::write_tier_roots_file(&paths, &placement))
                     .and_then(|_| {
@@ -775,7 +785,10 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                     crate::failpoint::hit("store.seal.before_authoritative_rename")?;
                     fs::rename(&pending_path, &sealed_path)?;
                     if require_fsync {
-                        let f = OpenOptions::new().read(true).write(true).open(&sealed_path)?;
+                        let f = OpenOptions::new()
+                            .read(true)
+                            .write(true)
+                            .open(&sealed_path)?;
                         f.sync_all()?;
                         if let Some(parent) = sealed_path.parent() {
                             let _ = crate::atomic_file::sync_dir(parent);
@@ -806,7 +819,10 @@ fn seal_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<LifecycleR
                 // P★ only after both sides durable.
                 let frontier_ok = (|| -> Result<(), StoreError> {
                     let _ = crate::recovery_shadow::note_segment_sealed(
-                        &paths, store_id, &segment_id, shard,
+                        &paths,
+                        store_id,
+                        &segment_id,
+                        shard,
                     );
                     crate::failpoint::hit("rshd4.frontier.publish")?;
                     let seq = crate::ids::segment_seq_from_id(&segment_id);
@@ -881,8 +897,7 @@ fn enrich_worker_loop(job_rx: Receiver<LifecycleJob>, result_tx: Sender<Lifecycl
                             stages.read_ns = elapsed_ns(t_read);
                             stages.bytes_read = bytes.len() as u64;
                             let t_b3 = Instant::now();
-                            let hash =
-                                ContentHashState::Known(*blake3::hash(&bytes).as_bytes());
+                            let hash = ContentHashState::Known(*blake3::hash(&bytes).as_bytes());
                             stages.blake3_ns = elapsed_ns(t_b3);
                             let size = bytes.len() as u64;
                             let enrich_ok = match enrich_sealed_derived_timed(
@@ -1247,7 +1262,11 @@ fn publish_sealed_from_pending(
 }
 
 /// Synchronously finalize every pending file under `active/pending/` (open recovery).
-pub fn recover_all_pending(paths: &StorePaths, store_id: [u8; 16], limits: SafetyLimits) -> Result<usize, StoreError> {
+pub fn recover_all_pending(
+    paths: &StorePaths,
+    store_id: [u8; 16],
+    limits: SafetyLimits,
+) -> Result<usize, StoreError> {
     let dir = paths.pending_seal_dir();
     if !dir.is_dir() {
         return Ok(0);
@@ -1340,7 +1359,9 @@ fn seal_pending_bytes(
     let sid = found_id.unwrap_or(segment_id);
     let prefix_len = end;
     if end == 0 || frame_count == 0 {
-        return Err(StoreError::CorruptMeta("pending segment empty or unreadable"));
+        return Err(StoreError::CorruptMeta(
+            "pending segment empty or unreadable",
+        ));
     }
     // Keep capacity; drop any torn tail past the verified prefix.
     raw.truncate(end as usize);
@@ -1349,19 +1370,17 @@ fn seal_pending_bytes(
     // prefix_len and that sealed starts with the same length of content by
     // checking sealed_len == prefix + summary and resume used the same Vec.
     let ids = SegmentId::new(store_id, sid);
-    let active = ActiveSegment::resume_unsealed(
-        ids,
-        limits,
-        raw,
-        frame_count,
-        writer_sequence,
-        created_ns,
-    )
-    .map_err(|e| StoreError::CorruptMeta(match e {
-        residiuum_format::SegmentError::MissingDescriptor => "pending missing descriptor",
-        residiuum_format::SegmentError::AlreadySealed => "pending already sealed",
-        _ => "pending resume failed",
-    }))?;
+    let active =
+        ActiveSegment::resume_unsealed(ids, limits, raw, frame_count, writer_sequence, created_ns)
+            .map_err(|e| {
+                StoreError::CorruptMeta(match e {
+                    residiuum_format::SegmentError::MissingDescriptor => {
+                        "pending missing descriptor"
+                    }
+                    residiuum_format::SegmentError::AlreadySealed => "pending already sealed",
+                    _ => "pending resume failed",
+                })
+            })?;
     let sealed = active
         .seal()
         .map_err(|_| StoreError::CorruptMeta("pending seal summary failed"))?;
@@ -1427,9 +1446,8 @@ fn write_chimera_from_segment_puts_timed(
     use crate::envelope::decode_item_envelope;
     use residiuum_format::scan_forward;
 
-    let mode = crate::recovery_shadow::load_recovery_mode(paths).unwrap_or(
-        crate::recovery_shadow::RecoveryMode::Materialized,
-    );
+    let mode = crate::recovery_shadow::load_recovery_mode(paths)
+        .unwrap_or(crate::recovery_shadow::RecoveryMode::Materialized);
     if mode.omits_new_materialized() {
         // CompactShadow: Compact Chimera only; dual-stream already published `.rsh`.
         let t_decode = Instant::now();
@@ -1463,8 +1481,7 @@ fn write_chimera_from_segment_puts_timed(
     let t_decode = Instant::now();
     let report = scan_forward(bytes, limits);
     // CSE-2R: latest put body per subject (Materialized product restore).
-    let mut last: std::collections::BTreeMap<Vec<u8>, Vec<u8>> =
-        std::collections::BTreeMap::new();
+    let mut last: std::collections::BTreeMap<Vec<u8>, Vec<u8>> = std::collections::BTreeMap::new();
     for (_off, frame) in report.verified_frames() {
         if frame.header.known_kind() != Some(FrameKind::ItemEvent) {
             continue;
@@ -1519,11 +1536,7 @@ fn write_chimera_from_segment_puts_timed(
     let dual_owns = rsh.is_file() || staging.is_file();
     if !bytes.is_empty() && !dual_owns {
         let _ = crate::recovery_shadow::build_and_publish_mirror_shadow(
-            paths,
-            store_id,
-            segment_id,
-            0,
-            bytes,
+            paths, store_id, segment_id, 0, bytes,
         );
     }
     let persist_ns = elapsed_ns(t_persist);
@@ -1545,8 +1558,7 @@ mod tests {
     #[test]
     fn seal_pending_preserves_prefix_bytes() {
         let ids = SegmentId::new([1u8; 16], [2u8; 16]);
-        let mut active =
-            ActiveSegment::create(ids, SafetyLimits::default(), 42).unwrap();
+        let mut active = ActiveSegment::create(ids, SafetyLimits::default(), 42).unwrap();
         let off = active
             .append(FrameKind::ItemEvent, &[0xa0], b"hello", [9u8; 16])
             .unwrap();
@@ -1554,8 +1566,7 @@ mod tests {
         let raw = active.as_bytes().to_vec();
         let prefix_len = raw.len();
         let (sealed, kept) =
-            seal_pending_bytes(raw.clone(), [1u8; 16], [2u8; 16], SafetyLimits::default())
-                .unwrap();
+            seal_pending_bytes(raw.clone(), [1u8; 16], [2u8; 16], SafetyLimits::default()).unwrap();
         assert_eq!(kept as usize, prefix_len);
         assert!(sealed.len() > prefix_len);
         assert_eq!(&sealed[..prefix_len], &raw[..]);
@@ -1634,7 +1645,10 @@ mod tests {
         let hydra = hydra_index_path(&paths, &segment_id);
         let chimera = crate::chimera::chimera_layout_path(&paths, &segment_id);
         assert!(!hydra.is_file(), "authoritative seal must not write Hydra");
-        assert!(!chimera.is_file(), "authoritative seal must not write Chimera");
+        assert!(
+            !chimera.is_file(),
+            "authoritative seal must not write Chimera"
+        );
         // Enrichment is best-effort; empty/unparseable records are Ok(()).
         enrich_sealed_derived(
             &paths,

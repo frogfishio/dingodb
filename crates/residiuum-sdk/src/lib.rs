@@ -48,6 +48,8 @@ mod collection;
 pub mod cursor_v1;
 mod dialects;
 mod directory_cache;
+/// Bounded async-first application driver for embedded deployments.
+pub mod driver;
 mod error;
 mod filter;
 mod heap;
@@ -300,6 +302,14 @@ pub use residiuum_store::DurabilityMode;
 pub use residiuum_store::IndexState;
 /// Re-export chunked payload completeness (FORMAT_SPEC §8).
 pub use residiuum_store::PayloadResult;
+/// Physical-store open phase timings and bounded inventory I/O counters.
+pub use residiuum_store::StoreOpenMetrics;
+/// Structured store startup report.
+pub use residiuum_store::StoreOpenReport;
+/// Primary-index startup disposition.
+pub use residiuum_store::IndexOpenDisposition;
+/// Primary checkpoint acceptance/rejection decision.
+pub use residiuum_store::IndexCacheDecision;
 
 /// Build a `serde_json::Value` from a JSON literal (re-export for examples/tests).
 pub use serde_json::json;

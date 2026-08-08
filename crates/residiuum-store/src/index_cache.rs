@@ -5,11 +5,13 @@
 //!
 //! ## Frontier checkpoint (DEF-023 / DEF-095)
 //!
-//! Version **3** caches record a durable frontier plus per-entry **frame offsets**
-//! and optional slim bodies (chunk manifests / legacy inline only). Full payload
-//! bodies are not written. Loading a legacy v1/v2 fat cache that still embeds
-//! full dataset bodies is refused so open cannot re-inflate O(dataset) RSS;
-//! the store falls back to a slim segment rebuild instead.
+//! Version **4** caches record a durable frontier, per-entry **frame offsets**,
+//! optional slim bodies (chunk manifests / legacy inline only), and verified
+//! payload-chunk locators. Full payload bodies are not written. Loading a legacy
+//! v1/v2 fat cache that still embeds full dataset bodies is refused so open
+//! cannot re-inflate O(dataset) RSS; the store falls back to a slim segment
+//! rebuild instead. Valid v2/v3 checkpoints remain readable but require a
+//! one-time chunk-locator scan before the next v4 checkpoint is written.
 //!
 //! Open validation is O(number of segments) for metadata, then O(active tail)
 //! to apply frames beyond `active_covered_len`. Full segment rescans remain the
@@ -18,6 +20,7 @@
 use crate::error::StoreError;
 use crate::index::{IndexEntry, LiveValue, PrimaryIndex};
 use blake3::Hasher;
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -27,9 +30,13 @@ pub const PRIMARY_CACHE_FILE: &str = "primary.idx";
 const MAGIC_V1: &[u8; 8] = b"RIDX0001";
 const MAGIC_V2: &[u8; 8] = b"RIDX0002";
 const MAGIC_V3: &[u8; 8] = b"RIDX0003";
+const MAGIC_V4: &[u8; 8] = b"RIDX0004";
 const VERSION_V1: u32 = 1;
 const VERSION_V2: u32 = 2;
 const VERSION_V3: u32 = 3;
+const VERSION_V4: u32 = 4;
+
+const CHUNK_LOCATOR_ENCODED_LEN: usize = 16 + 16 + 8 + 16 + 4 + 4 + 8 + 32;
 
 const KIND_LIVE: u8 = 1;
 const KIND_DELETED: u8 = 2;
@@ -48,6 +55,29 @@ pub struct IndexFrontier {
     pub active_segment_id: [u8; 16],
     /// Exclusive end offset in the active segment included in the checkpoint.
     pub active_covered_len: u64,
+}
+
+/// One derived physical locator for an authenticated payload-chunk frame.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ChunkFrameLocator {
+    pub(crate) segment_id: [u8; 16],
+    pub(crate) frame_offset: u64,
+    pub(crate) item_id: [u8; 16],
+    pub(crate) chunk_index: u32,
+    pub(crate) chunk_total: u32,
+    pub(crate) logical_len: u64,
+    pub(crate) verified_body_hash: [u8; 32],
+}
+
+pub(crate) type ChunkLocatorMap = HashMap<[u8; 16], Vec<ChunkFrameLocator>>;
+
+/// Successfully decoded frontier checkpoint and optional locator section.
+pub(crate) struct LoadedIndexFrontier {
+    pub(crate) index: PrimaryIndex,
+    pub(crate) frontier: IndexFrontier,
+    pub(crate) format_version: u32,
+    /// `None` for legacy v2/v3 checkpoints, which require one compatibility scan.
+    pub(crate) chunk_locators: Option<ChunkLocatorMap>,
 }
 
 /// Absolute path of the primary index cache file.
@@ -106,8 +136,11 @@ pub fn try_load_primary_index(
         Ok(b) => b,
         Err(_) => return Ok(None),
     };
-    // v2/v3 files are not loadable via the v1 full-fingerprint API.
-    if bytes.len() >= 8 && (&bytes[..8] == MAGIC_V2.as_slice() || &bytes[..8] == MAGIC_V3.as_slice())
+    // Frontier files are not loadable via the v1 full-fingerprint API.
+    if bytes.len() >= 8
+        && (&bytes[..8] == MAGIC_V2.as_slice()
+            || &bytes[..8] == MAGIC_V3.as_slice()
+            || &bytes[..8] == MAGIC_V4.as_slice())
     {
         return Ok(None);
     }
@@ -117,13 +150,13 @@ pub fn try_load_primary_index(
     }
 }
 
-/// Load a v3 (or small legacy v2) frontier checkpoint when store_id matches.
+/// Load a v4 (or compatible legacy v2/v3) frontier checkpoint.
 ///
 /// Returns `Ok(None)` for absent/corrupt/fat-legacy files.
 pub fn try_load_primary_index_frontier(
     path: &Path,
     store_id: [u8; 16],
-) -> Result<Option<(PrimaryIndex, IndexFrontier)>, StoreError> {
+) -> Result<Option<LoadedIndexFrontier>, StoreError> {
     if !path.is_file() {
         return Ok(None);
     }
@@ -131,13 +164,31 @@ pub fn try_load_primary_index_frontier(
         Ok(b) => b,
         Err(_) => return Ok(None),
     };
+    if let Some((index, frontier, chunk_locators)) = decode_cache_v4(&bytes, store_id) {
+        return Ok(Some(LoadedIndexFrontier {
+            index,
+            frontier,
+            format_version: VERSION_V4,
+            chunk_locators: Some(chunk_locators),
+        }));
+    }
     if let Some((index, frontier)) = decode_cache_v3(&bytes, store_id) {
-        return Ok(Some((index, frontier)));
+        return Ok(Some(LoadedIndexFrontier {
+            index,
+            frontier,
+            format_version: VERSION_V3,
+            chunk_locators: None,
+        }));
     }
     // Legacy v2: accept only when bodies are small (dev fixtures / tiny stores).
     if let Some((index, frontier)) = decode_cache_v2(&bytes, store_id) {
         if index.resident_body_bytes() <= FAT_CACHE_BODY_BUDGET {
-            return Ok(Some((index, frontier)));
+            return Ok(Some(LoadedIndexFrontier {
+                index,
+                frontier,
+                format_version: VERSION_V2,
+                chunk_locators: None,
+            }));
         }
         // Fat v2 would re-inflate multi-GB RSS — force slim rebuild.
         return Ok(None);
@@ -160,14 +211,19 @@ pub fn write_primary_index(
     Ok(())
 }
 
-/// Persist a v3 frontier checkpoint (DEF-023 + DEF-095). Atomic durable replace.
+/// Persist a v4 frontier checkpoint (DEF-023 + DEF-095 + DEF-098).
+///
+/// The file is an atomic, durable, derived replacement. Chunk payload bodies
+/// remain in authoritative segments; only their verified physical locators are
+/// checkpointed.
 pub fn write_primary_index_frontier(
     path: &Path,
     store_id: [u8; 16],
     frontier: &IndexFrontier,
     index: &PrimaryIndex,
+    chunk_locators: &ChunkLocatorMap,
 ) -> Result<(), StoreError> {
-    let bytes = encode_cache_v3(store_id, frontier, index);
+    let bytes = encode_cache_v4(store_id, frontier, index, chunk_locators);
     crate::failpoint::hit("store.index_cache.before_write")?;
     crate::atomic_file::write_atomic(path, &bytes)?;
     crate::failpoint::hit("store.index_cache.after_write")?;
@@ -214,7 +270,7 @@ impl PrimaryCacheValidation {
 pub struct PrimaryCacheDiag {
     /// Cache file exists.
     pub present: bool,
-    /// Detected format version (1/2/3) when parseable.
+    /// Detected format version (1/2/3/4) when parseable.
     pub format_version: Option<u32>,
     /// On-disk byte length (0 when absent).
     pub byte_len: u64,
@@ -315,6 +371,17 @@ pub fn diagnose_primary_cache(
     let magic = &bytes[..8];
     let version = u32::from_le_bytes(bytes[8..12].try_into().unwrap_or([0; 4]));
 
+    if magic == MAGIC_V4.as_slice() {
+        return classify_frontier_cache(
+            &bytes,
+            store_id,
+            expected_sealed_fp,
+            active_actual_len,
+            byte_len,
+            VERSION_V4,
+            decode_cache_v4_without_locators,
+        );
+    }
     if magic == MAGIC_V3.as_slice() {
         return classify_frontier_cache(
             &bytes,
@@ -391,7 +458,7 @@ pub fn diagnose_primary_cache(
             resident_body_bytes: None,
             authoritative: false,
             detail: format!(
-                "primary.idx v1 present ({byte_len} bytes) — derived only; open prefers v3 frontier \
+                "primary.idx v1 present ({byte_len} bytes) — derived only; open prefers v4 frontier \
                  and rebuilds if needed (size is not stored-data size)"
             ),
         };
@@ -474,9 +541,8 @@ fn classify_frontier_cache(
             let ahead = active_actual_len
                 .map(|actual| frontier.active_covered_len > actual)
                 .unwrap_or(false);
-            let replay = active_actual_len.map(|actual| {
-                actual.saturating_sub(frontier.active_covered_len)
-            });
+            let replay =
+                active_actual_len.map(|actual| actual.saturating_sub(frontier.active_covered_len));
             let (validation, detail) = if ahead {
                 (
                     PrimaryCacheValidation::Corrupt,
@@ -772,7 +838,11 @@ fn encode_cache_v1(store_id: [u8; 16], fingerprint: [u8; 32], index: &PrimaryInd
     out
 }
 
-fn decode_cache_v1(bytes: &[u8], store_id: [u8; 16], expected_fp: [u8; 32]) -> Option<PrimaryIndex> {
+fn decode_cache_v1(
+    bytes: &[u8],
+    store_id: [u8; 16],
+    expected_fp: [u8; 32],
+) -> Option<PrimaryIndex> {
     if bytes.len() < 8 + 4 + 16 + 32 + 8 {
         return None;
     }
@@ -852,6 +922,7 @@ fn decode_cache_v2(bytes: &[u8], store_id: [u8; 16]) -> Option<(PrimaryIndex, In
     ))
 }
 
+#[cfg(test)]
 fn encode_cache_v3(store_id: [u8; 16], frontier: &IndexFrontier, index: &PrimaryIndex) -> Vec<u8> {
     // Metadata-sized capacity: keys + locators, not payload bodies.
     let mut out = Vec::with_capacity(8 + 4 + 16 + 32 + 16 + 8 + 8 + index.len() * 96);
@@ -866,6 +937,16 @@ fn encode_cache_v3(store_id: [u8; 16], frontier: &IndexFrontier, index: &Primary
     hasher.update(&out);
     out.extend_from_slice(hasher.finalize().as_bytes());
     out
+}
+
+#[cfg(test)]
+pub(crate) fn write_primary_index_frontier_v3_for_test(
+    path: &Path,
+    store_id: [u8; 16],
+    frontier: &IndexFrontier,
+    index: &PrimaryIndex,
+) -> Result<(), StoreError> {
+    crate::atomic_file::write_atomic(path, &encode_cache_v3(store_id, frontier, index))
 }
 
 fn decode_cache_v3(bytes: &[u8], store_id: [u8; 16]) -> Option<(PrimaryIndex, IndexFrontier)> {
@@ -904,6 +985,150 @@ fn decode_cache_v3(bytes: &[u8], store_id: [u8; 16]) -> Option<(PrimaryIndex, In
             active_covered_len,
         },
     ))
+}
+
+fn encode_chunk_locators(out: &mut Vec<u8>, chunk_locators: &ChunkLocatorMap) {
+    let mut entries: Vec<([u8; 16], &ChunkFrameLocator)> = chunk_locators
+        .iter()
+        .flat_map(|(event_id, locators)| locators.iter().map(move |loc| (*event_id, loc)))
+        .collect();
+    entries.sort_by(|(event_a, loc_a), (event_b, loc_b)| {
+        event_a
+            .cmp(event_b)
+            .then(loc_a.segment_id.cmp(&loc_b.segment_id))
+            .then(loc_a.frame_offset.cmp(&loc_b.frame_offset))
+            .then(loc_a.chunk_index.cmp(&loc_b.chunk_index))
+    });
+    out.extend_from_slice(&(entries.len() as u64).to_le_bytes());
+    for (event_id, loc) in entries {
+        out.extend_from_slice(&event_id);
+        out.extend_from_slice(&loc.segment_id);
+        out.extend_from_slice(&loc.frame_offset.to_le_bytes());
+        out.extend_from_slice(&loc.item_id);
+        out.extend_from_slice(&loc.chunk_index.to_le_bytes());
+        out.extend_from_slice(&loc.chunk_total.to_le_bytes());
+        out.extend_from_slice(&loc.logical_len.to_le_bytes());
+        out.extend_from_slice(&loc.verified_body_hash);
+    }
+}
+
+fn decode_chunk_locators(bytes: &[u8], mut off: usize) -> Option<(ChunkLocatorMap, usize)> {
+    let count_bytes = bytes.get(off..off.checked_add(8)?)?;
+    let count = u64::from_le_bytes(count_bytes.try_into().ok()?);
+    off += 8;
+    let remaining_records = bytes.len().saturating_sub(off + 32) / CHUNK_LOCATOR_ENCODED_LEN;
+    let count = usize::try_from(count).ok()?;
+    if count > remaining_records {
+        return None;
+    }
+    let mut out = ChunkLocatorMap::new();
+    for _ in 0..count {
+        let end = off.checked_add(CHUNK_LOCATOR_ENCODED_LEN)?;
+        let record = bytes.get(off..end)?;
+        let event_id = record[0..16].try_into().ok()?;
+        let segment_id = record[16..32].try_into().ok()?;
+        let frame_offset = u64::from_le_bytes(record[32..40].try_into().ok()?);
+        let item_id = record[40..56].try_into().ok()?;
+        let chunk_index = u32::from_le_bytes(record[56..60].try_into().ok()?);
+        let chunk_total = u32::from_le_bytes(record[60..64].try_into().ok()?);
+        if chunk_total == 0 || chunk_index >= chunk_total {
+            return None;
+        }
+        let logical_len = u64::from_le_bytes(record[64..72].try_into().ok()?);
+        let verified_body_hash = record[72..104].try_into().ok()?;
+        out.entry(event_id).or_default().push(ChunkFrameLocator {
+            segment_id,
+            frame_offset,
+            item_id,
+            chunk_index,
+            chunk_total,
+            logical_len,
+            verified_body_hash,
+        });
+        off = end;
+    }
+    Some((out, off))
+}
+
+fn encode_cache_v4(
+    store_id: [u8; 16],
+    frontier: &IndexFrontier,
+    index: &PrimaryIndex,
+    chunk_locators: &ChunkLocatorMap,
+) -> Vec<u8> {
+    let locator_count: usize = chunk_locators.values().map(Vec::len).sum();
+    let mut out = Vec::with_capacity(
+        8 + 4
+            + 16
+            + 32
+            + 16
+            + 8
+            + 8
+            + index.len() * 96
+            + locator_count * CHUNK_LOCATOR_ENCODED_LEN
+            + 32,
+    );
+    out.extend_from_slice(MAGIC_V4);
+    out.extend_from_slice(&VERSION_V4.to_le_bytes());
+    out.extend_from_slice(&store_id);
+    out.extend_from_slice(&frontier.sealed_fingerprint);
+    out.extend_from_slice(&frontier.active_segment_id);
+    out.extend_from_slice(&frontier.active_covered_len.to_le_bytes());
+    encode_entries_v3(&mut out, index);
+    encode_chunk_locators(&mut out, chunk_locators);
+    let mut hasher = Hasher::new();
+    hasher.update(&out);
+    out.extend_from_slice(hasher.finalize().as_bytes());
+    out
+}
+
+fn decode_cache_v4(
+    bytes: &[u8],
+    store_id: [u8; 16],
+) -> Option<(PrimaryIndex, IndexFrontier, ChunkLocatorMap)> {
+    if bytes.len() < 8 + 4 + 16 + 32 + 16 + 8 + 8 + 8 + 32 {
+        return None;
+    }
+    if &bytes[..8] != MAGIC_V4.as_slice() {
+        return None;
+    }
+    let version = u32::from_le_bytes(bytes[8..12].try_into().ok()?);
+    if version != VERSION_V4 {
+        return None;
+    }
+    let file_store: [u8; 16] = bytes[12..28].try_into().ok()?;
+    if file_store != store_id {
+        return None;
+    }
+    let sealed_fingerprint: [u8; 32] = bytes[28..60].try_into().ok()?;
+    let active_segment_id: [u8; 16] = bytes[60..76].try_into().ok()?;
+    let active_covered_len = u64::from_le_bytes(bytes[76..84].try_into().ok()?);
+    let (index, off) = decode_entries_v3(bytes, 84)?;
+    let (chunk_locators, off) = decode_chunk_locators(bytes, off)?;
+    if off + 32 != bytes.len() {
+        return None;
+    }
+    let mut hasher = Hasher::new();
+    hasher.update(&bytes[..off]);
+    if hasher.finalize().as_bytes() != &bytes[off..off + 32] {
+        return None;
+    }
+    Some((
+        index,
+        IndexFrontier {
+            sealed_fingerprint,
+            active_segment_id,
+            active_covered_len,
+        },
+        chunk_locators,
+    ))
+}
+
+fn decode_cache_v4_without_locators(
+    bytes: &[u8],
+    store_id: [u8; 16],
+) -> Option<(PrimaryIndex, IndexFrontier)> {
+    decode_cache_v4(bytes, store_id).map(|(index, frontier, _)| (index, frontier))
 }
 
 #[cfg(test)]
@@ -990,6 +1215,62 @@ mod tests {
         };
         assert_eq!(lv.frame_offset, 100);
         assert_eq!(loaded.len(), 2);
+    }
+
+    #[test]
+    fn frontier_cache_roundtrip_v4_preserves_chunk_locators() {
+        let index = sample_index();
+        let store_id = [9u8; 16];
+        let frontier = IndexFrontier {
+            sealed_fingerprint: [0x11u8; 32],
+            active_segment_id: [0x22u8; 16],
+            active_covered_len: 4096,
+        };
+        let event_id = [0x33u8; 16];
+        let locator = ChunkFrameLocator {
+            segment_id: [0x44u8; 16],
+            frame_offset: 512,
+            item_id: [0x55u8; 16],
+            chunk_index: 1,
+            chunk_total: 3,
+            logical_len: 16_384,
+            verified_body_hash: [0x66u8; 32],
+        };
+        let mut locators = ChunkLocatorMap::new();
+        locators.insert(event_id, vec![locator.clone()]);
+
+        let bytes = encode_cache_v4(store_id, &frontier, &index, &locators);
+        let (loaded, decoded_frontier, decoded_locators) =
+            decode_cache_v4(&bytes, store_id).unwrap();
+        assert_eq!(decoded_frontier, frontier);
+        assert_eq!(loaded.get_live(b"a"), Some(b"val".as_slice()));
+        assert_eq!(decoded_locators.get(&event_id), Some(&vec![locator]));
+    }
+
+    #[test]
+    fn frontier_cache_v4_rejects_invalid_chunk_shape() {
+        let index = sample_index();
+        let store_id = [9u8; 16];
+        let frontier = IndexFrontier {
+            sealed_fingerprint: [0x11u8; 32],
+            active_segment_id: [0x22u8; 16],
+            active_covered_len: 4096,
+        };
+        let mut locators = ChunkLocatorMap::new();
+        locators.insert(
+            [0x33u8; 16],
+            vec![ChunkFrameLocator {
+                segment_id: [0x44u8; 16],
+                frame_offset: 512,
+                item_id: [0x55u8; 16],
+                chunk_index: 3,
+                chunk_total: 3,
+                logical_len: 16_384,
+                verified_body_hash: [0x66u8; 32],
+            }],
+        );
+        let bytes = encode_cache_v4(store_id, &frontier, &index, &locators);
+        assert!(decode_cache_v4(&bytes, store_id).is_none());
     }
 
     #[test]

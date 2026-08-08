@@ -1,0 +1,50 @@
+{
+  "format": "residiuum-async-driver-contract-v1",
+  "status": "embedded_candidate_remote_and_query_pending",
+  "request_stages": [
+    "created",
+    "queued",
+    "dispatched",
+    "cancel_requested",
+    "terminal"
+  ],
+  "terminal_outcomes": [
+    "completed",
+    "refused",
+    "cancelled_before_dispatch",
+    "cancelled_after_dispatch",
+    "deadline_exceeded",
+    "commit_outcome_unknown"
+  ],
+  "retry_dispositions": [
+    "never",
+    "safe_same_request",
+    "safe_same_operation_id",
+    "after",
+    "outcome_lookup_required"
+  ],
+  "required_wire_features": [
+    "request-deadline-v1",
+    "cancel-request-v1",
+    "operation-outcome-v1",
+    "complete-receipts-v2"
+  ],
+  "defaults": {
+    "remote": {
+      "min_connections": 0,
+      "max_connections": 10,
+      "max_connecting": 2,
+      "max_waiters": 1024,
+      "connect_timeout_ms": 5000,
+      "checkout_timeout_ms": 5000,
+      "request_timeout_ms": 30000,
+      "idle_timeout_ms": 60000,
+      "max_lifetime_ms": 1800000
+    },
+    "embedded": {
+      "workers": "min(4, available_parallelism), at least 1",
+      "queue": 1024
+    },
+    "cursor_prefetch_pages": 1
+  }
+}

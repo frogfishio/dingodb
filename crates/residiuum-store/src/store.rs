@@ -9,15 +9,13 @@ use crate::chunk_payload::{
     is_chunk_manifest, manifest_from_pieces, reassemble_with_manifest, resolve_piece,
     split_into_pieces, PayloadResult, ResolvedChunk, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_THRESHOLD,
 };
-use crate::large_value::{
-    AdmitDecision, LargeValuePolicy, PayloadLayout, LARGE_VALUE_PROFILE_ID,
-};
 use crate::compact::{
     estimate_compact_bytes, new_planned_job, pread_item_body_if_segment, reclaim_source_segments,
     reclaimable_source_ids, report_from_job, try_load_checkpoint, try_load_compact_job,
     verify_live_segment, write_checkpoint, write_compact_job, write_live_segment, CheckpointMeta,
     CompactJob, CompactOptions, CompactPhase, CompactReport,
 };
+use crate::large_value::{AdmitDecision, LargeValuePolicy, PayloadLayout, LARGE_VALUE_PROFILE_ID};
 
 use crate::durability::DurabilityMode;
 use crate::envelope::{
@@ -32,11 +30,10 @@ use crate::ids::{random_id, segment_seq_from_id, subject_item_id};
 use crate::index::{slim_put_body_for_index, IndexEntry, PrimaryIndex};
 use crate::index_cache::{
     diagnose_primary_cache, primary_cache_path, segment_fingerprint, try_load_primary_index,
-    try_load_primary_index_frontier, write_primary_index_frontier, IndexFrontier, LifecycleDiag,
-    PrimaryCacheDiag,
+    try_load_primary_index_frontier, write_primary_index_frontier, ChunkFrameLocator,
+    ChunkLocatorMap, IndexFrontier, LifecycleDiag, PrimaryCacheDiag,
 };
 use crate::layout::{list_residiuum_files, StorePaths};
-use crate::token_keys::ContinuationKeyring;
 use crate::seal_pipeline::{
     list_pending_paths, publish_sealed_from_summary_frame, recover_all_pending,
     EnrichmentStageTotals, LifecycleJob, LifecycleResult, SealPipeline, DEFAULT_MAX_PENDING_SEALS,
@@ -46,8 +43,9 @@ use crate::secondary::{
     try_load_secondary_index, write_secondary_index, SecondaryIndex,
 };
 use crate::segment_catalog::{
-    rebuild_segment_catalog, segment_catalog_path, summarize_segment_bytes, try_load_segment_catalog,
-    upsert_sealed_summary, write_segment_catalog, SegmentCatalog, SegmentSummary,
+    rebuild_segment_catalog, segment_catalog_path, summarize_segment_bytes,
+    try_load_segment_catalog, upsert_sealed_summary, write_segment_catalog, SegmentCatalog,
+    SegmentSummary,
 };
 use crate::tier::{
     classify_segment_bytes, discover_placements, load_tier_roots_file, register_hot_segment,
@@ -55,6 +53,7 @@ use crate::tier::{
     write_placement, write_tier_roots_file, FormatClassification, MigrationEvidence, TierAwareGet,
     TierClass, TierCoverage, TierMoveMode, TierPlacement,
 };
+use crate::token_keys::ContinuationKeyring;
 use crate::write_dedup::{
     load_write_dedup, save_write_dedup, write_dedup_path, DedupRecord, WriteDedupTable,
 };
@@ -358,11 +357,136 @@ pub struct SalvageCopyReport {
     pub manifest_path: Option<PathBuf>,
 }
 
+/// Timings and bounded-I/O counters captured during the most recent store open.
+///
+/// Values are diagnostic evidence, not durability semantics. Nanoseconds use a
+/// monotonic process clock and saturate at `u64::MAX`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct StoreOpenMetrics {
+    /// Entire successful `open_with_options` call.
+    pub total_ns: u64,
+    /// Writer-lock acquisition plus store identity/profile loading.
+    pub identity_and_lock_ns: u64,
+    /// Tier-state load.
+    pub tier_state_ns: u64,
+    /// Authoritative media inventory and collision checks.
+    pub inventory_ns: u64,
+    /// Bytes read from bounded frame-0 descriptor probes in the returned pass.
+    pub inventory_descriptor_probe_bytes: u64,
+    /// Full-media fallback bytes; expected to be zero for normal fail-closed open.
+    pub inventory_fallback_scan_bytes: u64,
+    /// Pending-seal recovery.
+    pub pending_recovery_ns: u64,
+    /// Pending seals actually finalized during open.
+    pub pending_seals_recovered: u64,
+    /// Protected-pair recovery.
+    pub protected_pair_recovery_ns: u64,
+    /// Protected auth/shadow pairs actually repaired during open.
+    pub protected_pairs_recovered: u64,
+    /// Primary-index load or rebuild, including chunk-locator reconstruction.
+    pub index_ns: u64,
+    /// Segment bytes fully decoded while opening the primary index.
+    ///
+    /// Expected to be zero on a clean v4-checkpoint open.
+    pub index_full_scan_bytes: u64,
+    /// Active-segment bytes decoded after the checkpoint frontier.
+    pub index_active_replay_bytes: u64,
+    /// True when chunk locators came from a validated v4 checkpoint.
+    pub chunk_locators_from_checkpoint: bool,
+    /// Observable primary-index startup path.
+    pub index_disposition: IndexOpenDisposition,
+    /// Cache decision that selected the startup path.
+    pub index_cache_decision: IndexCacheDecision,
+    /// On-disk primary checkpoint bytes examined.
+    pub index_cache_bytes: u64,
+    /// Primary entries installed after load/rebuild.
+    pub index_entries: u64,
+    /// Chunk locator records installed after load/rebuild.
+    pub chunk_locator_entries: u64,
+    /// Authoritative segment files included in index validation/recovery.
+    pub index_segments_examined: u64,
+    /// Collection/segment catalog load or rebuild.
+    pub catalog_ns: u64,
+    /// Durable segment allocator reconstruction.
+    pub allocator_ns: u64,
+    /// Dedup-table load.
+    pub dedup_ns: u64,
+    /// Active-segment resume/start.
+    pub active_resume_ns: u64,
+    /// Compaction recovery.
+    pub compaction_recovery_ns: u64,
+    /// Durable compaction jobs examined during open.
+    pub compaction_jobs_examined: u64,
+    /// Recovery-mode reload.
+    pub recovery_mode_ns: u64,
+}
+
+/// Structured startup report returned to applications after a successful open.
+pub type StoreOpenReport = StoreOpenMetrics;
+
+/// Primary-index work performed during store open.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum IndexOpenDisposition {
+    /// No index work was recorded.
+    #[default]
+    NotRun,
+    /// A v4 checkpoint covered the full durable frontier.
+    Loaded,
+    /// A v4 checkpoint loaded and only its active tail was replayed.
+    TailReplayed,
+    /// Authoritative segments reconstructed the derived state.
+    Rebuilt,
+    /// A legacy checkpoint loaded, locators were reconstructed, and v4 was written.
+    LegacyUpgraded,
+}
+
+/// Why the primary checkpoint was accepted or bypassed.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum IndexCacheDecision {
+    /// No decision was recorded.
+    #[default]
+    NotChecked,
+    /// A valid v4 checkpoint was accepted.
+    AcceptedV4,
+    /// A valid v2/v3 checkpoint required locator reconstruction.
+    AcceptedLegacy,
+    /// A legacy v1 full-fingerprint checkpoint was accepted.
+    AcceptedV1,
+    /// No primary checkpoint existed.
+    Absent,
+    /// The checkpoint could not be decoded or authenticated.
+    Rejected,
+    /// The sealed-set fingerprint no longer matched.
+    SealedFingerprintMismatch,
+    /// The checkpoint frontier was ahead of active media.
+    ActiveFrontierAhead,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct IndexOpenStats {
+    full_scan_bytes: u64,
+    active_replay_bytes: u64,
+    chunk_locators_from_checkpoint: bool,
+    disposition: IndexOpenDisposition,
+    cache_decision: IndexCacheDecision,
+    cache_bytes: u64,
+    index_entries: u64,
+    chunk_locator_entries: u64,
+    segments_examined: u64,
+}
+
+enum IndexLoadAttempt {
+    Loaded(IndexOpenStats),
+    Miss(IndexCacheDecision),
+}
+
 /// Open single-node store handle.
 pub struct Store {
     paths: StorePaths,
     store_id: [u8; 16],
     limits: SafetyLimits,
+    /// Successful-open diagnostic breakdown (zeroed for newly created stores).
+    open_metrics: StoreOpenMetrics,
     /// Visibility index (includes memory-mode publishes).
     index: PrimaryIndex,
     /// Segment-derived durable projection only (DEF-013 / DEF-023).
@@ -443,7 +567,7 @@ pub struct Store {
     /// Non-authoritative: rebuilt from segment scans and updated on chunk append.
     /// Ordinary chunked get uses these for bounded preads; absence falls back to
     /// a generation-filtered segment scan (never mixes generations by item_id).
-    chunk_locators: HashMap<[u8; 16], Vec<ChunkFrameLocator>>,
+    chunk_locators: ChunkLocatorMap,
     /// Secret continuation-token keyring (DEF-097). Never logged or exported.
     token_keyring: ContinuationKeyring,
     /// Optional PQH boundary instrumentation (write/sync/rotate/publish/lifecycle).
@@ -528,18 +652,6 @@ pub enum DiagnosticIoSink {
     /// `F_PREALLOCATE` + `set_len` + **seal-sized ahead-of-write zero** (64 MiB
     /// chunks during the put path). Amortizes zeroing into the odometer.
     RealPreallocWatermark,
-}
-
-/// Physical location of one verified payload-chunk frame (DEF-098).
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ChunkFrameLocator {
-    segment_id: [u8; 16],
-    frame_offset: u64,
-    item_id: [u8; 16],
-    chunk_index: u32,
-    chunk_total: u32,
-    logical_len: u64,
-    verified_body_hash: [u8; 32],
 }
 
 /// Staged put awaiting persist-before-publish (AWO-1 batch path).
@@ -681,6 +793,7 @@ impl Store {
             paths,
             store_id,
             limits: SafetyLimits::default(),
+            open_metrics: StoreOpenMetrics::default(),
             index: PrimaryIndex::new(),
             durable_index: PrimaryIndex::new(),
             derived_ops_since_checkpoint: 0,
@@ -725,8 +838,7 @@ impl Store {
         };
         // Scale pending-seal backpressure with shard count (each shard may rotate).
         if let Some(pipe) = store.seal_pipeline.as_mut() {
-            pipe.max_pending_seals =
-                DEFAULT_MAX_PENDING_SEALS.saturating_mul(writer_shards.max(1));
+            pipe.max_pending_seals = DEFAULT_MAX_PENDING_SEALS.saturating_mul(writer_shards.max(1));
         }
         store.start_all_active_segments()?;
         store.persist_all_actives(DurabilityMode::Durable)?;
@@ -735,11 +847,7 @@ impl Store {
         store.refresh_collection_catalog()?;
         store.refresh_tier_state()?;
         // Durable product mode marker — missing on legacy trees ⇒ Materialized.
-        crate::recovery_shadow::persist_recovery_mode(
-            &store.paths,
-            store.store_id,
-            recovery_mode,
-        )?;
+        crate::recovery_shadow::persist_recovery_mode(&store.paths, store.store_id, recovery_mode)?;
         store.apply_recovery_mode(recovery_mode);
         Ok(store)
     }
@@ -761,6 +869,8 @@ impl Store {
         path: impl AsRef<Path>,
         options: StoreOpenOptions,
     ) -> Result<Self, StoreError> {
+        let open_started = Instant::now();
+        let identity_started = Instant::now();
         let root = path.as_ref();
         let paths = StorePaths::new(root);
         if !paths.looks_like_store() {
@@ -790,11 +900,16 @@ impl Store {
         let writer_shards = read_writer_shards(&paths)?;
         // DEF-097: load or mint keyring (upgrade older trees).
         let token_keyring = ContinuationKeyring::load_or_mint_store(&paths)?;
+        let mut open_metrics = StoreOpenMetrics {
+            identity_and_lock_ns: elapsed_ns(identity_started),
+            ..StoreOpenMetrics::default()
+        };
 
         let mut store = Self {
             paths,
             store_id,
             limits: SafetyLimits::default(),
+            open_metrics: StoreOpenMetrics::default(),
             index: PrimaryIndex::new(),
             durable_index: PrimaryIndex::new(),
             derived_ops_since_checkpoint: 0,
@@ -842,31 +957,57 @@ impl Store {
             crate::media_inventory::InventoryPolicy::TolerateUnidentified
         );
         if let Some(pipe) = store.seal_pipeline.as_mut() {
-            pipe.max_pending_seals =
-                DEFAULT_MAX_PENDING_SEALS.saturating_mul(writer_shards.max(1));
+            pipe.max_pending_seals = DEFAULT_MAX_PENDING_SEALS.saturating_mul(writer_shards.max(1));
         }
+        let phase = Instant::now();
         store.load_tier_state()?;
+        open_metrics.tier_state_ns = elapsed_ns(phase);
         // P0: inventory authoritative media and refuse collisions **before**
         // pending recovery, index rebuild, or any overwrite-capable mutation.
-        let _ = crate::media_inventory::inventory_authoritative_media(
+        let phase = Instant::now();
+        let inventory = crate::media_inventory::inventory_authoritative_media(
             &store.paths,
             store.store_id,
             store.writer_shards,
             store.limits,
             options.inventory_policy,
         )?;
+        open_metrics.inventory_ns = elapsed_ns(phase);
+        open_metrics.inventory_descriptor_probe_bytes = inventory.descriptor_probe_bytes;
+        open_metrics.inventory_fallback_scan_bytes = inventory.fallback_scan_bytes;
         // Finish any pending seals left by a prior crash before index rebuild.
-        let _ = recover_all_pending(&store.paths, store.store_id, store.limits)?;
+        let phase = Instant::now();
+        let pending_recovered = recover_all_pending(&store.paths, store.store_id, store.limits)?;
+        open_metrics.pending_recovery_ns = elapsed_ns(phase);
+        open_metrics.pending_seals_recovered = pending_recovered as u64;
         // Protected seal-pair: finish auth+Shadow+frontier for crash mid-pair.
-        let _ = crate::protected_pair::recover_protected_pairs(&store.paths, store.store_id)?;
-        store.load_or_rebuild_index()?;
+        let phase = Instant::now();
+        let protected_recovered =
+            crate::protected_pair::recover_protected_pairs(&store.paths, store.store_id)?;
+        open_metrics.protected_pair_recovery_ns = elapsed_ns(phase);
+        open_metrics.protected_pairs_recovered = protected_recovered as u64;
+        let phase = Instant::now();
+        let index_stats = store.load_or_rebuild_index()?;
+        open_metrics.index_ns = elapsed_ns(phase);
+        open_metrics.index_full_scan_bytes = index_stats.full_scan_bytes;
+        open_metrics.index_active_replay_bytes = index_stats.active_replay_bytes;
+        open_metrics.chunk_locators_from_checkpoint = index_stats.chunk_locators_from_checkpoint;
+        open_metrics.index_disposition = index_stats.disposition;
+        open_metrics.index_cache_decision = index_stats.cache_decision;
+        open_metrics.index_cache_bytes = index_stats.cache_bytes;
+        open_metrics.index_entries = index_stats.index_entries;
+        open_metrics.chunk_locator_entries = index_stats.chunk_locator_entries;
+        open_metrics.index_segments_examined = index_stats.segments_examined;
+        let phase = Instant::now();
         store.load_or_rebuild_catalog()?;
+        open_metrics.catalog_ns = elapsed_ns(phase);
         // Durable segment-id high water (never-reuse). Reconstructs above every
         // active/pending/sealed/shadow/chimera id; refuses if ambiguous.
         let accept_foreign = matches!(
             options.inventory_policy,
             crate::media_inventory::InventoryPolicy::TolerateUnidentified
         );
+        let phase = Instant::now();
         store.segment_seq = if accept_foreign {
             crate::segment_allocator::reconstruct_reserved_thru_with_policy(
                 &store.paths,
@@ -883,12 +1024,24 @@ impl Store {
                 store.limits,
             )?
         };
+        open_metrics.allocator_ns = elapsed_ns(phase);
+        let phase = Instant::now();
         store.write_dedup = load_write_dedup(&write_dedup_path(&store.paths))?;
+        open_metrics.dedup_ns = elapsed_ns(phase);
+        let phase = Instant::now();
         store.resume_or_start_all_actives()?;
+        open_metrics.active_resume_ns = elapsed_ns(phase);
         // Finish or cancel incomplete compaction jobs (DEF-024).
-        let _ = store.recover_compact_jobs()?;
+        let phase = Instant::now();
+        let compaction_jobs = store.recover_compact_jobs()?;
+        open_metrics.compaction_recovery_ns = elapsed_ns(phase);
+        open_metrics.compaction_jobs_examined = compaction_jobs.len() as u64;
         // Step 8: re-arm dual-stream / reclaim policy from durable marker.
+        let phase = Instant::now();
         store.reload_recovery_mode()?;
+        open_metrics.recovery_mode_ns = elapsed_ns(phase);
+        open_metrics.total_ns = elapsed_ns(open_started);
+        store.open_metrics = open_metrics;
         Ok(store)
     }
 
@@ -978,6 +1131,7 @@ impl Store {
             paths,
             store_id,
             limits: SafetyLimits::default(),
+            open_metrics: StoreOpenMetrics::default(),
             index: PrimaryIndex::new(),
             durable_index: PrimaryIndex::new(),
             derived_ops_since_checkpoint: 0,
@@ -1023,8 +1177,11 @@ impl Store {
         store.load_tier_state_readonly()?;
         // Memory-only index: prefer frontier/v1 cache, else rebuild without writing.
         store.load_or_rebuild_index_readonly()?;
-        let seg_paths =
-            all_segment_paths(&store.paths, Some(&store.tier_placement), store.writer_shards)?;
+        let seg_paths = all_segment_paths(
+            &store.paths,
+            Some(&store.tier_placement),
+            store.writer_shards,
+        )?;
         let fp = segment_fingerprint(&seg_paths)?;
         // Catalog: load if valid, else rebuild in memory only (no write).
         let cat_path = crate::catalog::collections_catalog_path(&store.paths.catalogs_dir());
@@ -1111,14 +1268,14 @@ impl Store {
                 .file
                 .seek(std::io::SeekFrom::Start(writer.durable_len))?;
             if let Some(runway) = writer.runway.as_ref() {
-                runway.shared().write_head.store(
-                    writer.durable_len,
-                    std::sync::atomic::Ordering::Release,
-                );
-                runway.shared().zeroed_thru.store(
-                    writer.zeroed_thru,
-                    std::sync::atomic::Ordering::Release,
-                );
+                runway
+                    .shared()
+                    .write_head
+                    .store(writer.durable_len, std::sync::atomic::Ordering::Release);
+                runway
+                    .shared()
+                    .zeroed_thru
+                    .store(writer.zeroed_thru, std::sync::atomic::Ordering::Release);
             }
         }
         Ok(())
@@ -1220,10 +1377,7 @@ impl Store {
                     if writer.zeroed_thru < writer.durable_len {
                         writer.zeroed_thru = writer.durable_len;
                     }
-                    let need = writer
-                        .durable_len
-                        .saturating_add(CHUNK)
-                        .min(BYTES);
+                    let need = writer.durable_len.saturating_add(CHUNK).min(BYTES);
                     Self::diag_ensure_zero_watermark(writer, need, BYTES)?;
                 }
                 _ => {}
@@ -1364,6 +1518,17 @@ impl Store {
     /// Store identifier.
     pub fn store_id(&self) -> [u8; 16] {
         self.store_id
+    }
+
+    /// Diagnostic breakdown of the successful open that created this handle.
+    /// Newly created and read-only inspection handles currently report zeros.
+    pub fn open_metrics(&self) -> StoreOpenMetrics {
+        self.open_metrics
+    }
+
+    /// Structured startup disposition, recovery actions, counts, and timings.
+    pub fn open_report(&self) -> StoreOpenReport {
+        self.open_metrics
     }
 
     /// Number of live (non-deleted) subjects in the primary index.
@@ -1551,16 +1716,14 @@ impl Store {
                     incomplete_list.push(incomplete(subject, IncompleteReason::PayloadPartial));
                 }
                 Ok(Some(PayloadResult::Unavailable { .. })) => {
-                    incomplete_list
-                        .push(incomplete(subject, IncompleteReason::PayloadUnavailable));
+                    incomplete_list.push(incomplete(subject, IncompleteReason::PayloadUnavailable));
                 }
                 Ok(Some(PayloadResult::Conflicting { .. })) => {
                     incomplete_list.push(incomplete(subject, IncompleteReason::PayloadConflict));
                 }
                 // Locator / media failures: fail-closed as incomplete, not a hard scan abort.
                 Err(StoreError::SegmentNotFound) | Err(StoreError::TierOffline(_)) => {
-                    incomplete_list
-                        .push(incomplete(subject, IncompleteReason::SegmentNotFound));
+                    incomplete_list.push(incomplete(subject, IncompleteReason::SegmentNotFound));
                 }
                 Err(StoreError::LocatorFault(f)) => {
                     let reason = match f.kind {
@@ -1596,8 +1759,7 @@ impl Store {
             None
         };
 
-        let complete =
-            !saw_more && incomplete_list.is_empty() && !tier_coverage_incomplete;
+        let complete = !saw_more && incomplete_list.is_empty() && !tier_coverage_incomplete;
         Ok(LiveScanPage {
             entries,
             incomplete: incomplete_list,
@@ -1924,9 +2086,7 @@ impl Store {
             }
             let _ = self.large_value_policy.admit(value.len())?;
         }
-        let non_chunked = items
-            .iter()
-            .all(|(_, b)| b.len() <= self.chunk_threshold);
+        let non_chunked = items.iter().all(|(_, b)| b.len() <= self.chunk_threshold);
         // Memory / chunked: per-item lease-owned put (not public put — lease fence).
         if mode == DurabilityMode::Memory || !non_chunked {
             let mut out = Vec::with_capacity(items.len());
@@ -1946,7 +2106,6 @@ impl Store {
         // Single active segment: batch appends + one write_segment_tail.
         self.put_many_single_shard_batched(items, mode)
     }
-
 
     /// Batch put under lease with raw subject bytes (independent-write collection).
     ///
@@ -1971,9 +2130,7 @@ impl Store {
             }
             let _ = self.large_value_policy.admit(value.len())?;
         }
-        let non_chunked = items
-            .iter()
-            .all(|(_, b)| b.len() <= self.chunk_threshold);
+        let non_chunked = items.iter().all(|(_, b)| b.len() <= self.chunk_threshold);
         if mode == DurabilityMode::Memory || !non_chunked {
             let mut out = Vec::with_capacity(items.len());
             for (subject, value) in items {
@@ -2119,12 +2276,10 @@ impl Store {
             let (offset, encoded_frame_len, append_ns) = {
                 let writer = self.active_mut(0).expect("active segment");
                 let t_append = std::time::Instant::now();
-                let offset = writer.segment.append(
-                    FrameKind::ItemEvent,
-                    &envelope,
-                    value,
-                    event_id,
-                )?;
+                let offset =
+                    writer
+                        .segment
+                        .append(FrameKind::ItemEvent, &envelope, value, event_id)?;
                 writer.item_events = writer.item_events.saturating_add(1);
                 let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
                 let encoded_frame_len = writer.segment.len().saturating_sub(offset);
@@ -2251,12 +2406,10 @@ impl Store {
             let (offset, encoded_frame_len, append_ns) = {
                 let writer = self.active_mut(0).expect("active segment");
                 let t_append = std::time::Instant::now();
-                let offset = writer.segment.append(
-                    FrameKind::ItemEvent,
-                    &envelope,
-                    value,
-                    event_id,
-                )?;
+                let offset =
+                    writer
+                        .segment
+                        .append(FrameKind::ItemEvent, &envelope, value, event_id)?;
                 writer.item_events = writer.item_events.saturating_add(1);
                 let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
                 let encoded_frame_len = writer.segment.len().saturating_sub(offset);
@@ -2484,10 +2637,8 @@ impl Store {
                             subject: p.subject.clone(),
                         };
                         let r = (|| {
-                            let envelope =
-                                encode_item_envelope(&env).map_err(|e| e.to_string())?;
-                            if !limits.accepts_lengths(envelope.len() as u32, p.body.len() as u64)
-                            {
+                            let envelope = encode_item_envelope(&env).map_err(|e| e.to_string())?;
+                            if !limits.accepts_lengths(envelope.len() as u32, p.body.len() as u64) {
                                 return Err("payload too large".into());
                             }
                             let header = FrameHeader {
@@ -2532,10 +2683,7 @@ impl Store {
             let p = &preps[i];
             debug_assert_eq!(cooked.prep_idx, i);
 
-            let cur_seg = self
-                .active_ref(0)
-                .map(|w| w.segment_id)
-                .expect("active");
+            let cur_seg = self.active_ref(0).map(|w| w.segment_id).expect("active");
             if cur_seg != segment_id {
                 return Err(StoreError::CorruptMeta(
                     "segment rotated mid parallel cook install; retry batch",
@@ -2685,8 +2833,9 @@ impl Store {
             tail: TailIoStats,
         }
         type ShardOut = Result<Vec<ShardRow>, StoreError>;
-        let shard_outputs: Vec<std::sync::Mutex<ShardOut>> =
-            (0..n).map(|_| std::sync::Mutex::new(Ok(Vec::new()))).collect();
+        let shard_outputs: Vec<std::sync::Mutex<ShardOut>> = (0..n)
+            .map(|_| std::sync::Mutex::new(Ok(Vec::new())))
+            .collect();
         let sink = self.diagnostic_io;
         let growth = self.segment_growth;
 
@@ -2922,7 +3071,7 @@ impl Store {
     /// - `Ok(Some(receipt))` — exact retry; return the original receipt
     /// - `Ok(None)` — new operation; caller should perform the write then
     ///   [`Self::record_write_dedup`]
-    /// - `Err(ConsistencyViolation)` — id reused with different content
+    /// - `Err(OperationIdentityConflict)` — id reused with different content
     pub fn resolve_write_dedup(
         &self,
         operation_id: &[u8; 16],
@@ -2939,9 +3088,7 @@ impl Store {
                 rec.durability,
                 rec.offset,
             ))),
-            Some(_) => Err(StoreError::ConsistencyViolation(
-                "operation_id reused with different content identity".into(),
-            )),
+            Some(_) => Err(StoreError::OperationIdentityConflict),
         }
     }
 
@@ -2970,16 +3117,51 @@ impl Store {
         save_write_dedup(&write_dedup_path(&self.paths), &self.write_dedup)
     }
 
+    /// Atomically resolve or execute an idempotent conditional put.
+    ///
+    /// The caller must provide a canonical content identity covering the full
+    /// logical request. Exact retries return the original receipt; conflicting
+    /// reuse fails before another authoritative append.
+    pub fn put_subject_bytes_with_operation(
+        &mut self,
+        subject: &[u8],
+        body: &[u8],
+        mode: DurabilityMode,
+        condition: WriteCondition,
+        operation_id: [u8; 16],
+        content_hash: [u8; 32],
+    ) -> Result<(WriteReceipt, bool), StoreError> {
+        if let Some(receipt) = self.resolve_write_dedup(&operation_id, &content_hash)? {
+            return Ok((receipt, true));
+        }
+        let receipt = self.put_subject_bytes_if(subject, body, mode, condition)?;
+        self.record_write_dedup(operation_id, content_hash, &receipt)?;
+        Ok((receipt, false))
+    }
+
+    /// Atomically resolve or execute an idempotent conditional delete.
+    pub fn delete_subject_bytes_with_operation(
+        &mut self,
+        subject: &[u8],
+        mode: DurabilityMode,
+        condition: WriteCondition,
+        operation_id: [u8; 16],
+        content_hash: [u8; 32],
+    ) -> Result<(WriteReceipt, bool), StoreError> {
+        if let Some(receipt) = self.resolve_write_dedup(&operation_id, &content_hash)? {
+            return Ok((receipt, true));
+        }
+        let receipt = self.delete_subject_bytes_if(subject, mode, condition)?;
+        self.record_write_dedup(operation_id, content_hash, &receipt)?;
+        Ok((receipt, false))
+    }
+
     /// Live subjects after `after` with optional byte prefix (heap SubjectV2 scans).
     ///
     /// Returns owned subject keys only (bodies fetched separately via
     /// [`Self::get_subject_bytes`]). Used by capability-gated heap façades that
     /// cannot use the UTF-8 [`Self::scan_live_page`] path.
-    pub fn index_live_after(
-        &self,
-        after: Option<&[u8]>,
-        prefix: Option<&[u8]>,
-    ) -> Vec<Vec<u8>> {
+    pub fn index_live_after(&self, after: Option<&[u8]>, prefix: Option<&[u8]>) -> Vec<Vec<u8>> {
         self.index
             .live_entries_after(after, prefix)
             .map(|(s, _)| s.clone())
@@ -3053,9 +3235,7 @@ impl Store {
         // DEF-098: reassemble only the current generation's chunk_event_ids.
         let resolved = self.resolve_manifest_chunks(lv.item_id, &manifest)?;
         Ok(Some(reassemble_with_manifest(
-            lv.item_id,
-            &manifest,
-            &resolved,
+            lv.item_id, &manifest, &resolved,
         )))
     }
 
@@ -3340,9 +3520,9 @@ impl Store {
                     let payload = reassemble_with_manifest(ev.item_id, &manifest, &resolved);
                     let bytes = match &payload {
                         PayloadResult::Complete { body } => body.len() as u64,
-                        PayloadResult::Partial {
-                            present_bodies, ..
-                        } => present_bodies.iter().map(|(_, b)| b.len() as u64).sum(),
+                        PayloadResult::Partial { present_bodies, .. } => {
+                            present_bodies.iter().map(|(_, b)| b.len() as u64).sum()
+                        }
                         _ => 0,
                     };
                     (payload, bytes)
@@ -3449,10 +3629,7 @@ impl Store {
             checkpoint_reason: if self.derived_ops_since_checkpoint == 0 {
                 "checkpoint_current_or_none".into()
             } else {
-                format!(
-                    "ops_since_checkpoint={}",
-                    self.derived_ops_since_checkpoint
-                )
+                format!("ops_since_checkpoint={}", self.derived_ops_since_checkpoint)
             },
             derived_ops_since_checkpoint: self.derived_ops_since_checkpoint,
             primary_cache_authoritative: false,
@@ -3535,7 +3712,11 @@ impl Store {
         }
 
         self.seal_active()?;
-        let source_paths = all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?;
+        let source_paths = all_segment_paths(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )?;
         let sources: Vec<String> = source_paths
             .iter()
             .map(|p| examination_source_name(&self.paths.root, p))
@@ -3604,13 +3785,9 @@ impl Store {
         crate::failpoint::hit("store.compact.after_create")?;
 
         // --- verify ---
-        if let Err(e) = verify_live_segment(
-            &self.paths,
-            self.limits,
-            &self.index,
-            &segment_id,
-            written,
-        ) {
+        if let Err(e) =
+            verify_live_segment(&self.paths, self.limits, &self.index, &segment_id, written)
+        {
             job.phase = CompactPhase::Failed;
             job.detail = Some(format!("verify failed: {e}"));
             job.updated_ns = now_ns();
@@ -3779,13 +3956,7 @@ impl Store {
             .ok_or(StoreError::CorruptMeta("compact output segment id"))?;
         let expected = job.live_subjects_written.max(job.live_subjects_planned);
         if job.phase == CompactPhase::Created {
-            verify_live_segment(
-                &self.paths,
-                self.limits,
-                &self.index,
-                &segment_id,
-                expected,
-            )?;
+            verify_live_segment(&self.paths, self.limits, &self.index, &segment_id, expected)?;
             job.phase = CompactPhase::Verified;
             job.updated_ns = now_ns();
             write_compact_job(&self.paths, job)?;
@@ -3837,7 +4008,11 @@ impl Store {
 
     /// Write a derived checkpoint under `snapshots/` with declared coverage.
     pub fn checkpoint(&self, coverage: &str) -> Result<(CheckpointMeta, PathBuf), StoreError> {
-        let paths_list = all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?;
+        let paths_list = all_segment_paths(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )?;
         let fp = segment_fingerprint(&paths_list)?;
         // Resolve locator-only entries so the checkpoint still carries payloads.
         let mut live: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
@@ -3964,7 +4139,11 @@ impl Store {
 
     /// Current segment fingerprint (for index build coverage).
     pub fn segment_fingerprint(&self) -> Result<[u8; 32], StoreError> {
-        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?;
+        let paths = all_segment_paths(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )?;
         segment_fingerprint(&paths)
     }
 
@@ -3974,41 +4153,112 @@ impl Store {
     }
 
     /// Load optional index cache via frontier (DEF-023) or v1 fingerprint; else rebuild.
-    fn load_or_rebuild_index(&mut self) -> Result<(), StoreError> {
-        if self.try_load_index_from_cache()? {
-            // Primary index cache does not carry chunk locators (DEF-098).
-            self.rebuild_chunk_locators_from_segments()?;
-            return Ok(());
-        }
-        self.rebuild_index()
+    fn load_or_rebuild_index(&mut self) -> Result<IndexOpenStats, StoreError> {
+        let miss = match self.try_load_index_from_cache()? {
+            IndexLoadAttempt::Loaded(stats) => {
+                if stats.full_scan_bytes > 0 && !stats.chunk_locators_from_checkpoint {
+                // Writable compatibility migration: once a legacy/incomplete
+                // derived checkpoint has been repaired from authority, replace
+                // it immediately so the next clean open is metadata + tail only.
+                // Failure remains non-fatal because the cache is never authority.
+                    let _ = self.persist_index_cache();
+                }
+                return Ok(stats);
+            }
+            IndexLoadAttempt::Miss(reason) => reason,
+        };
+        let segments_examined = all_segment_paths(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )?
+        .len() as u64;
+        let full_scan_bytes = total_segment_bytes(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )?;
+        self.rebuild_index()?;
+        Ok(IndexOpenStats {
+            full_scan_bytes,
+            disposition: IndexOpenDisposition::Rebuilt,
+            cache_decision: miss,
+            cache_bytes: primary_cache_bytes(&self.paths),
+            index_entries: self.index.len() as u64,
+            chunk_locator_entries: chunk_locator_count(&self.chunk_locators),
+            segments_examined,
+            ..Default::default()
+        })
     }
 
     /// Read-only open path: load cache or rebuild without writing derived files.
-    fn load_or_rebuild_index_readonly(&mut self) -> Result<(), StoreError> {
-        if self.try_load_index_from_cache()? {
-            self.rebuild_chunk_locators_from_segments()?;
-            return Ok(());
-        }
-        self.rebuild_index_from_segments()
+    fn load_or_rebuild_index_readonly(&mut self) -> Result<IndexOpenStats, StoreError> {
+        let miss = match self.try_load_index_from_cache()? {
+            IndexLoadAttempt::Loaded(stats) => return Ok(stats),
+            IndexLoadAttempt::Miss(reason) => reason,
+        };
+        let segments_examined = all_segment_paths(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )?
+        .len() as u64;
+        let full_scan_bytes = total_segment_bytes(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )?;
+        self.rebuild_index_from_segments()?;
+        Ok(IndexOpenStats {
+            full_scan_bytes,
+            disposition: IndexOpenDisposition::Rebuilt,
+            cache_decision: miss,
+            cache_bytes: primary_cache_bytes(&self.paths),
+            index_entries: self.index.len() as u64,
+            chunk_locator_entries: chunk_locator_count(&self.chunk_locators),
+            segments_examined,
+            ..Default::default()
+        })
     }
 
     /// Attempt frontier v2 or legacy v1 cache load. Returns true when applied.
-    fn try_load_index_from_cache(&mut self) -> Result<bool, StoreError> {
+    fn try_load_index_from_cache(&mut self) -> Result<IndexLoadAttempt, StoreError> {
         let sealed_paths = sealed_segment_paths(&self.paths, Some(&self.tier_placement))?;
         let sealed_fp = segment_fingerprint(&sealed_paths)?;
-        let all_paths = all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?;
+        let all_paths = all_segment_paths(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )?;
         let cache_path = primary_cache_path(&self.paths.indexes_dir());
+        let cache_bytes = fs::metadata(&cache_path).map(|m| m.len()).unwrap_or(0);
+        let segments_examined = all_paths.len() as u64;
+        let mut miss = if cache_path.is_file() {
+            IndexCacheDecision::Rejected
+        } else {
+            IndexCacheDecision::Absent
+        };
 
         // DEF-023: v2/v3 checkpoint + active-tail delta (O(changed bytes), not full rescan).
-        if let Some((mut index, frontier)) =
-            try_load_primary_index_frontier(&cache_path, self.store_id)?
-        {
+        if let Some(loaded) = try_load_primary_index_frontier(&cache_path, self.store_id)? {
+            let format_version = loaded.format_version;
+            let mut index = loaded.index;
+            let frontier = loaded.frontier;
+            let mut chunk_locators = loaded.chunk_locators;
+            let mut active_replay_bytes = 0u64;
             if frontier.sealed_fingerprint == sealed_fp {
                 let active_ok = if self.writer_shards() > 1 {
                     // Axis B: frontier is sealed-only; re-apply every active shard
                     // fully (idempotent latest-wins overwrites same event ids).
                     for path in self.paths.list_active_segment_paths(self.writer_shards()) {
-                        apply_active_tail(&mut index, &path, 0, self.limits)?;
+                        active_replay_bytes =
+                            active_replay_bytes.saturating_add(apply_active_tail(
+                                &mut index,
+                                chunk_locators.as_mut(),
+                                &path,
+                                0,
+                                self.limits,
+                            )?);
                     }
                     true
                 } else {
@@ -4024,13 +4274,14 @@ impl Store {
                             frontier.active_covered_len == 0
                         }
                         (true, _) => {
-                            let meta_len =
-                                fs::metadata(&active_path).map(|m| m.len()).unwrap_or(0);
+                            let meta_len = fs::metadata(&active_path).map(|m| m.len()).unwrap_or(0);
                             if meta_len < frontier.active_covered_len {
+                                miss = IndexCacheDecision::ActiveFrontierAhead;
                                 false
                             } else {
-                                apply_active_tail(
+                                active_replay_bytes = apply_active_tail(
                                     &mut index,
+                                    chunk_locators.as_mut(),
                                     &active_path,
                                     frontier.active_covered_len,
                                     self.limits,
@@ -4042,8 +4293,52 @@ impl Store {
                 };
                 if active_ok {
                     self.install_loaded_index(index, &all_paths)?;
-                    return Ok(true);
+                    if let Some(locators) = chunk_locators {
+                        if chunk_locator_coverage_complete(&self.durable_index, &locators) {
+                            self.chunk_locators = locators;
+                            return Ok(IndexLoadAttempt::Loaded(IndexOpenStats {
+                                active_replay_bytes,
+                                chunk_locators_from_checkpoint: true,
+                                disposition: if active_replay_bytes == 0 {
+                                    IndexOpenDisposition::Loaded
+                                } else {
+                                    IndexOpenDisposition::TailReplayed
+                                },
+                                cache_decision: IndexCacheDecision::AcceptedV4,
+                                cache_bytes,
+                                index_entries: self.index.len() as u64,
+                                chunk_locator_entries: chunk_locator_count(&self.chunk_locators),
+                                segments_examined,
+                                ..IndexOpenStats::default()
+                            }));
+                        }
+                    }
+                    // One-time compatibility path for v2/v3 checkpoints, or
+                    // fail-safe repair of an incomplete derived v4 locator set.
+                    self.rebuild_chunk_locators_from_segments()?;
+                    let full_scan_bytes = total_segment_bytes(
+                        &self.paths,
+                        Some(&self.tier_placement),
+                        self.writer_shards(),
+                    )?;
+                    return Ok(IndexLoadAttempt::Loaded(IndexOpenStats {
+                        full_scan_bytes,
+                        active_replay_bytes,
+                        chunk_locators_from_checkpoint: false,
+                        disposition: IndexOpenDisposition::LegacyUpgraded,
+                        cache_decision: if format_version >= 4 {
+                            IndexCacheDecision::Rejected
+                        } else {
+                            IndexCacheDecision::AcceptedLegacy
+                        },
+                        cache_bytes,
+                        index_entries: self.index.len() as u64,
+                        chunk_locator_entries: chunk_locator_count(&self.chunk_locators),
+                        segments_examined,
+                    }));
                 }
+            } else {
+                miss = IndexCacheDecision::SealedFingerprintMismatch;
             }
         }
 
@@ -4051,9 +4346,24 @@ impl Store {
         let fp = segment_fingerprint(&all_paths)?;
         if let Some(index) = try_load_primary_index(&cache_path, self.store_id, fp)? {
             self.install_loaded_index(index, &all_paths)?;
-            return Ok(true);
+            self.rebuild_chunk_locators_from_segments()?;
+            let full_scan_bytes = total_segment_bytes(
+                &self.paths,
+                Some(&self.tier_placement),
+                self.writer_shards(),
+            )?;
+            return Ok(IndexLoadAttempt::Loaded(IndexOpenStats {
+                full_scan_bytes,
+                disposition: IndexOpenDisposition::LegacyUpgraded,
+                cache_decision: IndexCacheDecision::AcceptedV1,
+                cache_bytes,
+                index_entries: self.index.len() as u64,
+                chunk_locator_entries: chunk_locator_count(&self.chunk_locators),
+                segments_examined,
+                ..IndexOpenStats::default()
+            }));
         }
-        Ok(false)
+        Ok(IndexLoadAttempt::Miss(miss))
     }
 
     fn install_loaded_index(
@@ -4070,17 +4380,18 @@ impl Store {
     }
 
     fn rebuild_index_from_segments(&mut self) -> Result<(), StoreError> {
-        self.index = index_from_segments(
+        let (index, chunk_locators) = index_and_chunk_locators_from_segments(
             &self.paths,
             self.limits,
             Some(&self.tier_placement),
             self.writer_shards(),
         )?;
+        self.index = index;
+        self.chunk_locators = chunk_locators;
         self.durable_index = self.index.clone();
         self.recompute_collection_catalogs_from_index();
         // Allocator is sole authority for `segment_seq` — index must not touch it.
         self.derived_ops_since_checkpoint = 0;
-        self.rebuild_chunk_locators_from_segments()?;
         Ok(())
     }
 
@@ -4092,11 +4403,13 @@ impl Store {
     /// frontier checkpoint plus the active tail.
     pub fn persist_index_cache(&mut self) -> Result<(), StoreError> {
         let frontier = self.current_index_frontier()?;
+        let chunk_locators = self.checkpoint_chunk_locators(&frontier);
         write_primary_index_frontier(
             &primary_cache_path(&self.paths.indexes_dir()),
             self.store_id,
             &frontier,
             &self.durable_index,
+            &chunk_locators,
         )?;
         self.derived_ops_since_checkpoint = 0;
         Ok(())
@@ -4138,6 +4451,46 @@ impl Store {
         })
     }
 
+    /// Snapshot locators referenced by the durable live index and covered by
+    /// `frontier`. Current active frames beyond the durable frontier (including
+    /// memory-only writes) are deliberately excluded.
+    fn checkpoint_chunk_locators(&self, frontier: &IndexFrontier) -> ChunkLocatorMap {
+        let mut expected = HashSet::new();
+        for (_subject, entry) in self.durable_index.iter_all() {
+            let IndexEntry::Live(value) = entry else {
+                continue;
+            };
+            let Some(manifest) = decode_chunk_manifest(&value.body) else {
+                continue;
+            };
+            expected.extend(manifest.chunks.into_iter().map(|slot| slot.chunk_event_id));
+        }
+
+        let active_ids: HashSet<[u8; 16]> = self
+            .actives
+            .iter()
+            .filter_map(|active| active.as_ref().map(|writer| writer.segment_id))
+            .collect();
+        let mut out = ChunkLocatorMap::new();
+        for event_id in expected {
+            let Some(locators) = self.chunk_locators.get(&event_id) else {
+                continue;
+            };
+            for locator in locators {
+                let covered = if active_ids.contains(&locator.segment_id) {
+                    locator.segment_id == frontier.active_segment_id
+                        && locator.frame_offset < frontier.active_covered_len
+                } else {
+                    true
+                };
+                if covered {
+                    out.entry(event_id).or_default().push(locator.clone());
+                }
+            }
+        }
+        out
+    }
+
     /// After a buffered/durable append: touch derived state without segment rescan.
     ///
     /// In-memory collection membership is updated by the caller via
@@ -4156,11 +4509,13 @@ impl Store {
             if self.async_lifecycle_enabled() {
                 self.derived_ops_since_checkpoint = 0;
                 if let Ok(frontier) = self.current_index_frontier() {
+                    let chunk_locators = self.checkpoint_chunk_locators(&frontier);
                     let job = LifecycleJob::Checkpoint {
                         cache_path: primary_cache_path(&self.paths.indexes_dir()),
                         store_id: self.store_id,
                         frontier,
                         index: self.durable_index.clone(),
+                        chunk_locators,
                     };
                     if let Some(pipe) = self.seal_pipeline.as_ref() {
                         let _ = pipe.submit_checkpoint(job);
@@ -4354,7 +4709,10 @@ impl Store {
             match crate::compact::pread_item_body_matching(path, frame_offset, expect, self.limits)
             {
                 Ok(body) => return Ok(body),
-                Err(e) if is_locator_resolve_error(&e) || matches!(e, StoreError::ConsistencyViolation(_)) => {
+                Err(e)
+                    if is_locator_resolve_error(&e)
+                        || matches!(e, StoreError::ConsistencyViolation(_)) =>
+                {
                     last_named_err = Some(e)
                 }
                 Err(_) => {}
@@ -4366,14 +4724,20 @@ impl Store {
                     crate::error::LocatorFaultKind::FrameVerifyFailed,
                     expect.segment_id,
                     frame_offset,
-                    tried.first().map(|p| p.as_path()).unwrap_or_else(|| Path::new("")),
+                    tried
+                        .first()
+                        .map(|p| p.as_path())
+                        .unwrap_or_else(|| Path::new("")),
                     None,
                     Some("named media unreadable".into()),
                 )))
             }));
         }
-        for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?
-        {
+        for path in all_segment_paths(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )? {
             if tried.iter().any(|t| t == &path) {
                 continue;
             }
@@ -4457,14 +4821,21 @@ impl Store {
                     crate::error::LocatorFaultKind::FrameVerifyFailed,
                     *segment_id,
                     frame_offset,
-                    tried.first().map(|p| p.as_path()).unwrap_or_else(|| Path::new("")),
+                    tried
+                        .first()
+                        .map(|p| p.as_path())
+                        .unwrap_or_else(|| Path::new("")),
                     None,
                     Some("named media unreadable".into()),
                 )))
             }));
         }
         // Salvage/hash-renamed or swapped sealed files (success only).
-        for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())? {
+        for path in all_segment_paths(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )? {
             if tried.iter().any(|t| t == &path) {
                 continue;
             }
@@ -4502,7 +4873,11 @@ impl Store {
         let mut item_events = 0u64;
         let mut holes = 0u64;
 
-        for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())? {
+        for path in all_segment_paths(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )? {
             let bytes = fs::read(&path)?;
             files_scanned += 1;
             let report = scan_forward(&bytes, self.limits);
@@ -4575,10 +4950,7 @@ impl Store {
     /// Work is bounded by [`crate::ScrubOptions::max_files`] /
     /// [`crate::ScrubOptions::max_bytes`] so scrub never starves foreground
     /// callers that schedule multiple steps.
-    pub fn scrub_once(
-        &self,
-        opts: crate::ScrubOptions,
-    ) -> Result<crate::ScrubReport, StoreError> {
+    pub fn scrub_once(&self, opts: crate::ScrubOptions) -> Result<crate::ScrubReport, StoreError> {
         crate::scrub::scrub_once(&self.paths, self.store_id, &self.tier_placement, &opts)
     }
 
@@ -4680,7 +5052,11 @@ impl Store {
         drop(dest_store);
 
         let mut source_files = Vec::new();
-        for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())? {
+        for path in all_segment_paths(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )? {
             let rel = examination_source_name(&self.paths.root, &path);
             source_files.push((rel, path));
         }
@@ -4742,7 +5118,10 @@ impl Store {
     /// durable puts with **new** store/event lineage. History, tombstones,
     /// partials, and holes are **not** preserved. Prefer `salvage_to` when
     /// examination evidence must survive.
-    pub fn export_live_state(&self, dest: impl AsRef<Path>) -> Result<SalvageCopyReport, StoreError> {
+    pub fn export_live_state(
+        &self,
+        dest: impl AsRef<Path>,
+    ) -> Result<SalvageCopyReport, StoreError> {
         let dest = dest.as_ref();
         let source = self.salvage()?;
         let live = self.live_logical_entries()?;
@@ -4779,7 +5158,11 @@ impl Store {
     /// examination units without depending on catalogs or indexes.
     pub fn examination_sources(&self) -> Result<Vec<(String, Vec<u8>)>, StoreError> {
         let mut out = Vec::new();
-        for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())? {
+        for path in all_segment_paths(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )? {
             let source = examination_source_name(&self.paths.root, &path);
             let bytes = fs::read(&path)?;
             out.push((source, bytes));
@@ -4830,9 +5213,7 @@ impl Store {
         // so pending_seal_inflight==0 and sealed media is visible.
         let t_wait = std::time::Instant::now();
         self.wait_seals_applied()?;
-        out.drain_lifecycle_ns = out
-            .drain_lifecycle_ns
-            .saturating_add(elapsed_ns(t_wait));
+        out.drain_lifecycle_ns = out.drain_lifecycle_ns.saturating_add(elapsed_ns(t_wait));
         Ok(out)
     }
 
@@ -4859,7 +5240,9 @@ impl Store {
         let prefix_len = writer.durable_len;
         let sealed_id = writer.segment_id;
         let mut shadow_dual = writer.shadow_dual.take();
-        let active_path = self.paths.active_segment_for_shard(shard, self.writer_shards());
+        let active_path = self
+            .paths
+            .active_segment_for_shard(shard, self.writer_shards());
         let dest = self.paths.sealed_segment(&sealed_id);
 
         // Write-through may have discarded the RAM prefix — seal from disk when
@@ -4918,11 +5301,7 @@ impl Store {
                     f.sync_all()?;
                 }
             }
-            match crate::media_inventory::rename_exclusive(
-                &active_path,
-                &publish_dest,
-                sealed_id,
-            ) {
+            match crate::media_inventory::rename_exclusive(&active_path, &publish_dest, sealed_id) {
                 Ok(()) => published = true,
                 Err(StoreError::SegmentIdCollision { .. }) => {
                     return Err(StoreError::SegmentIdCollision {
@@ -4959,8 +5338,9 @@ impl Store {
             sync_dir(&self.paths.active_shard_dir(shard, self.writer_shards()))?;
         }
         crate::failpoint::hit("store.seal.after_active_remove")?;
-        breakdown.final_active_seal_ns =
-            breakdown.final_active_seal_ns.saturating_add(elapsed_ns(t_final));
+        breakdown.final_active_seal_ns = breakdown
+            .final_active_seal_ns
+            .saturating_add(elapsed_ns(t_final));
 
         // Protected seal-pair pipeline: prepare Shadow without sync, start next
         // active, finalize auth+Shadow+frontier asynchronously.
@@ -5141,11 +5521,7 @@ impl Store {
         self.segment_catalog
             .get(segment_id)
             .map(|s| s.content_hash)
-            .or_else(|| {
-                self.tier_placement
-                    .get(segment_id)
-                    .map(|p| p.content_hash)
-            })
+            .or_else(|| self.tier_placement.get(segment_id).map(|p| p.content_hash))
     }
 
     /// Best-effort wait for derived enrichment to drain (measurement / tests).
@@ -5223,11 +5599,8 @@ impl Store {
                 writer.file.seek(SeekFrom::Start(writer.durable_len))?;
             }
             let segment_id = writer.segment_id;
-            let mut dual = crate::recovery_shadow::ShadowDualStream::begin(
-                &paths,
-                store_id,
-                segment_id,
-            )?;
+            let mut dual =
+                crate::recovery_shadow::ShadowDualStream::begin(&paths, store_id, segment_id)?;
             if !prefix.is_empty() {
                 dual.append_image_chunk(&prefix)?;
             }
@@ -5285,11 +5658,8 @@ impl Store {
 
     /// Step 8 prepare: Transitioning marker + backfill Shadows + gap-free check.
     pub fn prepare_flip_to_compact_shadow(&mut self) -> Result<u64, StoreError> {
-        let built = crate::recovery_shadow::prepare_flip_to_compact_shadow(
-            &self.paths,
-            self.store_id,
-            0,
-        )?;
+        let built =
+            crate::recovery_shadow::prepare_flip_to_compact_shadow(&self.paths, self.store_id, 0)?;
         self.apply_recovery_mode(crate::recovery_shadow::RecoveryMode::Transitioning);
         Ok(built)
     }
@@ -5714,13 +6084,7 @@ impl Store {
                 hash,
                 size,
             );
-            let _ = self.note_sealed_segment(
-                segment_id,
-                TierClass::Hot,
-                &sealed_bytes,
-                hash,
-                size,
-            );
+            let _ = self.note_sealed_segment(segment_id, TierClass::Hot, &sealed_bytes, hash, size);
             self.note_derived_catalog_dirty();
             self.maybe_schedule_derived_catalog_checkpoint(false);
         }
@@ -5764,11 +6128,7 @@ impl Store {
     ///
     /// Selection is adaptive: tiny → Eytzinger, ordered numeric → PGM/RadixSpline,
     /// strings → compressed radix, with optional point-only MPHF via rebuild APIs.
-    fn write_hydra_for_sealed(
-        &self,
-        segment_id: [u8; 16],
-        bytes: &[u8],
-    ) -> Result<(), StoreError> {
+    fn write_hydra_for_sealed(&self, segment_id: [u8; 16], bytes: &[u8]) -> Result<(), StoreError> {
         let records = crate::hydra::records_from_segment_bytes(bytes, self.limits);
         if records.is_empty() {
             return Ok(());
@@ -5822,11 +6182,8 @@ impl Store {
         segment_id: [u8; 16],
         bytes: &[u8],
     ) -> Result<(), StoreError> {
-        let (_live, frames, _lp) = crate::recovery_shadow::decode_segment_for_candidate(
-            segment_id,
-            bytes,
-            self.limits,
-        );
+        let (_live, frames, _lp) =
+            crate::recovery_shadow::decode_segment_for_candidate(segment_id, bytes, self.limits);
         if frames.is_empty() {
             return Ok(());
         }
@@ -6262,8 +6619,7 @@ impl Store {
 
     fn note_derived_catalog_dirty(&mut self) {
         self.catalog_dirty = true;
-        self.catalog_seals_since_checkpoint =
-            self.catalog_seals_since_checkpoint.saturating_add(1);
+        self.catalog_seals_since_checkpoint = self.catalog_seals_since_checkpoint.saturating_add(1);
     }
 
     /// Coalesce async (or sync) persist of derived tier + segment catalogs.
@@ -6319,7 +6675,11 @@ impl Store {
     }
 
     fn load_or_rebuild_catalog(&mut self) -> Result<(), StoreError> {
-        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?;
+        let paths = all_segment_paths(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )?;
         let fp = segment_fingerprint(&paths)?;
         let cat_path = crate::catalog::collections_catalog_path(&self.paths.catalogs_dir());
         if let Some(cat) = try_load_collection_catalog(&cat_path, self.store_id, fp)? {
@@ -6333,7 +6693,11 @@ impl Store {
     }
 
     fn refresh_collection_catalog(&mut self) -> Result<(), StoreError> {
-        let paths = all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?;
+        let paths = all_segment_paths(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )?;
         let fp = segment_fingerprint(&paths)?;
         // DEF-013 / DEF-023: persist only the durable name set (no segment rescan,
         // no O(N) subject walk — names are maintained incrementally on put/delete).
@@ -6400,8 +6764,12 @@ impl Store {
 
         // Collect (event_id, offset, piece meta) then record locators after the
         // writer borrow ends (DEF-098 generation-exact preads).
-        let mut new_chunk_locs: Vec<([u8; 16], u64, &residiuum_format::ChunkPiece)> =
-            Vec::with_capacity(pieces.len());
+        let mut new_chunk_locs: Vec<(
+            [u8; 16],
+            u64,
+            &residiuum_format::ChunkPiece,
+            [u8; 32],
+        )> = Vec::with_capacity(pieces.len());
         let mut encoded_frame_len: u64 = 0;
         {
             let writer = self.active_mut(shard).expect("active segment");
@@ -6410,6 +6778,7 @@ impl Store {
                 .zip(chunk_event_ids.iter().zip(chunk_envelopes.iter()))
             {
                 let body = encode_piece_body(piece);
+                let verified_body_hash = *blake3::hash(&body).as_bytes();
                 let header = FrameHeader {
                     wire_major: residiuum_format::WIRE_MAJOR,
                     wire_minor: residiuum_format::WIRE_MINOR,
@@ -6426,13 +6795,12 @@ impl Store {
                     envelope: envelope.clone(),
                     body,
                 })?;
-                encoded_frame_len = encoded_frame_len
-                    .saturating_add(writer.segment.len().saturating_sub(offset));
-                new_chunk_locs.push((*chunk_event_id, offset, piece));
+                encoded_frame_len =
+                    encoded_frame_len.saturating_add(writer.segment.len().saturating_sub(offset));
+                new_chunk_locs.push((*chunk_event_id, offset, piece, verified_body_hash));
             }
         }
-        for (chunk_event_id, offset, piece) in new_chunk_locs {
-            let body_hash = *blake3::hash(&piece.body).as_bytes();
+        for (chunk_event_id, offset, piece, verified_body_hash) in new_chunk_locs {
             self.chunk_locators
                 .entry(chunk_event_id)
                 .or_default()
@@ -6443,7 +6811,7 @@ impl Store {
                     chunk_index: piece.index,
                     chunk_total: piece.total,
                     logical_len: piece.logical_len,
-                    verified_body_hash: body_hash,
+                    verified_body_hash,
                 });
         }
 
@@ -6554,16 +6922,15 @@ impl Store {
         expected_item_id: [u8; 16],
         manifest: &crate::chunk_payload::ChunkManifest,
     ) -> Result<Vec<ResolvedChunk>, StoreError> {
-        let expected: HashSet<[u8; 16]> = manifest
-            .chunks
-            .iter()
-            .map(|s| s.chunk_event_id)
-            .collect();
+        let expected: HashSet<[u8; 16]> =
+            manifest.chunks.iter().map(|s| s.chunk_event_id).collect();
         if expected.is_empty() {
             return Ok(Vec::new());
         }
 
-        let all_located = expected.iter().all(|id| self.chunk_locators.contains_key(id));
+        let all_located = expected
+            .iter()
+            .all(|id| self.chunk_locators.contains_key(id));
         if all_located {
             let mut out = Vec::new();
             for eid in &expected {
@@ -6608,12 +6975,14 @@ impl Store {
                             && header.known_kind() == Some(FrameKind::PayloadChunk)
                         {
                             if let Some(piece) = decode_piece_body(body) {
-                                return Ok(resolve_piece(
-                                    header.event_id,
-                                    piece,
-                                    loc.segment_id,
-                                    loc.frame_offset,
-                                ));
+                                if chunk_piece_matches_locator(body, &piece, loc) {
+                                    return Ok(resolve_piece(
+                                        header.event_id,
+                                        piece,
+                                        loc.segment_id,
+                                        loc.frame_offset,
+                                    ));
+                                }
                             }
                         }
                     }
@@ -6623,8 +6992,15 @@ impl Store {
 
         let body = self.pread_frame_body_for_locator(&loc.segment_id, loc.frame_offset)?;
         let Some(piece) = decode_piece_body(&body) else {
-            return Err(StoreError::CorruptMeta("chunk body decode failed at locator"));
+            return Err(StoreError::CorruptMeta(
+                "chunk body decode failed at locator",
+            ));
         };
+        if !chunk_piece_matches_locator(&body, &piece, loc) {
+            return Err(StoreError::ConsistencyViolation(
+                "chunk locator metadata mismatch at disk frame offset".into(),
+            ));
+        }
         Ok(resolve_piece(
             *expected_event_id,
             piece,
@@ -6650,8 +7026,11 @@ impl Store {
     ) -> Result<Vec<ResolvedChunk>, StoreError> {
         let mut out = Vec::new();
         let mut seen: HashSet<([u8; 16], [u8; 32])> = HashSet::new();
-        for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?
-        {
+        for path in all_segment_paths(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )? {
             let bytes = fs::read(&path)?;
             let report = scan_forward(&bytes, self.limits);
             for (offset, frame) in report.verified_frames() {
@@ -6685,8 +7064,11 @@ impl Store {
     /// Rebuild the derived chunk_event_id locator map from all segments (DEF-098).
     fn rebuild_chunk_locators_from_segments(&mut self) -> Result<(), StoreError> {
         let mut map: HashMap<[u8; 16], Vec<ChunkFrameLocator>> = HashMap::new();
-        for path in all_segment_paths(&self.paths, Some(&self.tier_placement), self.writer_shards())?
-        {
+        for path in all_segment_paths(
+            &self.paths,
+            Some(&self.tier_placement),
+            self.writer_shards(),
+        )? {
             let bytes = fs::read(&path)?;
             let report = scan_forward(&bytes, self.limits);
             for (offset, frame) in report.verified_frames() {
@@ -6700,15 +7082,17 @@ impl Store {
                     .map(|e| e.segment_id)
                     .unwrap_or([0u8; 16]);
                 let h = *blake3::hash(&piece.body).as_bytes();
-                map.entry(frame.header.event_id).or_default().push(ChunkFrameLocator {
-                    segment_id,
-                    frame_offset: offset,
-                    item_id: piece.item_id,
-                    chunk_index: piece.index,
-                    chunk_total: piece.total,
-                    logical_len: piece.logical_len,
-                    verified_body_hash: h,
-                });
+                map.entry(frame.header.event_id)
+                    .or_default()
+                    .push(ChunkFrameLocator {
+                        segment_id,
+                        frame_offset: offset,
+                        item_id: piece.item_id,
+                        chunk_index: piece.index,
+                        chunk_total: piece.total,
+                        logical_len: piece.logical_len,
+                        verified_body_hash: h,
+                    });
             }
         }
         self.chunk_locators = map;
@@ -6843,12 +7227,10 @@ impl Store {
                 (offset, 0u64, 0u64, TailIoStats::default())
             } else {
                 let t_append = std::time::Instant::now();
-                let offset = writer.segment.append(
-                    FrameKind::ItemEvent,
-                    &envelope,
-                    body,
-                    event_id,
-                )?;
+                let offset =
+                    writer
+                        .segment
+                        .append(FrameKind::ItemEvent, &envelope, body, event_id)?;
                 writer.item_events = writer.item_events.saturating_add(1);
                 let append_ns = t_append.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
                 // Exact encoded frame length at store boundary (not logical+estimate).
@@ -7008,9 +7390,7 @@ impl Store {
                         {
                             // Product watermark: first-touch is background-only.
                             // Puts consume ready runway; fail closed if empty.
-                            let need = writer
-                                .durable_len
-                                .saturating_add(pending_len as u64);
+                            let need = writer.durable_len.saturating_add(pending_len as u64);
                             if need > capacity_bytes {
                                 return Err(StoreError::CorruptMeta(
                                     "segment watermark capacity exhausted (active past reserved len)",
@@ -7020,12 +7400,10 @@ impl Store {
                                 .runway
                                 .as_ref()
                                 .map(|r| {
-                                    r.shared()
-                                        .write_head
-                                        .store(
-                                            writer.durable_len,
-                                            std::sync::atomic::Ordering::Release,
-                                        );
+                                    r.shared().write_head.store(
+                                        writer.durable_len,
+                                        std::sync::atomic::Ordering::Release,
+                                    );
                                     r.shared()
                                         .zeroed_thru
                                         .load(std::sync::atomic::Ordering::Acquire)
@@ -7041,7 +7419,8 @@ impl Store {
                     }
                     writer.file.seek(SeekFrom::Start(writer.durable_len))?;
                     // DEF-022: optional short-write injection mid-append.
-                    if crate::failpoint::consume_short_write("store.active.write_tail.short_write") {
+                    if crate::failpoint::consume_short_write("store.active.write_tail.short_write")
+                    {
                         let n = crate::failpoint::short_write_len(pending_len);
                         let t0 = std::time::Instant::now();
                         if n > 0 {
@@ -7085,10 +7464,10 @@ impl Store {
                     writer.durable_len = base.saturating_add(retained_len as u64);
                     debug_assert_eq!(writer.durable_len, writer.segment.len());
                     if let Some(runway) = writer.runway.as_ref() {
-                        runway.shared().write_head.store(
-                            writer.durable_len,
-                            std::sync::atomic::Ordering::Release,
-                        );
+                        runway
+                            .shared()
+                            .write_head
+                            .store(writer.durable_len, std::sync::atomic::Ordering::Release);
                     }
                     if let Some(e) = dual_err {
                         return Err(e);
@@ -7137,8 +7516,7 @@ impl Store {
                 DiagnosticIoSink::Coalesce100k => {
                     // Spike: coalesce real-file write_all into ≥100 KiB or 250 ms.
                     const CAP: usize = 100 * 1024;
-                    const MAX_DELAY: std::time::Duration =
-                        std::time::Duration::from_millis(250);
+                    const MAX_DELAY: std::time::Duration = std::time::Duration::from_millis(250);
                     let pending = writer.segment.as_bytes()[start..].to_vec();
                     if writer.coalesce_buf.is_empty() {
                         writer.coalesce_off = writer.durable_len;
@@ -7202,9 +7580,7 @@ impl Store {
         if writer.coalesce_buf.is_empty() {
             return Ok(());
         }
-        writer
-            .file
-            .seek(SeekFrom::Start(writer.coalesce_off))?;
+        writer.file.seek(SeekFrom::Start(writer.coalesce_off))?;
         writer.file.write_all(&writer.coalesce_buf)?;
         if let Some(dual) = writer.shadow_dual.as_mut() {
             dual.append_image_chunk(&writer.coalesce_buf)?;
@@ -7270,7 +7646,11 @@ impl Store {
         Ok(())
     }
 
-    fn persist_active_shard(&mut self, shard: usize, mode: DurabilityMode) -> Result<(), StoreError> {
+    fn persist_active_shard(
+        &mut self,
+        shard: usize,
+        mode: DurabilityMode,
+    ) -> Result<(), StoreError> {
         if self.active_mut(shard).is_some() {
             // Split borrows: take stats from writer, then probe on self.
             let sink = self.diagnostic_io;
@@ -7552,10 +7932,8 @@ impl Store {
         if writer.runway.is_some() {
             return Ok(());
         }
-        let shared = crate::runway_preparer::RunwayShared::new(
-            writer.zeroed_thru,
-            writer.durable_len,
-        );
+        let shared =
+            crate::runway_preparer::RunwayShared::new(writer.zeroed_thru, writer.durable_len);
         writer.runway = Some(crate::runway_preparer::RunwayPreparer::start(
             path,
             capacity_bytes,
@@ -7616,7 +7994,7 @@ impl Store {
             const F_ALLOCATEALL: u32 = 0x0000_0004;
             const F_PEOFPOSMODE: i32 = 3;
             extern "C" {
-                fn fcntl(fd: i32, cmd: i32, ... ) -> i32;
+                fn fcntl(fd: i32, cmd: i32, ...) -> i32;
             }
             let fd = file.as_raw_fd();
             let mut store = FStore {
@@ -7711,10 +8089,7 @@ impl Store {
             if pending.is_file() {
                 paths.push(pending);
             }
-            return Err(StoreError::SegmentIdCollision {
-                segment_id,
-                paths,
-            });
+            return Err(StoreError::SegmentIdCollision { segment_id, paths });
         }
         if kept.len() != bytes.len() {
             file.set_len(kept.len() as u64)?;
@@ -8033,46 +8408,105 @@ fn all_segment_paths(
     Ok(out)
 }
 
+fn total_segment_bytes(
+    paths: &StorePaths,
+    placement: Option<&TierPlacement>,
+    writer_shards: usize,
+) -> Result<u64, StoreError> {
+    let mut total = 0u64;
+    for path in all_segment_paths(paths, placement, writer_shards)? {
+        total = total.saturating_add(fs::metadata(path)?.len());
+    }
+    Ok(total)
+}
+
+fn primary_cache_bytes(paths: &StorePaths) -> u64 {
+    fs::metadata(primary_cache_path(&paths.indexes_dir()))
+        .map(|m| m.len())
+        .unwrap_or(0)
+}
+
+fn chunk_locator_count(locators: &ChunkLocatorMap) -> u64 {
+    locators
+        .values()
+        .fold(0u64, |total, entries| total.saturating_add(entries.len() as u64))
+}
+
+fn chunk_locator_coverage_complete(index: &PrimaryIndex, locators: &ChunkLocatorMap) -> bool {
+    index.iter_all().all(|(_subject, entry)| {
+        let IndexEntry::Live(value) = entry else {
+            return true;
+        };
+        let Some(manifest) = decode_chunk_manifest(&value.body) else {
+            return true;
+        };
+        manifest
+            .chunks
+            .iter()
+            .all(|slot| locators.contains_key(&slot.chunk_event_id))
+    })
+}
+
 /// Apply item events from the active segment starting at byte offset `from_offset`.
 ///
 /// Used with a frontier checkpoint so open cost is O(active tail), not O(all data).
 fn apply_active_tail(
     index: &mut PrimaryIndex,
+    mut chunk_locators: Option<&mut ChunkLocatorMap>,
     active_path: &Path,
     from_offset: u64,
     limits: SafetyLimits,
-) -> Result<(), StoreError> {
+) -> Result<u64, StoreError> {
     let bytes = fs::read(active_path)?;
     if from_offset as usize > bytes.len() {
         return Err(StoreError::CorruptMeta("active frontier past file end"));
     }
     if from_offset as usize == bytes.len() {
-        return Ok(());
+        return Ok(0);
     }
-    let report = scan_forward(&bytes, limits);
-    for (offset, frame) in report.verified_frames() {
-        if offset < from_offset {
-            continue;
+    let tail = &bytes[from_offset as usize..];
+    let report = scan_forward(tail, limits);
+    for (relative_offset, frame) in report.verified_frames() {
+        let offset = from_offset.saturating_add(relative_offset);
+        if frame.header.known_kind() == Some(FrameKind::PayloadChunk) {
+            if let (Some(locators), Some(piece)) = (
+                chunk_locators.as_deref_mut(),
+                decode_piece_body(&frame.body),
+            ) {
+                let segment_id = decode_item_envelope(&frame.envelope)
+                    .map(|e| e.segment_id)
+                    .unwrap_or([0u8; 16]);
+                locators
+                    .entry(frame.header.event_id)
+                    .or_default()
+                    .push(ChunkFrameLocator {
+                        segment_id,
+                        frame_offset: offset,
+                        item_id: piece.item_id,
+                        chunk_index: piece.index,
+                        chunk_total: piece.total,
+                        logical_len: piece.logical_len,
+                        verified_body_hash: frame.body_hash,
+                    });
+            }
+        } else if frame.header.known_kind() == Some(FrameKind::ItemEvent) {
+            let Some(env) = decode_item_envelope(&frame.envelope) else {
+                continue;
+            };
+            let body = slim_put_body_for_index(frame.body.clone(), false);
+            index.apply_event(
+                env.subject,
+                env.event_kind,
+                body,
+                env.item_id,
+                frame.header.event_id,
+                env.segment_id,
+                frame.header.writer_sequence,
+                offset,
+            );
         }
-        if frame.header.known_kind() != Some(FrameKind::ItemEvent) {
-            continue;
-        }
-        let Some(env) = decode_item_envelope(&frame.envelope) else {
-            continue;
-        };
-        let body = slim_put_body_for_index(frame.body.clone(), false);
-        index.apply_event(
-            env.subject,
-            env.event_kind,
-            body,
-            env.item_id,
-            frame.header.event_id,
-            env.segment_id,
-            frame.header.writer_sequence,
-            offset,
-        );
     }
-    Ok(())
+    Ok(tail.len() as u64)
 }
 
 /// Relative scan-report name for a segment path under the store root.
@@ -8090,38 +8524,61 @@ fn examination_source_name(root: &Path, path: &Path) -> String {
 ///
 /// Ordinary put bodies are not retained in the event vector (only chunk
 /// manifests), so rebuild peak RSS is O(keys × metadata) rather than O(dataset).
-fn collect_item_events_slim_for_index(
+fn collect_item_events_and_chunk_locators_slim_for_index(
     paths: &StorePaths,
     limits: SafetyLimits,
     placement: Option<&TierPlacement>,
     writer_shards: usize,
-) -> Result<Vec<DiskEvent>, StoreError> {
+) -> Result<(Vec<DiskEvent>, ChunkLocatorMap), StoreError> {
     let mut events = Vec::new();
+    let mut chunk_locators = ChunkLocatorMap::new();
     for path in all_segment_paths(paths, placement, writer_shards)? {
         let bytes = fs::read(&path)?;
         let report = scan_forward(&bytes, limits);
         for (offset, frame) in report.verified_frames() {
-            if frame.header.known_kind() != Some(FrameKind::ItemEvent) {
-                continue;
+            match frame.header.known_kind() {
+                Some(FrameKind::ItemEvent) => {
+                    let Some(env) = decode_item_envelope(&frame.envelope) else {
+                        continue;
+                    };
+                    let body = slim_put_body_for_index(frame.body.clone(), false);
+                    events.push(DiskEventPub {
+                        file: path.clone(),
+                        offset,
+                        writer_sequence: frame.header.writer_sequence,
+                        subject: env.subject,
+                        kind: env.event_kind,
+                        body,
+                        item_id: env.item_id,
+                        event_id: frame.header.event_id,
+                        segment_id: env.segment_id,
+                    });
+                }
+                Some(FrameKind::PayloadChunk) => {
+                    let Some(piece) = decode_piece_body(&frame.body) else {
+                        continue;
+                    };
+                    let segment_id = decode_item_envelope(&frame.envelope)
+                        .map(|env| env.segment_id)
+                        .unwrap_or([0u8; 16]);
+                    chunk_locators
+                        .entry(frame.header.event_id)
+                        .or_default()
+                        .push(ChunkFrameLocator {
+                            segment_id,
+                            frame_offset: offset,
+                            item_id: piece.item_id,
+                            chunk_index: piece.index,
+                            chunk_total: piece.total,
+                            logical_len: piece.logical_len,
+                            verified_body_hash: frame.body_hash,
+                        });
+                }
+                _ => {}
             }
-            let Some(env) = decode_item_envelope(&frame.envelope) else {
-                continue;
-            };
-            let body = slim_put_body_for_index(frame.body.clone(), false);
-            events.push(DiskEventPub {
-                file: path.clone(),
-                offset,
-                writer_sequence: frame.header.writer_sequence,
-                subject: env.subject,
-                kind: env.event_kind,
-                body,
-                item_id: env.item_id,
-                event_id: frame.header.event_id,
-                segment_id: env.segment_id,
-            });
         }
     }
-    Ok(events)
+    Ok((events, chunk_locators))
 }
 
 /// Rebuild a primary index solely from segment bytes (ignores in-memory state).
@@ -8142,7 +8599,22 @@ fn index_from_segments(
     placement: Option<&TierPlacement>,
     writer_shards: usize,
 ) -> Result<PrimaryIndex, StoreError> {
-    let mut events = collect_item_events_slim_for_index(paths, limits, placement, writer_shards)?;
+    index_and_chunk_locators_from_segments(paths, limits, placement, writer_shards)
+        .map(|(index, _)| index)
+}
+
+fn index_and_chunk_locators_from_segments(
+    paths: &StorePaths,
+    limits: SafetyLimits,
+    placement: Option<&TierPlacement>,
+    writer_shards: usize,
+) -> Result<(PrimaryIndex, ChunkLocatorMap), StoreError> {
+    let (mut events, chunk_locators) = collect_item_events_and_chunk_locators_slim_for_index(
+        paths,
+        limits,
+        placement,
+        writer_shards,
+    )?;
     events.sort_by(cmp_disk_events);
     let mut index = PrimaryIndex::new();
     let mut seen_events: HashSet<[u8; 16]> = HashSet::new();
@@ -8161,7 +8633,7 @@ fn index_from_segments(
             ev.offset,
         );
     }
-    Ok(index)
+    Ok((index, chunk_locators))
 }
 
 /// Keep longest prefix of complete verified frames from the start of the buffer.
@@ -8188,7 +8660,8 @@ fn recover_active_bytes(
                 }
                 end = range.end;
                 if frame.header.known_kind() == Some(FrameKind::SegmentDescriptor) {
-                    if let Some((ids, _, _)) = residiuum_format::decode_descriptor_body(&frame.body) {
+                    if let Some((ids, _, _)) = residiuum_format::decode_descriptor_body(&frame.body)
+                    {
                         if ids.store_id == store_id {
                             segment_id = Some(ids.segment_id);
                         } else if accept_foreign_store && foreign_segment_id.is_none() {
@@ -8315,6 +8788,18 @@ fn seal_flush_mode(max_ack: DurabilityMode) -> DurabilityMode {
     }
 }
 
+fn chunk_piece_matches_locator(
+    body: &[u8],
+    piece: &residiuum_format::ChunkPiece,
+    locator: &ChunkFrameLocator,
+) -> bool {
+    *blake3::hash(body).as_bytes() == locator.verified_body_hash
+        && piece.item_id == locator.item_id
+        && piece.index == locator.chunk_index
+        && piece.total == locator.chunk_total
+        && piece.logical_len == locator.logical_len
+}
+
 /// Wall-clock ns for envelope `created_ns` (FORMAT_SPEC optional).
 ///
 /// Hot path: do **not** call `SystemTime::now()` every put (Mode A prep was ~65%
@@ -8411,6 +8896,131 @@ mod tests {
     }
 
     #[test]
+    fn reopen_reports_phase_metrics_and_no_normal_inventory_fallback() {
+        let dir = tempdir().unwrap();
+        {
+            let mut store = Store::create(dir.path()).unwrap();
+            store
+                .put("measured", b"value", DurabilityMode::Durable)
+                .unwrap();
+        }
+        let store = Store::open(dir.path()).unwrap();
+        let metrics = store.open_metrics();
+        assert!(metrics.total_ns > 0);
+        assert!(metrics.identity_and_lock_ns > 0);
+        assert!(metrics.inventory_ns > 0);
+        assert!(metrics.inventory_descriptor_probe_bytes > 0);
+        assert_eq!(metrics.inventory_fallback_scan_bytes, 0);
+        assert_eq!(metrics.pending_seals_recovered, 0);
+        assert_eq!(metrics.protected_pairs_recovered, 0);
+        assert!(matches!(
+            metrics.index_disposition,
+            IndexOpenDisposition::Loaded | IndexOpenDisposition::TailReplayed
+        ));
+        assert!(metrics.total_ns >= metrics.inventory_ns);
+    }
+
+    #[test]
+    fn clean_v4_checkpoint_reopens_chunked_store_without_full_index_scan() {
+        let dir = tempdir().unwrap();
+        let body = vec![0x5au8; 96 * 1024];
+        {
+            let mut store = Store::create(dir.path()).unwrap();
+            store.set_chunk_threshold(1024);
+            store.set_chunk_size(4096);
+            store
+                .put("chunked", &body, DurabilityMode::Durable)
+                .unwrap();
+            store.seal_active().unwrap();
+            store.drain_lifecycle().unwrap();
+            store.persist_index_cache().unwrap();
+        }
+
+        let store = Store::open(dir.path()).unwrap();
+        let metrics = store.open_metrics();
+        assert_eq!(metrics.index_full_scan_bytes, 0);
+        assert_eq!(metrics.index_active_replay_bytes, 0);
+        assert!(metrics.chunk_locators_from_checkpoint);
+        assert_eq!(metrics.index_disposition, IndexOpenDisposition::Loaded);
+        assert_eq!(metrics.index_cache_decision, IndexCacheDecision::AcceptedV4);
+        assert!(metrics.index_cache_bytes > 0);
+        assert!(metrics.index_entries > 0);
+        assert!(metrics.chunk_locator_entries > 0);
+        assert_eq!(
+            store.get("chunked").unwrap().as_deref(),
+            Some(body.as_slice())
+        );
+    }
+
+    #[test]
+    fn v4_checkpoint_replays_only_new_active_chunk_locators() {
+        let dir = tempdir().unwrap();
+        let before = vec![0x31u8; 24 * 1024];
+        let after = vec![0x32u8; 28 * 1024];
+        {
+            let mut store = Store::create(dir.path()).unwrap();
+            store.set_chunk_threshold(1024);
+            store.set_chunk_size(4096);
+            store
+                .put("before", &before, DurabilityMode::Durable)
+                .unwrap();
+            store.persist_index_cache().unwrap();
+            store.put("after", &after, DurabilityMode::Durable).unwrap();
+        }
+
+        let store = Store::open(dir.path()).unwrap();
+        let metrics = store.open_metrics();
+        assert_eq!(metrics.index_full_scan_bytes, 0);
+        assert!(metrics.index_active_replay_bytes > 0);
+        assert!(metrics.chunk_locators_from_checkpoint);
+        assert_eq!(metrics.index_disposition, IndexOpenDisposition::TailReplayed);
+        assert_eq!(metrics.index_cache_decision, IndexCacheDecision::AcceptedV4);
+        assert_eq!(
+            store.get("before").unwrap().as_deref(),
+            Some(before.as_slice())
+        );
+        assert_eq!(
+            store.get("after").unwrap().as_deref(),
+            Some(after.as_slice())
+        );
+    }
+
+    #[test]
+    fn writable_open_upgrades_v3_checkpoint_after_one_locator_scan() {
+        let dir = tempdir().unwrap();
+        let body = vec![0x73u8; 20 * 1024];
+        {
+            let mut store = Store::create(dir.path()).unwrap();
+            store.set_chunk_threshold(1024);
+            store.set_chunk_size(4096);
+            store
+                .put("legacy", &body, DurabilityMode::Durable)
+                .unwrap();
+            let frontier = store.current_index_frontier().unwrap();
+            crate::index_cache::write_primary_index_frontier_v3_for_test(
+                &primary_cache_path(&store.paths.indexes_dir()),
+                store.store_id,
+                &frontier,
+                &store.durable_index,
+            )
+            .unwrap();
+        }
+
+        let store = Store::open(dir.path()).unwrap();
+        let metrics = store.open_metrics();
+        assert!(metrics.index_full_scan_bytes > 0);
+        assert!(!metrics.chunk_locators_from_checkpoint);
+        assert_eq!(metrics.index_disposition, IndexOpenDisposition::LegacyUpgraded);
+        assert_eq!(metrics.index_cache_decision, IndexCacheDecision::AcceptedLegacy);
+        let cache = fs::read(primary_cache_path(&store.paths.indexes_dir())).unwrap();
+        assert_eq!(&cache[..8], b"RIDX0004");
+        assert_eq!(
+            store.get("legacy").unwrap().as_deref(),
+            Some(body.as_slice())
+        );
+    }
+
+    #[test]
     fn chimera_seal_layout_and_get_resolve() {
         let dir = tempdir().unwrap();
         // CSE-2R Materialized embed expectations — not CompactShadow product default.
@@ -8423,15 +9033,9 @@ mod tests {
         let tiny = b"hi";
         let medium = vec![3u8; 200];
         let large = vec![5u8; 32 * 1024];
-        store
-            .put("t", tiny, DurabilityMode::Durable)
-            .unwrap();
-        store
-            .put("m", &medium, DurabilityMode::Durable)
-            .unwrap();
-        store
-            .put("l", &large, DurabilityMode::Durable)
-            .unwrap();
+        store.put("t", tiny, DurabilityMode::Durable).unwrap();
+        store.put("m", &medium, DurabilityMode::Durable).unwrap();
+        store.put("l", &large, DurabilityMode::Durable).unwrap();
 
         // Capture establishing segment from index before seal rotates writer.
         let seg = match store.index.get(b"t") {
@@ -8480,9 +9084,7 @@ mod tests {
             crate::recovery_shadow::RecoveryMode::Materialized,
         )
         .unwrap();
-        store
-            .put("k", b"value", DurabilityMode::Durable)
-            .unwrap();
+        store.put("k", b"value", DurabilityMode::Durable).unwrap();
         let seg = match store.index.get(b"k") {
             Some(crate::index::IndexEntry::Live(lv)) => lv.segment_id,
             _ => panic!("expected live k"),
@@ -8496,7 +9098,10 @@ mod tests {
             fs::remove_dir_all(&chimera_root).unwrap();
         }
         assert!(store.load_chimera_layout(seg).unwrap().is_none());
-        assert_eq!(store.get("k").unwrap().as_deref(), Some(b"value".as_slice()));
+        assert_eq!(
+            store.get("k").unwrap().as_deref(),
+            Some(b"value".as_slice())
+        );
         assert!(store.get_via_chimera("k").unwrap().is_none());
     }
 
@@ -8508,11 +9113,7 @@ mod tests {
         let payload = vec![0xABu8; 8192];
         for i in 0..64 {
             store
-                .put(
-                    &format!("k{i}"),
-                    &payload,
-                    DurabilityMode::Buffered,
-                )
+                .put(&format!("k{i}"), &payload, DurabilityMode::Buffered)
                 .unwrap();
         }
         // Resident bodies ≪ 64 * 8 KiB (locator-only; only metadata).
@@ -8522,8 +9123,14 @@ mod tests {
             "expected slim index, resident_body_bytes={resident}"
         );
         // Gets still return full payloads via frame pread.
-        assert_eq!(store.get("k0").unwrap().as_deref(), Some(payload.as_slice()));
-        assert_eq!(store.get("k63").unwrap().as_deref(), Some(payload.as_slice()));
+        assert_eq!(
+            store.get("k0").unwrap().as_deref(),
+            Some(payload.as_slice())
+        );
+        assert_eq!(
+            store.get("k63").unwrap().as_deref(),
+            Some(payload.as_slice())
+        );
 
         // Memory-mode still keeps the body resident (no durable frame).
         store
@@ -8539,7 +9146,10 @@ mod tests {
         drop(store);
         let store = Store::open(dir.path()).unwrap();
         assert!(store.resident_index_body_bytes() < 8 * 1024);
-        assert_eq!(store.get("k0").unwrap().as_deref(), Some(payload.as_slice()));
+        assert_eq!(
+            store.get("k0").unwrap().as_deref(),
+            Some(payload.as_slice())
+        );
         // Memory-mode publish did not survive reopen.
         assert!(store.get("mem").unwrap().is_none());
     }
@@ -8553,9 +9163,7 @@ mod tests {
             crate::recovery_shadow::RecoveryMode::Materialized,
         )
         .unwrap();
-        store
-            .put("x", b"tiny-x", DurabilityMode::Durable)
-            .unwrap();
+        store.put("x", b"tiny-x", DurabilityMode::Durable).unwrap();
         store
             .put("y", &vec![1u8; 128], DurabilityMode::Durable)
             .unwrap();
@@ -8597,8 +9205,10 @@ mod tests {
         store.set_cook_parallelism(4);
         let payload = vec![7u8; 4096];
         let keys: Vec<String> = (0..64).map(|i| format!("pk{i}")).collect();
-        let items: Vec<(&str, &[u8])> =
-            keys.iter().map(|k| (k.as_str(), payload.as_slice())).collect();
+        let items: Vec<(&str, &[u8])> = keys
+            .iter()
+            .map(|k| (k.as_str(), payload.as_slice()))
+            .collect();
         let receipts = store.put_many(&items, DurabilityMode::Buffered).unwrap();
         assert_eq!(receipts.len(), 64);
         for k in &keys {
@@ -8610,9 +9220,7 @@ mod tests {
     fn chimera_compact_writes_output_layout() {
         let dir = tempdir().unwrap();
         let mut store = Store::create(dir.path()).unwrap();
-        store
-            .put("a", b"one", DurabilityMode::Durable)
-            .unwrap();
+        store.put("a", b"one", DurabilityMode::Durable).unwrap();
         store
             .put("b", &vec![2u8; 256], DurabilityMode::Durable)
             .unwrap();
@@ -8645,12 +9253,7 @@ mod tests {
         let mut store = Store::create(dir.path()).unwrap();
         // create-if-absent
         let r1 = store
-            .put_subject_bytes_if(
-                b"k",
-                b"v1",
-                DurabilityMode::Durable,
-                WriteCondition::Absent,
-            )
+            .put_subject_bytes_if(b"k", b"v1", DurabilityMode::Durable, WriteCondition::Absent)
             .unwrap();
         assert!(matches!(
             store.put_subject_bytes_if(
@@ -8694,11 +9297,7 @@ mod tests {
         assert!(store.get("k").unwrap().is_none());
         // present fails when absent
         assert!(matches!(
-            store.delete_subject_bytes_if(
-                b"k",
-                DurabilityMode::Durable,
-                WriteCondition::Present,
-            ),
+            store.delete_subject_bytes_if(b"k", DurabilityMode::Durable, WriteCondition::Present,),
             Err(StoreError::VersionConflict { observed: None, .. })
         ));
     }
@@ -8714,13 +9313,8 @@ mod tests {
         let store = Arc::new(Mutex::new(Store::create(dir.path()).unwrap()));
         let r0 = {
             let mut g = store.lock().unwrap();
-            g.put_subject_bytes_if(
-                b"k",
-                b"v0",
-                DurabilityMode::Durable,
-                WriteCondition::Absent,
-            )
-            .unwrap()
+            g.put_subject_bytes_if(b"k", b"v0", DurabilityMode::Durable, WriteCondition::Absent)
+                .unwrap()
         };
         let n = 8usize;
         let barrier = Arc::new(Barrier::new(n));
@@ -8744,9 +9338,7 @@ mod tests {
                     WriteCondition::LiveEventId(expected),
                 ) {
                     Ok(_) => *wins.lock().unwrap() += 1,
-                    Err(StoreError::VersionConflict { .. }) => {
-                        *conflicts.lock().unwrap() += 1
-                    }
+                    Err(StoreError::VersionConflict { .. }) => *conflicts.lock().unwrap() += 1,
                     Err(e) => panic!("unexpected: {e:?}"),
                 }
             }));
